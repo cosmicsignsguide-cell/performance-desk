@@ -32,6 +32,124 @@ async function timed(fn) {
   catch (e) { return { ok: false, ms: Date.now() - t, detail: (e.message || String(e)).slice(0, 200) }; }
 }
 
+const UA = 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/124 Mobile Safari/537.36 Per4manceDesk/1.0';
+
+async function req(url, opts = {}) {
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), opts.timeout || config.sitewatch.timeoutMs);
+  try {
+    return await fetch(url, { ...opts, signal: ac.signal, headers: { 'User-Agent': UA, ...(opts.headers || {}) } });
+  } finally { clearTimeout(t); }
+}
+
+// Light mode: the same checks without a headless browser, so Site Watch still runs on a 512 MB free
+// instance where Chromium will not fit. It reads page source instead of a rendered page, so tag
+// detection is a little less certain; everything else (status, SSL, product, cart, checkout) is the
+// same real request the storefront makes.
+export async function checkSiteLight(client) {
+  const url = client.site?.url;
+  if (!url) return null;
+  const base = url.replace(/\/$/, '');
+  const host = new URL(url).host;
+  const T = config.sitewatch.timeoutMs;
+  const checks = [];
+  let isShopify = false, html = '', cookie = '';
+
+  const home = await timed(async () => {
+    const res = await req(url, { timeout: T });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    html = await res.text();
+    if (/enter using password|opening soon/i.test(html)) throw new Error('store is password protected');
+    if (client.site?.expectText && !html.includes(client.site.expectText)) throw new Error(`expected text not found: ${client.site.expectText}`);
+    isShopify = /cdn\.shopify\.com|Shopify\.shop|shopify-section|web-pixels-manager/i.test(html);
+    return `${res.status} OK`;
+  });
+  checks.push({ name: 'Homepage loads', ...home, slow: home.ms > config.sitewatch.slowMs });
+
+  const days = await sslDaysLeft(host);
+  checks.push({ name: 'SSL certificate', ok: days === null ? false : days > 7, ms: 0, detail: days === null ? 'could not read certificate' : `expires in ${days} days` });
+
+  const fbOk = /connect\.facebook\.net|fbq\s*\(|facebook_pixel|facebook&#x20;pixel|"facebook"|meta pixel/i.test(html);
+  const gaOk = /googletagmanager\.com\/gtag|googletagmanager\.com\/gtm|gtag\s*\(|google_analytics|"G-[A-Z0-9]{6,}"|G-[A-Z0-9]{8,}/i.test(html);
+  checks.push({ name: 'Meta pixel present', ok: fbOk, ms: 0, detail: fbOk ? 'pixel code found in page source' : 'no pixel code in homepage source' });
+  checks.push({ name: 'GA4 tag present', ok: gaOk, ms: 0, detail: gaOk ? 'GA4 or GTM code found in page source' : 'no GA4 or GTM in homepage source' });
+
+  if (client.type !== 'lead') {
+    let productPath = client.site?.productPath || '';
+    let variantId = null;
+    const prod = await timed(async () => {
+      if (!productPath && isShopify) {
+        const r = await req(`${base}/products.json?limit=5`, { timeout: T });
+        if (r.ok) {
+          const j = await r.json();
+          const p = (j.products || []).find((x) => (x.variants || []).some((v) => v.available !== false));
+          if (p) { productPath = `/products/${p.handle}`; variantId = (p.variants.find((v) => v.available !== false) || p.variants[0]).id; }
+        }
+      }
+      if (!productPath) return 'skipped: no product found automatically (set site.productPath)';
+      const res = await req(base + productPath, { timeout: T });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.text();
+      if (/sold out/i.test(body) && !/add to cart|add to bag|buy now/i.test(body)) throw new Error('product shows sold out');
+      return `${res.status} OK, ${productPath}`;
+    });
+    checks.push({ name: 'Product page loads', ...prod, slow: prod.ms > config.sitewatch.slowMs, skipped: /^skipped/.test(prod.detail) });
+
+    if (isShopify && productPath && prod.ok && !/^skipped/.test(prod.detail)) {
+      const atc = await timed(async () => {
+        if (!variantId) {
+          const r = await req(`${base}${productPath}.js`, { timeout: T });
+          if (!r.ok) throw new Error('could not read product variants');
+          const j = await r.json();
+          variantId = (j.variants.find((v) => v.available) || j.variants[0])?.id;
+        }
+        const r = await req(`${base}/cart/add.js`, { method: 'POST', timeout: T, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: [{ id: variantId, quantity: 1 }] }) });
+        const m = (r.headers.get('set-cookie') || '').match(/cart=([^;,\s]+)/);
+        if (m) cookie = `cart=${m[1]}`;
+        const body = await r.text();
+        if (!r.ok) {
+          // Shopify answers a rejected add with a readable reason, which is exactly what we want to surface.
+          let why = `HTTP ${r.status}`;
+          try { const j = JSON.parse(body); if (j.description || j.message) why = (j.description || j.message).slice(0, 140); } catch { /* not json */ }
+          throw new Error(`cart rejected the item: ${why}`);
+        }
+        // The add response itself carries the line that was added, so this does not depend on the cart cookie.
+        let added = null;
+        try { const j = JSON.parse(body); added = j.items ? j.items[0] : j; } catch { /* not json */ }
+        if (!added || !added.id) throw new Error('cart/add.js did not return the added item');
+        return `added ${added.quantity || 1} x ${(added.product_title || added.title || 'item').slice(0, 40)}`;
+      });
+      checks.push({ name: 'Add to cart', ...atc });
+
+      const co = await timed(async () => {
+        const res = await req(`${base}/checkout`, { timeout: T, headers: cookie ? { Cookie: cookie } : {} });
+        const text = await res.text();
+        // 403 and 429 here are Shopify's bot protection refusing an automated request, not a broken
+        // checkout. Real checkout health is watched from the data side by the checkout-stuck signal
+        // (checkouts started vs orders against the client's own 14 day norm).
+        if (res.status === 403 || res.status === 429) return `skipped: Shopify bot protection blocked the request (HTTP ${res.status})`;
+        if (res.status >= 400) throw new Error(`HTTP ${res.status}`);
+        if (/something went wrong|checkout is unavailable|this store is unavailable|not accepting orders|unable to process/i.test(text)) throw new Error('checkout returned an error page');
+        return `${res.status} OK, checkout reachable`;
+      });
+      checks.push({ name: 'Checkout page loads', ...co, slow: co.ms > config.sitewatch.slowMs, skipped: /^skipped/.test(co.detail) });
+    }
+  } else if (client.site?.leadFormPath) {
+    const lp = await timed(async () => {
+      const res = await req(base + client.site.leadFormPath, { timeout: T });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.text();
+      const forms = (body.match(/<form[\s>]/gi) || []).length;
+      const submit = (body.match(/type=["']?submit|<button[\s>]/gi) || []).length;
+      if (!forms || !submit) throw new Error(`no submittable form found (${forms} forms, ${submit} buttons)`);
+      return `${forms} form(s) found`;
+    });
+    checks.push({ name: 'Landing page form present', ...lp, slow: lp.ms > config.sitewatch.slowMs });
+  }
+
+  return { clientId: client.id, url, at: nowIso(), ok: checks.every((c) => c.ok), checks, isShopify, mode: 'light', sample: false };
+}
+
 export async function checkSite(client) {
   const url = client.site?.url;
   if (!url) return null;
@@ -146,13 +264,32 @@ export async function checkSite(client) {
   return { clientId: client.id, url, at: nowIso(), ok: checks.every((c) => c.ok), checks, isShopify, sample: false };
 }
 
+// DESK_SITEWATCH_LIGHT=true skips the headless browser entirely. Set it on a free 512 MB instance
+// where Chromium cannot run; leave it unset anywhere with room for the browser.
+const LIGHT = /^(1|true|yes)$/i.test(process.env.DESK_SITEWATCH_LIGHT || '');
+
+function failedResult(client, e) {
+  return { clientId: client.id, url: client.site.url, at: nowIso(), ok: false, sample: false,
+    checks: [{ name: 'Site check ran', ok: false, ms: 0, detail: (e.message || String(e)).slice(0, 200) }] };
+}
+
 export async function runSitewatch(clients) {
   const store = await db();
+  log(`sitewatch mode: ${LIGHT ? 'light (no browser)' : 'browser'}`);
   for (const client of clients) {
     if (!client.site?.url || client.sample) { log(`sitewatch ${client.id}: skipped (${client.sample ? 'sample client' : 'no site url'})`); continue; }
     let result;
-    try { result = await checkSite(client); }
-    catch (e) { result = { clientId: client.id, url: client.site.url, at: nowIso(), ok: false, checks: [{ name: 'Site check ran', ok: false, ms: 0, detail: (e.message || String(e)).slice(0, 200) }], sample: false }; }
+    if (LIGHT) {
+      try { result = await checkSiteLight(client); }
+      catch (e) { result = failedResult(client, e); }
+    } else {
+      try { result = await checkSite(client); }
+      catch (e) {
+        log(`sitewatch ${client.id}: browser mode unavailable (${(e.message || e).toString().slice(0, 120)}), using light checks`);
+        try { result = await checkSiteLight(client); }
+        catch (e2) { result = failedResult(client, e2); }
+      }
+    }
     const prev = (await store.get('sitewatch', client.id)) || {};
     const history = [...(prev.history || []), { at: result.at, ok: result.ok, failed: result.checks.filter((c) => !c.ok).map((c) => c.name), ms: result.checks[0]?.ms || 0 }].slice(-96);
     await store.set('sitewatch', client.id, { ...result, history });

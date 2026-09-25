@@ -195,33 +195,58 @@ async function main() {
   }
 
   if (cmd === 'serve') {
-    // Tiny HTTP endpoint so the dashboard's "Sync now" button can trigger an hourly or daily run.
-    // Protect it with DESK_SYNC_KEY; the dashboard sends it as a Bearer token (config.js: syncUrl, syncKey).
+    // One always-available HTTP service. Two jobs:
+    //   POST /sync?mode=hourly|daily   the dashboard's "Sync now" button (waits for the result)
+    //   GET|POST /run?mode=...         an external scheduler (cron-job.org and the like) kicks off a
+    //                                  run and gets 202 straight back, so it never hits a timeout.
+    // Both need DESK_SYNC_KEY, as a Bearer token or as ?key= for schedulers that cannot set headers.
     const http = await import('node:http');
     const port = parseInt(process.env.PORT || '10000', 10);
-    let running = false;
+    const running = new Set();
+
+    async function runMode(mode) {
+      await syncClientsFromFile();
+      const clients = await loadClients();
+      if (mode === 'sitewatch') {
+        await runSitewatch(clients);
+        await store.merge('meta', 'lastRun', { sitewatch: nowIso() });
+        return { mode, clients: clients.length };
+      }
+      for (const c of clients) { const { entities } = await syncClient(store, c, { mode }); await computeSignals(c, entities, { mode }); }
+      await store.merge('meta', 'lastRun', { [mode]: nowIso() });
+      return { mode, clients: clients.length };
+    }
+
     http.createServer(async (req, res) => {
       res.setHeader('Access-Control-Allow-Origin', process.env.DESK_ALLOWED_ORIGIN || '*');
       res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-      res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
       if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
       const url = new URL(req.url, 'http://x');
-      if (url.pathname === '/health') { res.end('ok'); return; }
-      if (url.pathname !== '/sync' || req.method !== 'POST') { res.writeHead(404); res.end('not found'); return; }
-      const key = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+      if (url.pathname === '/health' || url.pathname === '/') { res.end('ok'); return; }
+      if (url.pathname !== '/sync' && url.pathname !== '/run') { res.writeHead(404); res.end('not found'); return; }
+
+      const key = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || url.searchParams.get('key') || '';
       if (!process.env.DESK_SYNC_KEY || key !== process.env.DESK_SYNC_KEY) { res.writeHead(401); res.end('unauthorized'); return; }
-      if (running) { res.writeHead(409); res.end('a sync is already running'); return; }
-      running = true;
-      const mode = url.searchParams.get('mode') === 'daily' ? 'daily' : 'hourly';
-      try {
-        await syncClientsFromFile();
-        const clients = await loadClients();
-        for (const c of clients) { const { entities } = await syncClient(store, c, { mode }); await computeSignals(c, entities, { mode }); }
-        await store.merge('meta', 'lastRun', { [mode]: nowIso() });
-        res.end(JSON.stringify({ ok: true, mode, clients: clients.length }));
-      } catch (e) { res.writeHead(500); res.end(String(e.message || e)); }
-      finally { running = false; }
-    }).listen(port, () => log(`sync endpoint listening on ${port}`));
+
+      const asked = url.searchParams.get('mode');
+      const mode = ['daily', 'hourly', 'sitewatch'].includes(asked) ? asked : 'hourly';
+      if (running.has(mode)) { res.writeHead(409); res.end(`${mode} is already running`); return; }
+
+      if (url.pathname === '/run') {          // fire and forget, answer immediately
+        running.add(mode);
+        res.writeHead(202); res.end(JSON.stringify({ ok: true, started: mode }));
+        runMode(mode).then((r) => log(`run ${mode} done (${r.clients} clients)`))
+          .catch((e) => log(`run ${mode} FAILED ${e.message || e}`))
+          .finally(() => running.delete(mode));
+        return;
+      }
+
+      running.add(mode);                       // /sync: the button waits for the answer
+      try { const r = await runMode(mode); res.end(JSON.stringify({ ok: true, ...r })); }
+      catch (e) { res.writeHead(500); res.end(String(e.message || e)); }
+      finally { running.delete(mode); }
+    }).listen(port, () => log(`desk api listening on ${port} (/sync, /run, /health)`));
     return;
   }
 

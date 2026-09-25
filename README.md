@@ -95,13 +95,45 @@ Edit `backend/clients.json`. For the first client fill `name`, `type`, `budget`,
 
 Check them before deploying: `cd backend && node --env-file=.env src/index.js test-tokens`
 
-### 4. Render
+### 4. Render, free plan
+
+Render's free tier has no cron jobs, so `render.yaml` ships two free services and the schedule lives
+outside, at a free scheduler. Total cost: nothing.
+
 1. Push this repo to GitHub.
-2. Render, New, Blueprint, pick the repo. It creates `desk-daily` (06:00 IST), `desk-hourly` (every hour at :15), `desk-sitewatch` (every 30 min, Docker), `desk-api` (Sync now endpoint) and `desk-dashboard` (static).
-   For the Sync now button, put the `desk-api` url and its `DESK_SYNC_KEY` into `frontend/config.js` as `syncUrl` (`https://desk-api.onrender.com/sync`) and `syncKey`.
-3. Open each cron job, Environment, paste the tokens. Same values in all three (or use a Render Environment Group).
-4. Run `desk-daily` once manually (Trigger Run). Check its logs: every source should say `synced` or `waiting`.
-5. Open the dashboard URL, sign in with a per4mance.guru Google account. Add that URL to Firebase authorized domains if sign-in complains.
+2. Render, New, Blueprint, pick the repo. It creates `desk-api` (free web service) and
+   `desk-dashboard` (static site).
+3. Open `desk-api`, Environment, paste the tokens. Copy the generated `DESK_SYNC_KEY`, you need it twice.
+4. Schedule the runs. Any free scheduler works; cron-job.org needs no card. Create three jobs, each a
+   GET to `desk-api`'s url, and set each one's timeout to 30s (the endpoint answers 202 straight away
+   and keeps working in the background, so a short timeout is correct):
+
+   | Job | URL | When |
+   |---|---|---|
+   | Daily | `https://desk-api.onrender.com/run?mode=daily&key=YOUR_KEY` | 06:00 IST |
+   | Hourly | `https://desk-api.onrender.com/run?mode=hourly&key=YOUR_KEY` | every hour at :15 |
+   | Site Watch | `https://desk-api.onrender.com/run?mode=sitewatch&key=YOUR_KEY` | every 30 min |
+
+5. Put the same url and key into `frontend/config.js` as `syncUrl` (`https://desk-api.onrender.com/sync`)
+   and `syncKey`, so the dashboard's Sync now button works.
+6. Fire the daily job once by hand. Check `desk-api`'s logs: every source should say `synced` or `waiting`.
+7. Open the dashboard URL, sign in with a per4mance.guru Google account. Add that URL to Firebase
+   authorized domains if sign-in complains.
+
+What the free tier costs you in features:
+
+- The instance sleeps after 15 minutes idle and takes about 50 seconds to wake. Every scheduled run
+  absorbs that wake time, and the first Sync now click of the morning feels slow. Nothing is lost.
+- Site Watch runs in light mode (`DESK_SITEWATCH_LIGHT=true`), because 512 MB will not hold headless
+  Chromium. It still checks the homepage, SSL, Meta pixel, GA4 tag, product page and a real add to
+  cart against the live storefront. The one check it cannot do is loading the checkout page, because
+  Shopify's bot protection answers an automated request with HTTP 403. Checkout health is instead
+  watched from the data side by the `checkout-stuck` signal, which compares checkouts started against
+  orders on the client's own 14 day norm. That catches a broken payment gateway from real customer
+  behaviour rather than a synthetic visit, so the loss is smaller than it sounds.
+
+To move to paid later: set `desk-api` to a paid instance, drop `DESK_SITEWATCH_LIGHT`, and add the
+cron services back (git history has the original `render.yaml`).
 
 ### 5. Adding the next client
 Add a block to `clients.json`, add its Shopify token as a new env var (`SHOPIFY_TOKEN_<ID>`), push. Meta and Google need nothing new: one token covers every account in the BM and MCC.

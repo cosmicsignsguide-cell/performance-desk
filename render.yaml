@@ -1,64 +1,37 @@
-# Render Blueprint for Performance Desk.
-# In Render: New > Blueprint > pick this repo. Then fill the env vars marked sync: false in the dashboard.
+# Render Blueprint for Performance Desk, free plan version.
+#
+# Two services, both on Render's free tier, so no card is needed:
+#   desk-api        one web service that does every job through /run?mode=daily|hourly|sitewatch
+#   desk-dashboard  the static dashboard
+#
+# Render's free tier has no cron jobs, so the schedule lives outside: a free scheduler
+# (cron-job.org) calls /run on this service. See README, "Free plan setup".
+#
+# Free instances sleep after 15 minutes idle and wake on the next request (about 50s), which is why
+# /run answers 202 immediately and does the work in the background.
+#
+# Moving to a paid plan later: switch desk-api to a paid instance and add back real cron services.
 services:
-  - type: cron
-    name: desk-daily
-    runtime: node
-    rootDir: backend
-    buildCommand: npm install
-    startCommand: node src/index.js daily
-    schedule: "30 0 * * *"        # 06:00 IST (cron is UTC)
-    envVars: &desk_env
-      - key: DESK_TIMEZONE
-        value: Asia/Kolkata
-      - key: FIREBASE_SERVICE_ACCOUNT_JSON
-        sync: false
-      - key: META_ACCESS_TOKEN
-        sync: false
-      - key: GOOGLE_ADS_DEVELOPER_TOKEN
-        sync: false
-      - key: GOOGLE_ADS_LOGIN_CUSTOMER_ID
-        sync: false
-      - key: GOOGLE_OAUTH_CLIENT_ID
-        sync: false
-      - key: GOOGLE_OAUTH_CLIENT_SECRET
-        sync: false
-      - key: GOOGLE_OAUTH_REFRESH_TOKEN
-        sync: false
-      - key: SHOPIFY_TOKEN_CLIENT_ONE
-        sync: false
-      - key: SLACK_WEBHOOK_URL
-        sync: false
-  - type: cron
-    name: desk-hourly
-    runtime: node
-    rootDir: backend
-    buildCommand: npm install
-    startCommand: node src/index.js hourly
-    schedule: "15 * * * *"
-    envVars: *desk_env
-  - type: cron
-    name: desk-sitewatch
-    runtime: docker
-    rootDir: backend
-    dockerfilePath: ./Dockerfile
-    schedule: "*/30 * * * *"
-    envVars: *desk_env
-  # Optional: powers the "Sync now" button. Free tier sleeps when idle; the first click wakes it (about 30s).
   - type: web
     name: desk-api
     runtime: node
+    plan: free
     rootDir: backend
     buildCommand: npm install
     startCommand: node src/index.js serve
+    healthCheckPath: /health
     envVars:
       - key: DESK_SYNC_KEY
-        generateValue: true
+        generateValue: true          # Render makes this. Copy it into frontend/config.js and the scheduler.
       - key: DESK_TIMEZONE
         value: Asia/Kolkata
+      - key: DESK_SITEWATCH_LIGHT
+        value: "true"                # free instance is 512 MB, too small for headless Chromium
       - key: FIREBASE_SERVICE_ACCOUNT_JSON
         sync: false
       - key: META_ACCESS_TOKEN
+        sync: false
+      - key: SHOPIFY_TOKEN_FIRVT
         sync: false
       - key: GOOGLE_ADS_DEVELOPER_TOKEN
         sync: false
@@ -69,8 +42,6 @@ services:
       - key: GOOGLE_OAUTH_CLIENT_SECRET
         sync: false
       - key: GOOGLE_OAUTH_REFRESH_TOKEN
-        sync: false
-      - key: SHOPIFY_TOKEN_CLIENT_ONE
         sync: false
       - key: SLACK_WEBHOOK_URL
         sync: false
