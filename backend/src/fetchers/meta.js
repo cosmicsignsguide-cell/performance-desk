@@ -44,8 +44,38 @@ async function paged(url) {
   return out;
 }
 
+// Meta answers a query it considers too heavy with a 500 and this message. Retrying the same query
+// never helps; the range has to get smaller. So we halve the window and ask twice, as deep as needed.
+const TOO_MUCH = /reduce the amount of data|please reduce|too much data|unknown error/i;
+const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+
+async function pagedRange(build, since, until, depth = 0) {
+  try {
+    return await paged(build(since, until));
+  } catch (e) {
+    const span = daysBetween(since, until);
+    if (!TOO_MUCH.test(String(e.message || e)) || span < 1 || depth >= 5) throw e;
+    const mid = addDays(since, Math.floor(span / 2));
+    log(`meta: ${since}..${until} too heavy, splitting into two`);
+    const a = await pagedRange(build, since, mid, depth + 1);
+    const b = await pagedRange(build, addDays(mid, 1), until, depth + 1);
+    return [...a, ...b];
+  }
+}
+
+// Meta throttles an account that gets a dozen simultaneous insight calls, and the throttle also
+// surfaces as a 500. Three at a time keeps it happy and costs only a few seconds.
+async function pool(tasks, n = 3) {
+  const out = new Array(tasks.length);
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(n, tasks.length) }, async () => {
+    while (i < tasks.length) { const k = i++; out[k] = await tasks[k](); }
+  }));
+  return out;
+}
+
 function insightsUrl(accountId, params) {
-  const q = new URLSearchParams({ access_token: config.meta.token, fields: INSIGHT_FIELDS, limit: '500', action_attribution_windows: JSON.stringify(config.meta.attribution.split(',')), ...params });
+  const q = new URLSearchParams({ access_token: config.meta.token, fields: INSIGHT_FIELDS, limit: '100', action_attribution_windows: JSON.stringify(config.meta.attribution.split(',')), ...params });
   return `${BASE()}/act_${accountId}/insights?${q}`;
 }
 
@@ -61,7 +91,9 @@ function rowFromInsight(clientId, r, platform = 'meta') {
 // Daily account-level rows between two dates (inclusive).
 export async function fetchDaily(client, since, until) {
   const accountId = client.accounts.meta;
-  const data = await paged(insightsUrl(accountId, { level: 'account', time_increment: '1', time_range: JSON.stringify({ since, until }) }));
+  const data = await pagedRange(
+    (s, u) => insightsUrl(accountId, { level: 'account', time_increment: '1', time_range: JSON.stringify({ since: s, until: u }) }),
+    since, until);
   return data.map((r) => rowFromInsight(client.id, r));
 }
 
@@ -92,23 +124,23 @@ const budgetOf = (o) => (o?.daily_budget ? { dailyBudget: num(o.daily_budget) / 
 export async function fetchEntities(client, until) {
   const accountId = client.accounts.meta;
   const since = addDays(until, -29);
-  const tr = JSON.stringify({ since, until });
-  const trDays = JSON.stringify({ since: addDays(until, -(ENTITY_DAYS - 1)), until: addDays(until, 1) }); // includes today
-  const q = (fields, extra = {}) => new URLSearchParams({ access_token: config.meta.token, fields, limit: '500', ...extra });
-  const [camps, sets, adsIns, ads7, ads14, campDays, setDays, adDays, adsetObjs, adObjs, campObjs, account] = await Promise.all([
-    paged(insightsUrl(accountId, { level: 'campaign', time_range: tr, fields: INSIGHT_FIELDS + ',campaign_id,campaign_name' })),
-    paged(insightsUrl(accountId, { level: 'adset', time_range: tr, fields: INSIGHT_FIELDS + ',adset_id,adset_name,campaign_id,campaign_name' })),
-    paged(insightsUrl(accountId, { level: 'ad', time_range: tr, fields: INSIGHT_FIELDS + ',ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name' })),
-    paged(insightsUrl(accountId, { level: 'ad', time_range: JSON.stringify({ since: addDays(until, -6), until }), fields: 'spend,impressions,clicks,frequency,ad_id' })),
-    paged(insightsUrl(accountId, { level: 'ad', time_range: JSON.stringify({ since: addDays(until, -13), until: addDays(until, -7) }), fields: 'spend,impressions,clicks,frequency,ad_id' })),
-    paged(insightsUrl(accountId, { level: 'campaign', time_increment: '1', time_range: trDays, fields: DAILY_FIELDS + ',campaign_id' })),
-    paged(insightsUrl(accountId, { level: 'adset', time_increment: '1', time_range: trDays, fields: DAILY_FIELDS + ',adset_id' })),
-    paged(insightsUrl(accountId, { level: 'ad', time_increment: '1', time_range: trDays, fields: DAILY_FIELDS + ',ad_id' })),
-    paged(`${BASE()}/act_${accountId}/adsets?${q('id,name,campaign_id,effective_status,learning_stage_info,daily_budget,lifetime_budget,optimization_goal')}`),
-    paged(`${BASE()}/act_${accountId}/ads?${q('id,name,adset_id,effective_status,created_time,issues_info,creative{object_type,thumbnail_url,video_id,image_url}')}`),
-    paged(`${BASE()}/act_${accountId}/campaigns?${q('id,name,effective_status,objective,daily_budget,lifetime_budget,bid_strategy')}`),
-    fetchJson(`${BASE()}/act_${accountId}?${q('name,account_status,disable_reason,currency,amount_spent,spend_cap,timezone_name')}`, {}, { label: 'meta' }),
-  ]);
+  const dSince = addDays(until, -(ENTITY_DAYS - 1)), dUntil = addDays(until, 1); // includes today
+  const q = (fields, extra = {}) => new URLSearchParams({ access_token: config.meta.token, fields, limit: '100', ...extra });
+  const ins = (level, fields, extra = {}) => (s, u) => insightsUrl(accountId, { level, time_range: JSON.stringify({ since: s, until: u }), fields, ...extra });
+  const [camps, sets, adsIns, ads7, ads14, campDays, setDays, adDays, adsetObjs, adObjs, campObjs, account] = await pool([
+    () => pagedRange(ins('campaign', INSIGHT_FIELDS + ',campaign_id,campaign_name'), since, until),
+    () => pagedRange(ins('adset', INSIGHT_FIELDS + ',adset_id,adset_name,campaign_id,campaign_name'), since, until),
+    () => pagedRange(ins('ad', INSIGHT_FIELDS + ',ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name'), since, until),
+    () => pagedRange(ins('ad', 'spend,impressions,clicks,frequency,ad_id'), addDays(until, -6), until),
+    () => pagedRange(ins('ad', 'spend,impressions,clicks,frequency,ad_id'), addDays(until, -13), addDays(until, -7)),
+    () => pagedRange(ins('campaign', DAILY_FIELDS + ',campaign_id', { time_increment: '1' }), dSince, dUntil),
+    () => pagedRange(ins('adset', DAILY_FIELDS + ',adset_id', { time_increment: '1' }), dSince, dUntil),
+    () => pagedRange(ins('ad', DAILY_FIELDS + ',ad_id', { time_increment: '1' }), dSince, dUntil),
+    () => paged(`${BASE()}/act_${accountId}/adsets?${q('id,name,campaign_id,effective_status,learning_stage_info,daily_budget,lifetime_budget,optimization_goal')}`),
+    () => paged(`${BASE()}/act_${accountId}/ads?${q('id,name,adset_id,effective_status,created_time,issues_info,creative{object_type,thumbnail_url,video_id,image_url}')}`),
+    () => paged(`${BASE()}/act_${accountId}/campaigns?${q('id,name,effective_status,objective,daily_budget,lifetime_budget,bid_strategy')}`),
+    () => fetchJson(`${BASE()}/act_${accountId}?${q('name,account_status,disable_reason,currency,amount_spent,spend_cap,timezone_name')}`, {}, { label: 'meta' }),
+  ], 3);
   const setInfo = Object.fromEntries(adsetObjs.map((s) => [s.id, s]));
   const adInfo = Object.fromEntries(adObjs.map((a) => [a.id, a]));
   const campInfo = Object.fromEntries(campObjs.map((c) => [c.id, c]));

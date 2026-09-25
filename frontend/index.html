@@ -318,8 +318,9 @@ async function initFirebase(){ const v=CFG.firebaseVersion||'10.14.1'; for(const
 function allowedEmail(email){ const doms=CFG.allowedDomains||[], users=CFG.allowedEmails||[]; if(!doms.length&&!users.length) return true; const e=(email||'').toLowerCase(); return users.map(x=>x.toLowerCase()).includes(e)||doms.some(d=>e.endsWith('@'+d.toLowerCase())); }
 async function loadLive(){
   const today=isoToday(); const since=addDays(today,-RANGE_DAYS);
-  const col=async(name,q)=>{ let ref=fb.db.collection(name); if(q) ref=q(ref); const s=await ref.get(); return s.docs.map(d=>({id:d.id,...d.data()})); };
-  const [clients,daily,ents,sigs,sws,syncsArr,alerts,intra,meta]=await Promise.all([col('clients'),col('daily',r=>r.where('date','>=',since)),col('entities'),col('signals'),col('sitewatch'),col('syncs'),col('alerts',r=>r.where('at','>=',new Date(Date.now()-48*3600000).toISOString())),col('intraday',r=>r.where('date','>=',addDays(today,-8))),fb.db.collection('meta').doc('lastRun').get().then(d=>d.exists?d.data():{})]);
+  const PFX=(window.DESK_CONFIG&&window.DESK_CONFIG.collectionPrefix)||'';
+  const col=async(name,q)=>{ let ref=fb.db.collection(PFX+name); if(q) ref=q(ref); const s=await ref.get(); return s.docs.map(d=>({id:d.id,...d.data()})); };
+  const [clients,daily,ents,sigs,sws,syncsArr,alerts,intra,meta]=await Promise.all([col('clients'),col('daily',r=>r.where('date','>=',since)),col('entities'),col('signals'),col('sitewatch'),col('syncs'),col('alerts',r=>r.where('at','>=',new Date(Date.now()-48*3600000).toISOString())),col('intraday',r=>r.where('date','>=',addDays(today,-8))),fb.db.collection(PFX+'meta').doc('lastRun').get().then(d=>d.exists?d.data():{})]);
   const byId=(arr)=>Object.fromEntries(arr.map(x=>[x.clientId||x.id,x]));
   return {today,clients:clients.filter(c=>c.active!==false),daily,entities:byId(ents),signals:byId(sigs),sitewatch:byId(sws),syncs:byId(syncsArr),alerts,intraday:Object.fromEntries(intra.map(x=>[x.id,x])),lastRun:meta};
 }

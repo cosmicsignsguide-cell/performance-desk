@@ -17,6 +17,12 @@ import { config, has } from './config.js';
 
 let impl = null;
 
+// Set DESK_COLLECTION_PREFIX (for example "pd_") when this shares a Firebase project with another
+// app, so `clients` becomes `pd_clients` and nothing collides. The dashboard reads the same value
+// from frontend/config.js as `collectionPrefix`. Leave it unset on a project of its own.
+export const PREFIX = process.env.DESK_COLLECTION_PREFIX || '';
+const C = (col) => PREFIX + col;
+
 async function firestoreImpl() {
   const admin = (await import('firebase-admin')).default;
   const sa = JSON.parse(config.firebase.serviceAccountJson);
@@ -27,12 +33,13 @@ async function firestoreImpl() {
   fs_.settings({ ignoreUndefinedProperties: true });
   return {
     kind: 'firestore',
-    async set(col, id, data) { await fs_.collection(col).doc(id).set(data, { merge: false }); },
-    async merge(col, id, data) { await fs_.collection(col).doc(id).set(data, { merge: true }); },
-    async get(col, id) { const s = await fs_.collection(col).doc(id).get(); return s.exists ? s.data() : null; },
-    async add(col, data) { const r = await fs_.collection(col).add(data); return r.id; },
+    prefix: PREFIX,
+    async set(col, id, data) { await fs_.collection(C(col)).doc(id).set(data, { merge: false }); },
+    async merge(col, id, data) { await fs_.collection(C(col)).doc(id).set(data, { merge: true }); },
+    async get(col, id) { const s = await fs_.collection(C(col)).doc(id).get(); return s.exists ? s.data() : null; },
+    async add(col, data) { const r = await fs_.collection(C(col)).add(data); return r.id; },
     async list(col, filter) {
-      let q = fs_.collection(col);
+      let q = fs_.collection(C(col));
       if (filter) for (const [k, op, v] of filter) q = q.where(k, op, v);
       const s = await q.get();
       return s.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -40,7 +47,7 @@ async function firestoreImpl() {
     async batchSet(col, rows) {  // rows: [{id, data}]
       for (let i = 0; i < rows.length; i += 400) {
         const b = fs_.batch();
-        rows.slice(i, i + 400).forEach(({ id, data }) => b.set(fs_.collection(col).doc(id), data, { merge: true }));
+        rows.slice(i, i + 400).forEach(({ id, data }) => b.set(fs_.collection(C(col)).doc(id), data, { merge: true }));
         await b.commit();
       }
     },

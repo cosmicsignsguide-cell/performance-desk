@@ -11,6 +11,9 @@ window.DESK_CONFIG = {
   allowedDomains: ["per4mance.guru"],
   allowedEmails: [],
   timezone: "Asia/Kolkata",
+  // Only if this shares a Firebase project with another app. Must match DESK_COLLECTION_PREFIX
+  // on the backend. Leave "" on a Firebase project of its own.
+  collectionPrefix: "",
   // Optional: the desk-api service url + its DESK_SYNC_KEY, enables the "Sync now" button
   syncUrl: "",
   syncKey: ""
