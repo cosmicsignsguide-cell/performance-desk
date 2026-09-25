@@ -64,6 +64,20 @@ async function seedSampleFor(store, client, until, sources) {
   return ent;
 }
 
+// The campaign / ad set / ad pull is the expensive part of a daily run, a dozen API calls against
+// one ad account. Daily rows are cheap and always refresh. So if the entity tree was pulled within
+// the last hour, a second daily run in that hour reuses it instead of burning the platform's rate
+// limit budget again. DESK_ENTITY_MIN_MINUTES=0 turns this off.
+const ENTITY_MIN_MIN = Number(process.env.DESK_ENTITY_MIN_MINUTES ?? 60);
+function entitiesDue(ent, source) {
+  if (!ENTITY_MIN_MIN) return true;
+  const at = ent?.entitiesAt?.[source];
+  if (!at) return true;
+  const mins = (Date.now() - new Date(at).getTime()) / 60000;
+  if (mins < ENTITY_MIN_MIN) { log(`${source}: entity tree pulled ${Math.round(mins)} min ago, reusing it`); return false; }
+  return true;
+}
+
 async function syncClient(store, client, { mode }) {
   const today = todayStr();
   const untilFull = addDays(today, -1);            // last complete day for entity/product windows
@@ -91,24 +105,26 @@ async function syncClient(store, client, { mode }) {
       if (source === 'meta') {
         const rows = await meta.fetchDaily(client, since, today);
         await writeDaily(store, rows);
-        if (mode === 'daily') {
+        if (mode === 'daily' && entitiesDue(ent, source)) {
           const e = await meta.fetchEntities(client, untilFull);
           ent.campaigns = [...(ent.campaigns || []).filter((c) => c.platform !== 'meta'), ...e.campaigns];
           ent.adsets = e.adsets; ent.ads = e.ads; ent.since = e.since; ent.until = e.until;
           ent.issues = e.issues; ent.account = e.account;
+          ent.entitiesAt = { ...(ent.entitiesAt || {}), meta: nowIso() };
         }
       } else if (source === 'google') {
         const rows = await google.fetchDaily(client, since, today);
         await writeDaily(store, rows);
-        if (mode === 'daily') {
+        if (mode === 'daily' && entitiesDue(ent, source)) {
           const e = await google.fetchEntities(client, untilFull);
           ent.campaigns = [...(ent.campaigns || []).filter((c) => c.platform !== 'google'), ...e.campaigns];
+          ent.entitiesAt = { ...(ent.entitiesAt || {}), google: nowIso() };
         }
       } else if (source === 'shopify' && isE) {
         const { rows, recentOrders } = await shopify.fetchDaily(client, since, today);
         await writeDaily(store, rows);
         ent.recentOrders = recentOrders;
-        if (mode === 'daily') ent.products = await shopify.fetchProducts(client, untilFull);
+        if (mode === 'daily' && entitiesDue(ent, source)) { ent.products = await shopify.fetchProducts(client, untilFull); ent.entitiesAt = { ...(ent.entitiesAt || {}), shopify: nowIso() }; }
       } else if (source === 'ga4') {
         const rows = await ga4.fetchDaily(client, since, today);
         await writeDaily(store, rows);

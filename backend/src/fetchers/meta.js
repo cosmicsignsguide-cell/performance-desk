@@ -13,7 +13,7 @@
 // without another API call. The flat 30 day totals stay on the object for fatigue and ranking logic.
 
 import { config } from '../config.js';
-import { fetchJson, emptyDaily, log, num, nowIso, round, addDays } from '../util.js';
+import { emptyDaily, log, num, nowIso, round, addDays } from '../util.js';
 
 const BASE = () => `https://graph.facebook.com/${config.meta.apiVersion}`;
 export const ENTITY_DAYS = 35;
@@ -33,11 +33,62 @@ const V3S = ['video_view'];
 const INSIGHT_FIELDS = 'spend,impressions,clicks,frequency,reach,actions,action_values,video_play_actions,video_thruplay_watched_actions';
 const DAILY_FIELDS = 'spend,impressions,clicks,actions,action_values';
 
+// Meta rate limiting, handled properly because it decides whether this works at 31 clients.
+// Two halves:
+//   1. Proactive. Every response carries x-business-use-case-usage with how much of the hourly
+//      budget this ad account has burned. Past 75% we slow down before Meta ever says no.
+//   2. Reactive. Codes 4, 17, 32 and 613 mean the budget is gone. Backing off seconds is useless,
+//      the window is minutes, so we wait properly. Meta often tells us how long in
+//      estimated_time_to_regain_access; we trust it, capped so a run cannot hang forever.
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const RATE_CODES = [4, 17, 32, 613, 80000, 80004];
+const MAX_WAIT_MS = 5 * 60 * 1000;
+let cooldownUntil = 0;
+
+function readUsage(headers) {
+  const raw = headers.get('x-business-use-case-usage') || headers.get('x-ad-account-usage') || headers.get('x-app-usage');
+  if (!raw) return;
+  let parsed; try { parsed = JSON.parse(raw); } catch { return; }
+  const entries = Array.isArray(parsed) ? parsed : Object.values(parsed).flat();
+  for (const u of entries) {
+    if (!u || typeof u !== 'object') continue;
+    const pct = Math.max(num(u.call_count), num(u.total_cputime), num(u.total_time));
+    const regain = num(u.estimated_time_to_regain_access);
+    if (regain > 0) cooldownUntil = Math.max(cooldownUntil, Date.now() + Math.min(regain * 60000, MAX_WAIT_MS));
+    else if (pct >= 90) cooldownUntil = Math.max(cooldownUntil, Date.now() + 60000);
+    else if (pct >= 75) cooldownUntil = Math.max(cooldownUntil, Date.now() + 15000);
+  }
+}
+
+async function metaGet(url) {
+  for (let attempt = 0; ; attempt++) {
+    const wait = cooldownUntil - Date.now();
+    if (wait > 0) { log(`meta: pacing, waiting ${Math.ceil(wait / 1000)}s`); await sleep(wait); }
+    let r, text;
+    try { r = await fetch(url); text = await r.text(); }
+    catch (e) { if (attempt >= 3) throw e; await sleep(3000 * (attempt + 1)); continue; }
+    let body; try { body = JSON.parse(text); } catch { body = { raw: text }; }
+    readUsage(r.headers);
+    if (r.ok) return body;
+    const err = body?.error || {};
+    const msg = err.message || String(body.raw || text).slice(0, 300);
+    const rateLimited = RATE_CODES.includes(err.code) || /request limit reached|rate limit|too many calls/i.test(msg);
+    if (rateLimited && attempt < 3) {
+      const backoff = Math.min([45000, 90000, 180000][attempt], MAX_WAIT_MS);
+      log(`meta: rate limited (code ${err.code || r.status}), waiting ${backoff / 1000}s`);
+      cooldownUntil = Math.max(cooldownUntil, Date.now() + backoff);
+      continue;
+    }
+    if (r.status >= 500 && !TOO_MUCH.test(msg) && attempt < 3) { await sleep(3000 * (attempt + 1)); continue; }
+    throw new Error(`meta ${r.status}: ${msg}`);
+  }
+}
+
 async function paged(url) {
   const out = [];
   let next = url;
   while (next) {
-    const body = await fetchJson(next, {}, { label: 'meta' });
+    const body = await metaGet(next);
     out.push(...(body.data || []));
     next = body.paging?.next || null;
   }
@@ -139,8 +190,8 @@ export async function fetchEntities(client, until) {
     () => paged(`${BASE()}/act_${accountId}/adsets?${q('id,name,campaign_id,effective_status,learning_stage_info,daily_budget,lifetime_budget,optimization_goal')}`),
     () => paged(`${BASE()}/act_${accountId}/ads?${q('id,name,adset_id,effective_status,created_time,issues_info,creative{object_type,thumbnail_url,video_id,image_url}')}`),
     () => paged(`${BASE()}/act_${accountId}/campaigns?${q('id,name,effective_status,objective,daily_budget,lifetime_budget,bid_strategy')}`),
-    () => fetchJson(`${BASE()}/act_${accountId}?${q('name,account_status,disable_reason,currency,amount_spent,spend_cap,timezone_name')}`, {}, { label: 'meta' }),
-  ], 3);
+    () => metaGet(`${BASE()}/act_${accountId}?${q('name,account_status,disable_reason,currency,amount_spent,spend_cap,timezone_name')}`),
+  ], 2);
   const setInfo = Object.fromEntries(adsetObjs.map((s) => [s.id, s]));
   const adInfo = Object.fromEntries(adObjs.map((a) => [a.id, a]));
   const campInfo = Object.fromEntries(campObjs.map((c) => [c.id, c]));
@@ -193,7 +244,7 @@ export async function fetchEntities(client, until) {
 
 export async function testToken(client) {
   const q = new URLSearchParams({ access_token: config.meta.token, fields: 'name,currency,account_status,timezone_name' });
-  const body = await fetchJson(`${BASE()}/act_${client.accounts.meta}?${q}`, {}, { retries: 0, label: 'meta' });
+  const body = await metaGet(`${BASE()}/act_${client.accounts.meta}?${q}`);
   log(`meta ok: ${body.name} (${body.currency}, status ${body.account_status}, ${body.timezone_name})`);
   return body;
 }
