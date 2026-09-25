@@ -1,0 +1,23 @@
+{
+  "name": "performance-desk-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Per4mance Guru Performance Desk: pulls Meta, Google Ads, Shopify and GA4 data into Firestore, runs Site Watch and alerts.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "daily": "node src/index.js daily",
+    "hourly": "node src/index.js hourly",
+    "sitewatch": "node src/index.js sitewatch",
+    "seed": "node src/index.js seed",
+    "status": "node src/index.js status",
+    "test-tokens": "node src/index.js test-tokens",
+    "install-browser": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0",
+    "playwright": "1.63.0"
+  }
+}

@@ -1,0 +1,86 @@
+# Render Blueprint for Performance Desk.
+# In Render: New > Blueprint > pick this repo. Then fill the env vars marked sync: false in the dashboard.
+services:
+  - type: cron
+    name: desk-daily
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node src/index.js daily
+    schedule: "30 0 * * *"        # 06:00 IST (cron is UTC)
+    envVars: &desk_env
+      - key: DESK_TIMEZONE
+        value: Asia/Kolkata
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: META_ACCESS_TOKEN
+        sync: false
+      - key: GOOGLE_ADS_DEVELOPER_TOKEN
+        sync: false
+      - key: GOOGLE_ADS_LOGIN_CUSTOMER_ID
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_OAUTH_REFRESH_TOKEN
+        sync: false
+      - key: SHOPIFY_TOKEN_CLIENT_ONE
+        sync: false
+      - key: SLACK_WEBHOOK_URL
+        sync: false
+  - type: cron
+    name: desk-hourly
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node src/index.js hourly
+    schedule: "15 * * * *"
+    envVars: *desk_env
+  - type: cron
+    name: desk-sitewatch
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    schedule: "*/30 * * * *"
+    envVars: *desk_env
+  # Optional: powers the "Sync now" button. Free tier sleeps when idle; the first click wakes it (about 30s).
+  - type: web
+    name: desk-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node src/index.js serve
+    envVars:
+      - key: DESK_SYNC_KEY
+        generateValue: true
+      - key: DESK_TIMEZONE
+        value: Asia/Kolkata
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: META_ACCESS_TOKEN
+        sync: false
+      - key: GOOGLE_ADS_DEVELOPER_TOKEN
+        sync: false
+      - key: GOOGLE_ADS_LOGIN_CUSTOMER_ID
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_OAUTH_REFRESH_TOKEN
+        sync: false
+      - key: SHOPIFY_TOKEN_CLIENT_ONE
+        sync: false
+      - key: SLACK_WEBHOOK_URL
+        sync: false
+  - type: web
+    name: desk-dashboard
+    runtime: static
+    rootDir: frontend
+    buildCommand: ""
+    staticPublishPath: .
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache

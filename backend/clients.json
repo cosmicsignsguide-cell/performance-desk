@@ -1,0 +1,23 @@
+[
+  {
+    "id": "firvt",
+    "name": "Firvt",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 300000,
+    "target": { "roas": 3.0 },
+    "am": "",
+    "accounts": {
+      "meta": "2511830689004994",
+      "google": "",
+      "shopify": { "shop": "firvt.myshopify.com", "tokenEnv": "SHOPIFY_TOKEN_FIRVT" },
+      "ga4": ""
+    },
+    "site": {
+      "url": "https://firvt.com",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true
+  }
+]

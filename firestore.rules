@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Team members sign in with Google. Only verified per4mance.guru addresses can read.
+    // Nobody writes from the browser; the backend uses the admin SDK which bypasses these rules.
+    function isTeam() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.matches('.*@per4mance[.]guru$');
+    }
+    match /{document=**} {
+      allow read: if isTeam();
+      allow write: if false;
+    }
+  }
+}
