@@ -6,7 +6,7 @@ window.DESK_CONFIG = {
     appId: "1:1037106258581:web:5345755a795c1321b2b19c"
   },
   allowedDomains: ["per4mance.guru"],
-  allowedEmails: [],
+  allowedEmails: ["zyloxhelp@gmail.com"],
   timezone: "Asia/Kolkata",
   collectionPrefix: "",
   syncUrl: "https://desk-api-si2w.onrender.com/sync",
