@@ -5,7 +5,7 @@ window.DESK_CONFIG = {
     projectId: "per4mance-desk",
     appId: "1:1037106258581:web:5345755a795c1321b2b19c"
   },
-  allowedDomains: ["per4mance.guru"],
+  allowedDomains: [],
   allowedEmails: ["zyloxhelp@gmail.com"],
   timezone: "Asia/Kolkata",
   collectionPrefix: "",
