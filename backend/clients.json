@@ -1,4 +1,4 @@
-[
+ [
   {
     "id": "firvt",
     "name": "Firvt",
@@ -8,7 +8,7 @@
     "target": { "roas": 3.0 },
     "am": "",
     "accounts": {
-      "meta": "2511830689004994",
+            "meta": "250386897119465",
       "google": "",
       "shopify": { "shop": "firvt.myshopify.com", "tokenEnv": "SHOPIFY_TOKEN_FIRVT" },
       "ga4": ""
