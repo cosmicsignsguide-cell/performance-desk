@@ -1343,7 +1343,11 @@ function clientView(x){
 function platformSplit(x){
   const c=x.c, spec=x.spec, isE=c.type==='ecom';
   const cur=rowsIn(x.rows,D.today,spec), prv=rowsIn(x.rows,D.today,spec.prev);
-  const live=ADS.filter(pf=>cur.some(r=>r.platform===pf&&(r.spend||r.impressions))||prv.some(r=>r.platform===pf&&r.spend));
+  // A configured account with zero spend is worth a row of its own. "Google is connected and
+  // spent nothing this week while Meta burned the budget" is exactly the thing an AM should see
+  // on the page, so the split follows what is set up in clients.json, not only what has spend.
+  const cfg=c.accounts||{};
+  const live=ADS.filter(pf=>cfg[pf]||cur.some(r=>r.platform===pf&&(r.spend||r.impressions))||prv.some(r=>r.platform===pf&&r.spend));
   if(live.length<2) return '';
   const tot=agg(cur.filter(r=>ADS.includes(r.platform))), totP=agg(prv.filter(r=>ADS.includes(r.platform)));
   const cell=(label,a,p,share,cls)=>'<tr'+(cls?' class="'+cls+'"':'')+'>'
