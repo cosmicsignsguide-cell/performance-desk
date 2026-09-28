@@ -22,12 +22,14 @@ export async function fetchJson(url, opts = {}, { retries = 3, label = 'http' } 
       const text = await r.text();
       let body; try { body = JSON.parse(text); } catch { body = { raw: text }; }
       if (r.ok) return body;
-      // Google Ads buries the useful part (errorCode, trigger, fieldPath) inside
-      // details[].errors[], well past where a short truncation cuts. Pull those out first so a
-      // failure says what is actually wrong instead of a generic "caller does not have permission".
-      const gaFail = (body?.error?.details || []).find((d) => String(d['@type'] || '').includes('GoogleAdsFailure'));
+      // Google Ads searchStream answers with an ARRAY, so the error sits at body[0].error, and the
+      // part worth reading (errorCode) is buried in details[].errors[] far past any short
+      // truncation. Unwrap both so a failure says what is actually wrong instead of the generic
+      // "The caller does not have permission".
+      const b0 = Array.isArray(body) ? body[0] : body;
+      const gaFail = (b0?.error?.details || []).find((d) => String(d['@type'] || '').includes('GoogleAdsFailure'));
       const gaMsg = (gaFail?.errors || []).map((e) => `${JSON.stringify(e.errorCode)} ${e.message || ''}`.trim()).join(' | ');
-      const msg = gaMsg || body?.error?.message || body?.error?.error_description || body?.errors?.[0]?.message || body?.error || text.slice(0, 600);
+      const msg = gaMsg || b0?.error?.message || b0?.error?.error_description || b0?.errors?.[0]?.message || b0?.error || text.slice(0, 600);
       const retryable = r.status === 429 || r.status >= 500 || /rate|limit|temporar/i.test(String(msg));
       lastErr = new Error(`${label} ${r.status}: ${msg}`);
       if (!retryable || i === retries) throw lastErr;
