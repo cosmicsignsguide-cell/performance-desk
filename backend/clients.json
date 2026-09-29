@@ -5,16 +5,26 @@
     "type": "ecom",
     "currency": "INR",
     "budget": 0,
-    "target": { "roas": 3.0 },
+    "target": {
+      "roas": 3.0
+    },
     "am": "",
     "accounts": {
       "meta": "250386897119465",
       "google": "1978979443",
-      "shopify": { "shop": "firvt.myshopify.com", "tokenEnv": "SHOPIFY_TOKEN_FIRVT" },
+      "shopify": {
+        "shop": "firvt.myshopify.com",
+        "tokenEnv": "SHOPIFY_TOKEN_FIRVT"
+      },
       "ga4": ""
     },
-    "site": { "url": "https://firvt.com", "productPath": "", "expectText": "" },
-    "active": true
+    "site": {
+      "url": "https://firvt.com",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": "Swapnil"
   },
   {
     "id": "hokipo",
@@ -22,15 +32,25 @@
     "type": "ecom",
     "currency": "INR",
     "budget": 0,
-    "target": { "roas": 3.0 },
+    "target": {
+      "roas": 3.0
+    },
     "am": "",
     "accounts": {
       "meta": "1151572416206749",
       "google": "",
-      "shopify": { "shop": "40c2f1-2.myshopify.com", "tokenEnv": "SHOPIFY_TOKEN_HOKIPO" },
+      "shopify": {
+        "shop": "40c2f1-2.myshopify.com",
+        "tokenEnv": "SHOPIFY_TOKEN_HOKIPO"
+      },
       "ga4": ""
     },
-    "site": { "url": "https://hokipo.in", "productPath": "", "expectText": "" },
-    "active": true
+    "site": {
+      "url": "https://hokipo.in",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
   }
 ]
