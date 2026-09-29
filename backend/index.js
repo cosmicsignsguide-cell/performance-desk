@@ -1,5 +1,6 @@
 // Entry point. Run as:  node src/index.js <command>
-//   daily        full sync: last DESK_RESTATE_DAYS days re-pulled (first run: DESK_HISTORY_DAYS), entities, products, signals
+//   daily [N]    full sync: last DESK_RESTATE_DAYS days re-pulled (first run: DESK_HISTORY_DAYS), entities, products, signals
+//                N re-pulls that many days instead, for a one-off backfill (also /run?mode=daily&days=N)
 //   hourly       today + yesterday only, then signals
 //   sitewatch    synthetic site checks for every client with a site url
 //   seed         write the two sample clients and their sample data (dashboard works before any token exists)
@@ -16,7 +17,7 @@ import * as shopify from './fetchers/shopify.js';
 import * as ga4 from './fetchers/ga4.js';
 import { runSitewatch } from './sitewatch.js';
 import { computeSignals } from './signals.js';
-import { ensureReportTokens, listLinks, reportPayload, reportUrl, resolveToken, rotateReportToken } from './report.js';
+import { ensureReportTokens, listLinks, reportPayload, reportUrl, resolveToken, rotateReportToken, videoUrlFor } from './report.js';
 import { raise } from './alerts.js';
 import Sample from './sample.cjs';
 
@@ -79,10 +80,16 @@ function entitiesDue(ent, source) {
   return true;
 }
 
-async function syncClient(store, client, { mode }) {
+// days: a one-off backfill window that overrides the usual 7-day restate. This exists because a
+// fetcher bug is only half fixed when new rows are right and the stored history still carries the
+// old wrong numbers, and every window the dashboard shows (this month, last month, 90-day trend)
+// reads that history. Passing ?days=95 re-pulls the whole visible past in one run instead of
+// editing DESK_RESTATE_DAYS on the host and waiting out two redeploys.
+async function syncClient(store, client, { mode, days }) {
   const today = todayStr();
   const untilFull = addDays(today, -1);            // last complete day for entity/product windows
-  const restateSince = addDays(today, -config.restateDays);
+  const backfill = Number.isFinite(days) && days > 0 ? Math.min(Math.round(days), 365) : 0;
+  const restateSince = addDays(today, -(backfill || config.restateDays));
   const isE = client.type !== 'lead';
   const ent = (await store.get('entities', client.id)) || { clientId: client.id, campaigns: [], adsets: [], ads: [], products: [], sources: {} };
   ent.sources = ent.sources || {};
@@ -102,7 +109,9 @@ async function syncClient(store, client, { mode }) {
       continue;
     }
     try {
-      const since = mode === 'hourly' ? addDays(today, -1) : (await firstRun(store, client, source)) ? addDays(today, -config.historyDays) : restateSince;
+      const since = backfill ? restateSince
+        : mode === 'hourly' ? addDays(today, -1)
+        : (await firstRun(store, client, source)) ? addDays(today, -config.historyDays) : restateSince;
       if (source === 'meta') {
         const rows = await meta.fetchDaily(client, since, today);
         await writeDaily(store, rows);
@@ -179,10 +188,11 @@ async function main() {
   }
 
   if (cmd === 'daily' || cmd === 'hourly') {
+    const days = cmd === 'daily' ? parseInt(process.argv[3] || '', 10) : NaN;   // node src/index.js daily 95
     await syncClientsFromFile();
     const clients = await loadClients();
     for (const c of clients) {
-      const { entities } = await syncClient(store, c, { mode: cmd });
+      const { entities } = await syncClient(store, c, { mode: cmd, days });
       await computeSignals(c, entities, { mode: cmd });
     }
     await store.set('meta', 'lastRun', { [cmd]: nowIso(), clients: clients.length });
@@ -225,7 +235,7 @@ async function main() {
     // before DESK_REPORT_BASE is set.
     const reportBase = (req) => (process.env.DESK_REPORT_BASE || '').replace(/\/$/, '') || `https://${req.headers.host}`;
 
-    async function runMode(mode) {
+    async function runMode(mode, days) {
       await syncClientsFromFile();
       const clients = await loadClients();
       // A new client gets its report link the first time it syncs. Existing links are never
@@ -237,7 +247,7 @@ async function main() {
         await store.merge('meta', 'lastRun', { sitewatch: nowIso() });
         return { mode, clients: clients.length };
       }
-      for (const c of clients) { const { entities } = await syncClient(store, c, { mode }); await computeSignals(c, entities, { mode }); }
+      for (const c of clients) { const { entities } = await syncClient(store, c, { mode, days }); await computeSignals(c, entities, { mode }); }
       await store.merge('meta', 'lastRun', { [mode]: nowIso() });
       return { mode, clients: clients.length };
     }
@@ -256,8 +266,24 @@ async function main() {
       if (url.pathname.startsWith('/r/')) {
         res.setHeader('Cache-Control', 'no-store');
         res.setHeader('X-Robots-Tag', 'noindex, nofollow');
-        const clientId = await resolveToken(store, url.pathname.slice(3));
-        const data = clientId ? await reportPayload(store, clientId) : null;
+        // /r/<token>            the report feed
+        // /r/<token>/v/<adId>   a playable URL for one video creative of that client
+        const [tok, kind, id] = url.pathname.slice(3).split('/');
+        const clientId = await resolveToken(store, tok);
+        if (!clientId) { res.writeHead(404); res.end('not found'); return; }
+
+        if (kind === 'v') {
+          // The Meta token is used here, on the server, and the browser is sent on to the signed
+          // file. Nothing that identifies the account or authorises anything reaches the page.
+          const src = await videoUrlFor(store, clientId, id);
+          if (!src) { res.writeHead(404); res.end('not found'); return; }
+          res.writeHead(302, { Location: src });
+          res.end();
+          return;
+        }
+        if (kind) { res.writeHead(404); res.end('not found'); return; }
+
+        const data = await reportPayload(store, clientId);
         if (!data) { res.writeHead(404); res.end('not found'); return; }
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify(data));
@@ -290,19 +316,22 @@ async function main() {
 
       const asked = url.searchParams.get('mode');
       const mode = ['daily', 'hourly', 'sitewatch'].includes(asked) ? asked : 'hourly';
+      // ?days=N restates N days of history instead of the usual 7. Ignored for hourly and
+      // sitewatch, which have nothing to restate.
+      const days = mode === 'daily' ? parseInt(url.searchParams.get('days') || '', 10) : NaN;
       if (running.has(mode)) { res.writeHead(409); res.end(`${mode} is already running`); return; }
 
       if (url.pathname === '/run') {          // fire and forget, answer immediately
         running.add(mode);
-        res.writeHead(202); res.end(JSON.stringify({ ok: true, started: mode }));
-        runMode(mode).then((r) => log(`run ${mode} done (${r.clients} clients)`))
+        res.writeHead(202); res.end(JSON.stringify({ ok: true, started: mode, days: Number.isFinite(days) ? days : undefined }));
+        runMode(mode, days).then((r) => log(`run ${mode} done (${r.clients} clients)`))
           .catch((e) => log(`run ${mode} FAILED ${e.message || e}`))
           .finally(() => running.delete(mode));
         return;
       }
 
       running.add(mode);                       // /sync: the button waits for the answer
-      try { const r = await runMode(mode); res.end(JSON.stringify({ ok: true, ...r })); }
+      try { const r = await runMode(mode, days); res.end(JSON.stringify({ ok: true, ...r })); }
       catch (e) { res.writeHead(500); res.end(String(e.message || e)); }
       finally { running.delete(mode); }
     }).listen(port, () => log(`desk api listening on ${port} (/sync, /run, /health)`));
