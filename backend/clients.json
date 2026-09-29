@@ -4,7 +4,7 @@
     "name": "Firvt",
     "type": "ecom",
     "currency": "INR",
-    "budget": 0,
+    "budget": 500000,
     "target": {
       "roas": 3.0
     },
@@ -31,7 +31,7 @@
     "name": "HOKIPO",
     "type": "ecom",
     "currency": "INR",
-    "budget": 0,
+    "budget": 500000,
     "target": {
       "roas": 3.0
     },
