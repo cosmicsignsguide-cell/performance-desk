@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Performance Statement</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Per4mance Guru client statement.
+   Deliberately not the internal desk: that one is a dense working screen, this is a document.
+   White ground, hairline rules, one column. The display face is the grotesque and the reading
+   face is the serif, which is the reverse of the usual pairing and is what makes it read as a
+   statement rather than a dashboard. Vermilion is the agency's colour and is spent in two
+   places only, so it still means something when it appears. */
+:root{
+  color-scheme:light;
+  --paper:#FFFFFF;
+  --wash:#F7F4F0;          /* warm, so the neutrals sit with the vermilion rather than against it */
+  --ink:#16130F;
+  --ink-2:#57503F;
+  --ink-3:#8C8371;
+  --rule:#E6DFD3;
+  --rule-2:#CFC5B4;
+  --accent:#D8451F;
+  --good:#1E6B4A;
+  --warn:#96650F;
+  --shadow:rgba(22,19,15,.07);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#121110; --wash:#1B1917; --ink:#F4EEE4; --ink-2:#BEB5A6; --ink-3:#8C8375;
+    --rule:#2B2724; --rule-2:#433D36; --accent:#FF6A45; --good:#4CAF85; --warn:#D9A441;
+    --shadow:rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#121110; --wash:#1B1917; --ink:#F4EEE4; --ink-2:#BEB5A6; --ink-3:#8C8375;
+  --rule:#2B2724; --rule-2:#433D36; --accent:#FF6A45; --good:#4CAF85; --warn:#D9A441;
+  --shadow:rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:"Source Serif 4",Georgia,"Times New Roman",serif;
+  font-size:16.5px; line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+  padding-block:0; padding-left:16px; padding-right:16px;
+}
+.sheet{max-width:720px;margin:0 auto;padding-block:clamp(28px,6vw,64px) 72px}
+h1,h2,h3,.ui,th,.fig,.eyebrow,button,.tabs{font-family:Archivo,"Helvetica Neue",Arial,sans-serif}
+.fig{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+
+/* masthead ------------------------------------------------------------ */
+.mast{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  padding-bottom:14px;border-bottom:1.5px solid var(--ink)}
+.mark{font-family:Archivo,sans-serif;font-weight:800;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink)}
+.mark i{font-style:normal;color:var(--accent)}
+.mast .period{font-family:Archivo,sans-serif;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.title{margin:26px 0 0;font-size:clamp(34px,7vw,52px);line-height:1.04;font-weight:600;letter-spacing:-.022em;text-wrap:balance}
+.title small{display:block;font-family:Archivo,sans-serif;font-size:12px;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-3);margin-bottom:12px}
+
+/* the sentence -------------------------------------------------------- */
+.verdict{margin:26px 0 0;font-size:clamp(19px,3.4vw,23px);line-height:1.5;max-width:60ch}
+.verdict b{font-weight:600}
+.verdict .hi{color:var(--accent);font-weight:600}
+.stamp{display:inline-flex;align-items:center;gap:8px;margin-top:20px;padding:5px 11px 5px 9px;
+  border:1px solid var(--rule-2);border-radius:2px;font-family:Archivo,sans-serif;font-size:11.5px;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ink-3);flex:none}
+.dot.good{background:var(--good)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--accent)}
+
+/* period tabs --------------------------------------------------------- */
+.tabs{display:flex;gap:2px;margin:34px 0 0;border-bottom:1px solid var(--rule);flex-wrap:wrap}
+.tabs button{appearance:none;background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;
+  padding:9px 13px 8px;font-size:12px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--ink-3);cursor:pointer;transition:color .15s,border-color .15s}
+.tabs button:hover{color:var(--ink)}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+
+/* statement ----------------------------------------------------------- */
+.sec{margin-top:46px}
+.sec>h2{margin:0 0 4px;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.sec>.lede{margin:0 0 18px;color:var(--ink-2);font-size:15.5px;max-width:62ch}
+.stmt{width:100%;border-collapse:collapse}
+.stmt tr{border-bottom:1px solid var(--rule)}
+.stmt tr:first-child{border-top:1px solid var(--rule-2)}
+.stmt tr.major{border-bottom:1.5px solid var(--ink)}
+.stmt th{text-align:left;font-size:13px;font-weight:500;letter-spacing:.01em;color:var(--ink-2);
+  padding:13px 8px 13px 0;vertical-align:baseline}
+.stmt th span{display:block;font-family:"Source Serif 4",serif;font-size:13.5px;font-weight:400;color:var(--ink-3);letter-spacing:0;line-height:1.35;margin-top:2px}
+.stmt td{text-align:right;padding:13px 0;vertical-align:baseline;white-space:nowrap}
+.stmt .v{font-family:Archivo,sans-serif;font-weight:600;font-size:20px;letter-spacing:-.01em}
+.stmt tr.major .v{font-size:27px;font-weight:800;letter-spacing:-.022em}
+.stmt .d{display:block;font-family:Archivo,sans-serif;font-size:11.5px;font-weight:500;letter-spacing:.03em;color:var(--ink-3);margin-top:3px}
+.d.up{color:var(--good)} .d.down{color:var(--accent)}
+.flip .d.up{color:var(--accent)} .flip .d.down{color:var(--good)}
+.plain .d,.plain .d.up,.plain .d.down{color:var(--ink-3)}
+
+/* split --------------------------------------------------------------- */
+.split{width:100%;border-collapse:collapse;font-size:14.5px}
+.split thead th{text-align:right;font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-3);padding:0 0 9px;border-bottom:1px solid var(--rule-2)}
+.split thead th:first-child{text-align:left}
+.split td{padding:13px 0;border-bottom:1px solid var(--rule);text-align:right;
+  font-family:Archivo,sans-serif;font-variant-numeric:tabular-nums;font-size:15px}
+.split td:first-child{text-align:left;font-weight:600}
+.split tr:last-child td{border-bottom:1.5px solid var(--ink);font-weight:700}
+.bar{display:block;height:3px;background:var(--rule);margin-top:7px;max-width:100%}
+.bar i{display:block;height:100%;background:var(--accent)}
+.wrap-x{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+/* attribution --------------------------------------------------------- */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:4px}
+.two>div{background:var(--paper);padding:20px 18px}
+.two .k{font-family:Archivo,sans-serif;font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.two .n{font-family:Archivo,sans-serif;font-size:clamp(24px,5vw,30px);font-weight:800;letter-spacing:-.022em;margin-top:8px;font-variant-numeric:tabular-nums}
+.two .t{font-size:14px;color:var(--ink-2);margin-top:7px;line-height:1.45}
+.note{margin-top:16px;font-size:15px;color:var(--ink-2);max-width:62ch}
+
+/* chart --------------------------------------------------------------- */
+.chartbox{margin-top:6px;border:1px solid var(--rule);padding:18px 16px 12px;background:var(--wash)}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-family:Archivo,sans-serif;font-size:11.5px;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);margin-bottom:14px}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.swatch{width:14px;height:3px;background:var(--accent);flex:none}
+.swatch.ink{background:var(--ink-2)}
+svg{display:block;width:100%;height:auto;max-width:100%}
+
+/* footer -------------------------------------------------------------- */
+footer{margin-top:60px;padding-top:20px;border-top:1.5px solid var(--ink);
+  display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:baseline}
+footer .ui{font-size:12px;letter-spacing:.06em;color:var(--ink-3);text-transform:uppercase}
+footer a{color:var(--accent);text-decoration:none;font-weight:600}
+footer a:hover{text-decoration:underline}
+.demo{margin:0 0 22px;padding:11px 14px;border:1px solid var(--accent);border-left-width:3px;
+  font-family:Archivo,sans-serif;font-size:13px;color:var(--ink-2);background:var(--wash)}
+.state{padding:64px 0;text-align:center;color:var(--ink-2)}
+.state h2{font-family:Archivo,sans-serif;font-size:17px;letter-spacing:0;text-transform:none;color:var(--ink);margin:0 0 8px}
+@media (max-width:520px){
+  .two{grid-template-columns:1fr}
+  .stmt th span{display:none}
+}
+@media print{ .tabs,.demo{display:none} body{background:#fff} }
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="sheet" id="sheet">
+  <div class="state"><h2>Loading</h2><p>One moment.</p></div>
+</div>
+
+<script>
+// The API that serves the report feed. Same backend as the desk; only the /r/<token> route
+// is public, and a token is scoped to a single client on the server side.
+var API = 'https://desk-api-si2w.onrender.com';
+
+var SYM = {INR:'₹', USD:'$', AED:'AED ', CAD:'CA$', AUD:'A$', LKR:'Rs ', GBP:'£', EUR:'€'};
+var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+var ADS = ['meta','google'];
+var esc = function(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]; }); };
+
+function addDays(s,n){ var d=new Date(s+'T12:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
+function money(v,cur){
+  var s = SYM[cur]||((cur||'')+' ');
+  if(v==null||!isFinite(v)) return '--';
+  var a=Math.abs(v);
+  if(cur==='INR'){
+    if(a>=1e7) return s+(v/1e7).toFixed(2)+' Cr';
+    if(a>=1e5) return s+(v/1e5).toFixed(2)+' L';
+    return s+Math.round(v).toLocaleString('en-IN');
+  }
+  if(a>=1e6) return s+(v/1e6).toFixed(2)+'M';
+  return s+Math.round(v).toLocaleString('en-US');
+}
+function exact(v,cur){ var s=SYM[cur]||((cur||'')+' '); return (v==null||!isFinite(v))?'--':s+Math.round(v).toLocaleString(cur==='INR'?'en-IN':'en-US'); }
+function num(v){ return isFinite(v)?Math.round(v).toLocaleString('en-IN'):'--'; }
+function xx(v){ return (v!=null&&isFinite(v)&&v>0)?v.toFixed(2)+'x':'--'; }
+function pc(v){ return (v==null||!isFinite(v))?'--':v.toFixed(1)+'%'; }
+
+// Deltas read plainly: up is good for money in, down is good for costs. The .flip class on a
+// row swaps the two colours rather than swapping the arrow, so the arrow always means direction.
+function delta(now,prev){
+  if(!isFinite(now)||!isFinite(prev)||!prev) return '';
+  var d=(now-prev)/prev*100;
+  if(Math.abs(d)<0.5) return '<span class="d">level</span>';
+  return '<span class="d '+(d>0?'up':'down')+'">'+(d>0?'▲':'▼')+' '+Math.abs(d).toFixed(0)+'% vs last period</span>';
+}
+
+var FIELDS = ['spend','impressions','clicks','purchases','revenue','leads','orders','netSales','refunds','units','newCustomerOrders','checkoutsStarted','sessions'];
+function sum(rows,filter){
+  var o={}; FIELDS.forEach(function(k){o[k]=0});
+  var hasShop=false;
+  rows.forEach(function(r){
+    if(filter&&!filter(r)) return;
+    if(r.platform==='shopify') hasShop=true;
+    FIELDS.forEach(function(k){ o[k]+=r[k]||0; });
+  });
+  o.hasShop=hasShop;
+  o.salesCount = hasShop? o.orders : o.purchases;
+  o.trueSales  = hasShop? o.netSales : o.revenue;
+  o.roas  = o.spend? o.revenue/o.spend : 0;
+  o.mer   = o.spend? o.trueSales/o.spend : 0;
+  o.aov   = o.salesCount? o.trueSales/o.salesCount : 0;
+  o.cpa   = o.salesCount? o.spend/o.salesCount : null;
+  o.cpl   = o.leads? o.spend/o.leads : null;
+  o.ctr   = o.impressions? o.clicks/o.impressions*100 : 0;
+  o.claim = o.orders? o.purchases/o.orders*100 : null;
+  return o;
+}
+
+// Periods a client actually thinks in: the month they are in, the month just gone, the quarter.
+function periods(today){
+  var y=+today.slice(0,4), m=+today.slice(5,7), dom=+today.slice(8,10);
+  var pad=function(n){ return (n<10?'0':'')+n; };
+  var mStart=y+'-'+pad(m)+'-01';
+  var pm=m===1?12:m-1, py=m===1?y-1:y;
+  var pmStart=py+'-'+pad(pm)+'-01';
+  var pmEnd=addDays(mStart,-1);
+  var prevSameDays=addDays(pmStart,dom-1);
+  return [
+    {id:'mtd',   label:MONTHS[m-1],        start:mStart,  end:today,  pStart:pmStart, pEnd:(prevSameDays<pmEnd?prevSameDays:pmEnd), pLabel:'the same days of '+MONTHS[pm-1]},
+    {id:'last',  label:MONTHS[pm-1],       start:pmStart, end:pmEnd,  pStart:addDays(pmStart,-31).slice(0,8)+'01', pEnd:addDays(pmStart,-1), pLabel:'the month before'},
+    {id:'d90',   label:'Last 90 days',     start:addDays(today,-89), end:today, pStart:null, pEnd:null, pLabel:''}
+  ];
+}
+
+var STATE={tab:'mtd', data:null};
+
+function inRange(r,a,b){ return r.date>=a && r.date<=b; }
+
+function render(){
+  var D=STATE.data, c=D.client, cur=c.currency, isE=c.type!=='lead';
+  var ps=periods(D.today), p=ps.filter(function(x){return x.id===STATE.tab})[0]||ps[0];
+  var rows=D.daily;
+  var A=sum(rows,function(r){ return inRange(r,p.start,p.end); });
+  var P=p.pStart? sum(rows,function(r){ return inRange(r,p.pStart,p.pEnd); }) : null;
+  var live=ADS.filter(function(pf){ return rows.some(function(r){ return r.platform===pf && inRange(r,p.start,p.end); }); });
+
+  var h='';
+  if(D.demo) h+='<p class="demo">Sample figures. This is how the statement looks before a live link is used.</p>';
+
+  h+='<div class="mast"><span class="mark">PER<i>4</i>MANCE GURU</span>'
+   + '<span class="period">'+esc(p.label)+(p.id==='d90'?'':' '+p.start.slice(0,4))+'</span></div>';
+  h+='<h1 class="title"><small>Performance statement</small>'+esc(c.name)+'</h1>';
+
+  // The sentence the client came for, before any table.
+  h+=verdict(A,P,c,isE,p);
+
+  h+='<div class="tabs" role="tablist">'+ps.map(function(x){
+      return '<button role="tab" aria-selected="'+(x.id===p.id)+'" data-tab="'+x.id+'">'+esc(x.label)+'</button>';
+    }).join('')+'</div>';
+
+  h+=statement(A,P,c,isE);
+  if(live.length>1) h+=splitTable(rows,p,live,cur,isE);
+  if(isE && A.hasShop) h+=attribution(A,cur);
+  h+=chart(rows,p,c,isE);
+
+  h+='<footer><span class="ui">Prepared by Per4mance Guru &middot; '+esc(stamp(D.generatedAt))+'</span>'
+   + '<a href="'+esc(D.agencySite||'https://per4mance.guru')+'" target="_blank" rel="noopener">per4mance.guru</a></footer>';
+
+  document.getElementById('sheet').innerHTML=h;
+}
+
+function stamp(iso){
+  try{
+    var d=new Date(iso);
+    return 'updated '+d.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})+' IST';
+  }catch(e){ return 'updated just now'; }
+}
+
+function verdict(A,P,c,isE,p){
+  var cur=c.currency;
+  if(!A.spend) return '<p class="verdict">No ad spend recorded for '+esc(p.label)+' yet. The figures below fill in as the period runs.</p>';
+  var s='';
+  if(isE){
+    var ret = A.hasShop? A.netSales : A.revenue;
+    var mer = A.hasShop? A.mer : A.roas;
+    s = 'In '+esc(p.label)+', <b>'+exact(A.spend,cur)+'</b> went into advertising and '
+      + '<b>'+exact(ret,cur)+'</b> came back through the '+(A.hasShop?'store':'platforms')+'. '
+      + 'That is <span class="hi">'+xx(mer)+'</span> back for every rupee spent, across '
+      + '<b>'+num(A.salesCount)+'</b> order'+(A.salesCount===1?'':'s')+' at an average of '+exact(A.aov,cur)+'.';
+  }else{
+    s = 'In '+esc(p.label)+', <b>'+exact(A.spend,cur)+'</b> went into advertising and brought '
+      + '<b>'+num(A.leads)+'</b> enquir'+(A.leads===1?'y':'ies')+', at <span class="hi">'+exact(A.cpl,cur)+'</span> each.';
+  }
+  var tone='', word='';
+  if(P&&P.spend){
+    var now=isE?(A.hasShop?A.mer:A.roas):A.cpl, was=isE?(P.hasShop?P.mer:P.roas):P.cpl;
+    if(isFinite(now)&&isFinite(was)&&was){
+      var better = isE? now>=was : now<=was;
+      var gap=Math.abs((now-was)/was*100);
+      if(gap<3){ tone='neutral'; word='Holding steady against '+p.pLabel+'.'; }
+      else if(better){ tone='good'; word='Up '+gap.toFixed(0)+'% on '+p.pLabel+'.'; }
+      else { tone='warn'; word='Down '+gap.toFixed(0)+'% on '+p.pLabel+'.'; }
+    }
+  }
+  return '<p class="verdict">'+s+'</p>'
+    + (word? '<span class="stamp"><i class="dot '+(tone==='good'?'good':tone==='warn'?'warn':'')+'"></i>'+esc(word)+'</span>':'');
+}
+
+function row(label,hint,value,d,major,flip,plain){
+  return '<tr class="'+(major?'major ':'')+(flip?'flip ':'')+(plain?'plain':'')+'">'
+    + '<th>'+esc(label)+(hint?'<span>'+esc(hint)+'</span>':'')+'</th>'
+    + '<td><span class="v">'+value+'</span>'+(d||'')+'</td></tr>';
+}
+
+function statement(A,P,c,isE){
+  var cur=c.currency, h='<div class="sec"><h2>The numbers</h2>';
+  h+='<table class="stmt"><tbody>';
+  // Spend moving is neither good nor bad on its own, so its delta stays uncoloured.
+  h+=row('Advertising spend','Meta and Google combined',exact(A.spend,cur),P?delta(A.spend,P.spend):'',false,false,true);
+  if(isE){
+    if(A.hasShop){
+      h+=row('Orders','Recorded in your store',num(A.orders),P?delta(A.orders,P.orders):'');
+      h+=row('Net sales','After discounts and returns',exact(A.netSales,cur),P?delta(A.netSales,P.netSales):'');
+      h+=row('Average order value','Net sales divided by orders',exact(A.aov,cur),P?delta(A.aov,P.aov):'');
+      h+=row('Cost per order','What it cost in ads to win one order',exact(A.cpa,cur),P?delta(A.cpa,P.cpa):'',false,true);
+      if(A.refunds) h+=row('Returns','Refunded in the period',exact(A.refunds,cur),P?delta(A.refunds,P.refunds):'',false,true);
+      h+=row('Return on ad spend','Net sales for every rupee of ad spend',xx(A.mer),P?delta(A.mer,P.mer):'',true);
+    }else{
+      h+=row('Purchases','As reported by the ad platforms',num(A.purchases),P?delta(A.purchases,P.purchases):'');
+      h+=row('Revenue','As reported by the ad platforms',exact(A.revenue,cur),P?delta(A.revenue,P.revenue):'');
+      h+=row('Return on ad spend','Revenue for every rupee of ad spend',xx(A.roas),P?delta(A.roas,P.roas):'',true);
+    }
+  }else{
+    h+=row('Enquiries','Forms and messages from the ads',num(A.leads),P?delta(A.leads,P.leads):'');
+    h+=row('Clicks to your site','',num(A.clicks),P?delta(A.clicks,P.clicks):'');
+    h+=row('Cost per enquiry','Ad spend divided by enquiries',exact(A.cpl,cur),P?delta(A.cpl,P.cpl):'',true,true);
+  }
+  return h+'</tbody></table></div>';
+}
+
+function splitTable(rows,p,live,cur,isE){
+  var tot=sum(rows,function(r){ return inRange(r,p.start,p.end) && ADS.indexOf(r.platform)>-1; });
+  var h='<div class="sec"><h2>Where the budget went</h2>'
+      + '<p class="lede">How the spend divided between the two platforms, and what each returned on its own reporting.</p>'
+      + '<div class="wrap-x"><table class="split"><thead><tr><th>Platform</th><th>Spend</th><th>Share</th>'
+      + '<th>'+(isE?'Purchases':'Enquiries')+'</th>'+(isE?'<th>Revenue</th><th>Return</th>':'<th>Cost each</th>')+'</tr></thead><tbody>';
+  live.concat(['__all']).forEach(function(pf){
+    var all = pf==='__all';
+    var A = all? tot : sum(rows,function(r){ return inRange(r,p.start,p.end) && r.platform===pf; });
+    var share = tot.spend? A.spend/tot.spend*100 : 0;
+    h+='<tr><td>'+(all?'All advertising':(pf==='meta'?'Meta':'Google'))+'</td>'
+      +'<td>'+money(A.spend,cur)+'</td>'
+      +'<td>'+(all?'':pc(share))+'</td>'
+      +'<td>'+num(isE?A.purchases:A.leads)+'</td>'
+      +(isE?'<td>'+money(A.revenue,cur)+'</td><td>'+xx(A.roas)+'</td>':'<td>'+money(A.cpl,cur)+'</td>')
+      +'</tr>';
+  });
+  return h+'</tbody></table></div></div>';
+}
+
+// The gap runs in both directions and they mean opposite things, so the sentence has to branch.
+// Under 100%, the platforms are blind to real sales. Over 100%, Meta and Google are each taking
+// credit for the same order, which is why their two revenue figures must never be added up.
+function claimNote(p){
+  if(p==null) return 'Every figure we plan against comes from your store, not from the platforms.';
+  if(p>105) return 'Added together, the platforms claim '+pc(p)+' of the orders your store actually recorded. That is not extra sales. When someone sees an ad on both Meta and Google before buying, each platform counts the order as its own, so their totals overlap. It is also why the two revenue figures above should never be added together. We plan your budget against the store figure.';
+  if(p>=95) return 'The platforms claim almost exactly the number of orders your store recorded. That is a close match, and it means the tracking on your site is in good health. We still plan your budget against the store figure.';
+  return 'The platforms can match about '+pc(p)+' of your real orders back to an ad. The rest are real sales they cannot see, mostly because of privacy limits on phones. We plan your budget against the store figure, which is why the return on ad spend above is calculated from net sales rather than from what the platforms claim.';
+}
+
+// The honest bit. Most reports quote one of these two numbers and hope nobody asks about the
+// other. Showing both, and naming why they differ, is the point of the section.
+function attribution(A,cur){
+  var claimed=A.revenue, real=A.netSales;
+  var pctClaim = A.orders? A.purchases/A.orders*100 : null;
+  return '<div class="sec"><h2>Two ways of counting</h2>'
+   + '<p class="lede">Advertising platforms count a sale when they believe an ad caused it. Your store counts a sale when money changes hands. The two never match exactly, and we report both.</p>'
+   + '<div class="two">'
+   + '<div><div class="k">Platforms report</div><div class="n fig">'+money(claimed,cur)+'</div>'
+   + '<div class="t">Meta and Google together claim '+num(A.purchases)+' purchase'+(A.purchases===1?'':'s')+' in this period.</div></div>'
+   + '<div><div class="k">Your store recorded</div><div class="n fig">'+money(real,cur)+'</div>'
+   + '<div class="t">'+num(A.orders)+' order'+(A.orders===1?'':'s')+' actually placed and paid for, after discounts and returns.</div></div>'
+   + '</div>'
+   + '<p class="note">'+ claimNote(pctClaim) + '</p></div>';
+}
+
+// Spend against what came back, by day for a month and by week over 90 days. One scale, one
+// baseline, labels that name values the chart actually reaches.
+function chart(rows,p,c,isE){
+  var cur=c.currency;
+  var days=[], d=p.start;
+  var guard=0;
+  while(d<=p.end && guard++<400){ days.push(d); d=addDays(d,1); }
+  if(!days.length) return '';
+  var byDay={};
+  rows.forEach(function(r){
+    if(!inRange(r,p.start,p.end)) return;
+    var o=byDay[r.date]=byDay[r.date]||{spend:0,ret:0,hasShop:false};
+    if(ADS.indexOf(r.platform)>-1){ o.spend+=r.spend||0; if(!isE) o.ret+=r.leads||0; else o.retPlat=(o.retPlat||0)+(r.revenue||0); }
+    if(r.platform==='shopify'){ o.hasShop=true; o.ret+=r.netSales||0; }
+  });
+  var anyShop=Object.keys(byDay).some(function(k){return byDay[k].hasShop});
+  var pts=days.map(function(dd){
+    var o=byDay[dd]||{};
+    return {date:dd, spend:o.spend||0, ret: isE? (anyShop? (o.ret||0) : (o.retPlat||0)) : (o.ret||0)};
+  });
+  // Weekly buckets when the window is long, so bars stay readable on a phone.
+  if(pts.length>45){
+    var out=[];
+    for(var i=0;i<pts.length;i+=7){
+      var wk=pts.slice(i,i+7);
+      out.push({date:wk[0].date, spend:wk.reduce(function(s,x){return s+x.spend},0), ret:wk.reduce(function(s,x){return s+x.ret},0)});
+    }
+    pts=out;
+  }
+  if(!pts.some(function(x){return x.spend||x.ret})) return '';
+
+  var W=680,H=210,L=8,R=8,T=14,B=26;
+  var iw=W-L-R, ih=H-T-B;
+  var max=Math.max.apply(null,pts.map(function(x){return Math.max(x.spend,x.ret)}))||1;
+  var bw=iw/pts.length;
+  var bars='', line='', area='';
+  pts.forEach(function(x,i){
+    var bh=x.spend/max*ih, bx=L+i*bw+bw*0.22, bwid=bw*0.56;
+    bars+='<rect x="'+bx.toFixed(1)+'" y="'+(T+ih-bh).toFixed(1)+'" width="'+bwid.toFixed(1)+'" height="'+Math.max(0,bh).toFixed(1)+'" fill="var(--rule-2)"></rect>';
+    var cx=L+i*bw+bw/2, cy=T+ih-(x.ret/max*ih);
+    line+=(i?' L':'M')+cx.toFixed(1)+' '+cy.toFixed(1);
+  });
+  area=line+' L'+(L+iw-bw/2).toFixed(1)+' '+(T+ih)+' L'+(L+bw/2).toFixed(1)+' '+(T+ih)+' Z';
+  var first=pts[0], last=pts[pts.length-1];
+  var fmtD=function(s){ var m=+s.slice(5,7); return +s.slice(8,10)+' '+MONTHS[m-1].slice(0,3); };
+  var retLabel = isE? (anyShop?'Net sales':'Revenue reported') : 'Enquiries';
+  var topLabel = isE? money(max,cur) : num(max);
+
+  return '<div class="sec"><h2>Day by day</h2>'
+   + '<p class="lede">Spend as bars, '+retLabel.toLowerCase()+' as the line. Same scale, so a line above the bars is a period paying for itself.</p>'
+   + '<div class="chartbox">'
+   + '<div class="legend"><span><i class="swatch ink" style="background:var(--rule-2);height:9px;width:9px"></i>Ad spend</span>'
+   + '<span><i class="swatch"></i>'+esc(retLabel)+'</span>'
+   + '<span style="margin-left:auto">Peak '+esc(topLabel)+'</span></div>'
+   + '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(retLabel+' against ad spend, peak '+topLabel)+'">'
+   + '<line x1="'+L+'" y1="'+(T+ih)+'" x2="'+(W-R)+'" y2="'+(T+ih)+'" stroke="var(--rule-2)" stroke-width="1"></line>'
+   + bars
+   + '<path d="'+area+'" fill="var(--accent)" opacity="0.10"></path>'
+   + '<path d="'+line+'" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>'
+   + '<circle cx="'+(L+iw-bw/2).toFixed(1)+'" cy="'+(T+ih-(last.ret/max*ih)).toFixed(1)+'" r="3.5" fill="var(--accent)"></circle>'
+   + '<text x="'+L+'" y="'+(H-8)+'" font-family="Archivo,sans-serif" font-size="11" fill="var(--ink-3)">'+esc(fmtD(first.date))+'</text>'
+   + '<text x="'+(W-R)+'" y="'+(H-8)+'" text-anchor="end" font-family="Archivo,sans-serif" font-size="11" fill="var(--ink-3)">'+esc(fmtD(last.date))+'</text>'
+   + '</svg></div></div>';
+}
+
+document.addEventListener('click',function(e){
+  var b=e.target.closest&&e.target.closest('[data-tab]');
+  if(!b) return;
+  STATE.tab=b.getAttribute('data-tab');
+  render();
+  window.scrollTo({top:0,behavior:'smooth'});
+});
+
+function fail(title,msg){
+  document.getElementById('sheet').innerHTML=
+    '<div class="mast"><span class="mark">PER<i>4</i>MANCE GURU</span></div>'
+    +'<div class="state"><h2>'+esc(title)+'</h2><p>'+esc(msg)+'</p></div>';
+}
+
+// Sample content so the page is complete at rest and can be reviewed before any link exists.
+function sampleData(){
+  var today=new Date().toISOString().slice(0,10), daily=[];
+  for(var i=89;i>=0;i--){
+    var d=addDays(today,-i);
+    var wave=1+0.28*Math.sin(i/5.5)+0.12*Math.sin(i/2.1);
+    var spend=Math.round(9500*wave);
+    daily.push({date:d,platform:'meta',spend:Math.round(spend*0.74),impressions:Math.round(spend*11),clicks:Math.round(spend*0.21),purchases:Math.round(spend/1750),revenue:Math.round(spend*1.9)});
+    daily.push({date:d,platform:'google',spend:Math.round(spend*0.26),impressions:Math.round(spend*3),clicks:Math.round(spend*0.09),purchases:Math.round(spend/3400),revenue:Math.round(spend*0.8)});
+    daily.push({date:d,platform:'shopify',orders:Math.round(spend/1400),netSales:Math.round(spend*3.6),refunds:Math.round(spend*0.1),newCustomerOrders:Math.round(spend/2100)});
+  }
+  return {agency:'Per4mance Guru',agencySite:'https://per4mance.guru',demo:true,
+    client:{name:'Sample Brand',currency:'INR',type:'ecom'},today:today,generatedAt:new Date().toISOString(),daily:daily};
+}
+
+(function(){
+  var token=(location.hash||'').replace(/^#/,'').trim();
+  if(!token){ STATE.data=sampleData(); render(); return; }
+  if(!/^[A-Za-z0-9_-]{16,80}$/.test(token)){ fail('Link not recognised','Please ask your account manager for a fresh link.'); return; }
+  fetch(API.replace(/\/$/,'')+'/r/'+encodeURIComponent(token),{cache:'no-store'})
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(j){
+      if(!j||!j.client) throw new Error('empty');
+      STATE.data=j;
+      document.title=j.client.name+' · Performance Statement';
+      render();
+    })
+    .catch(function(){ fail('This link is no longer active','Please ask your account manager at Per4mance Guru for a current link.'); });
+})();
+</script>
+</body>
+</html>
