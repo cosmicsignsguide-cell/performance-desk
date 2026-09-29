@@ -225,6 +225,10 @@ export async function fetchEntities(client, until) {
       id: r.ad_id, name: r.ad_name, adsetId: r.adset_id, adsetName: r.adset_name, campaignId: r.campaign_id, campaignName: r.campaign_name,
       status: info.effective_status || '', issues, format, isVideo, createdDate: created, daysLive,
       thumb: cr.thumbnail_url || cr.image_url || '',
+      // Kept so a video can be played on demand. The playable file itself is NOT stored: Meta
+      // hands back a signed URL that expires, so a stored one would be dead by the next sync.
+      // The id is stable, and the media route trades it for a fresh URL at the moment of play.
+      videoId: cr.video_id || '',
       hookRate: isVideo && m.impressions ? round(m.v3s / m.impressions * 100, 1) : null,
       holdRate: isVideo && m.v3s ? round(m.thruplays / m.v3s * 100, 1) : null,
       ...m, last7: mk(a7), prev7: mk(a14), days: aDays[r.ad_id] || {},
@@ -240,6 +244,29 @@ export async function fetchEntities(client, until) {
   for (const s of adsetObjs) if (s.learning_stage_info?.status === 'FAIL' && s.effective_status === 'ACTIVE') issues.push({ level: 'adset', id: s.id, severity: 'info', text: `${s.name}: learning limited` });
   const acct = { platform: 'meta', name: account.name, status: ACCOUNT_STATUS[st] || String(st || ''), statusCode: st, currency: account.currency, amountSpent: num(account.amount_spent) / 100, spendCap: num(account.spend_cap) / 100, timezone: account.timezone_name };
   return { campaigns, adsets, ads, issues, account: acct, since, until, updatedAt: nowIso() };
+}
+
+// A playable URL for one video, fetched at the moment it is asked for.
+//
+// This exists so a client can press play on a video creative in their own report without our
+// Meta access token ever going near that page. The alternative everyone reaches for first is to
+// drop Meta's ad-preview iframe or a token-bearing URL into the page, and that hands the agency's
+// token to anyone the link is forwarded to: every ad account it can reach, read and write. So the
+// token stays on this server, the server does the asking, and the browser is sent on to the
+// signed file. The URL that comes back is short lived by design, which is exactly why it is
+// fetched per play rather than stored on the row.
+export async function videoSource(videoId) {
+  if (!/^\d+$/.test(String(videoId || ''))) return '';
+  const q = new URLSearchParams({ access_token: config.meta.token, fields: 'source' });
+  try {
+    // metaGet rather than a bare fetch, so this shares the account's rate-limit cooldown with
+    // every other Meta call instead of racing them.
+    const body = await metaGet(`${BASE()}/${videoId}?${q}`);
+    return body?.source || '';
+  } catch (e) {
+    log(`meta: no playable source for video ${videoId} (${String(e.message || e).slice(0, 100)})`);
+    return '';
+  }
 }
 
 export async function testToken(client) {
