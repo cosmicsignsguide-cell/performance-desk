@@ -86,6 +86,58 @@ h1,h2,h3,.ui,th,.fig,.eyebrow,button,.tabs{font-family:Archivo,"Helvetica Neue",
 .tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
 .tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
 
+/* kpi cards ----------------------------------------------------------- */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule);
+  border:1px solid var(--rule);margin-top:30px}
+.kpi{background:var(--paper);padding:17px 16px 15px;min-width:0;overflow:hidden}
+.kpi .k{font-family:Archivo,sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-3)}
+.kpi .n{font-family:Archivo,sans-serif;font-size:clamp(21px,4vw,27px);font-weight:800;letter-spacing:-.025em;
+  margin-top:9px;font-variant-numeric:tabular-nums;line-height:1.05;word-break:keep-all;white-space:nowrap}
+.kpi .s{font-family:Archivo,sans-serif;font-size:11.5px;font-weight:500;letter-spacing:.03em;color:var(--ink-3);margin-top:6px}
+.kpi .s.up{color:var(--good)} .kpi .s.down{color:var(--accent)}
+.kpi.flip .s.up{color:var(--accent)} .kpi.flip .s.down{color:var(--good)}
+.kpi .was{font-family:Archivo,sans-serif;font-size:11.5px;color:var(--ink-3);margin-top:3px;font-variant-numeric:tabular-nums}
+.kpi .spark{display:block;width:100%;height:28px;margin-top:12px}
+/* The one figure the client came for. Tinted ground and a plain-English line under it, because
+   "3.60x" is trade language and most readers of this page do not work in ads. */
+.kpi.hero{background:var(--wash)}
+.kpi.hero .n{color:var(--accent)}
+.kpi.hero .plain{font-size:13px;line-height:1.4;color:var(--ink-2);margin-top:9px;
+  font-family:"Source Serif 4",Georgia,serif}
+@media(max-width:640px){ .kpis{grid-template-columns:repeat(2,1fr)} }
+
+/* top five ------------------------------------------------------------ */
+.trow{display:flex;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--rule)}
+.trow:first-child{border-top:1px solid var(--rule-2)}
+.rank{font-family:Archivo,sans-serif;font-size:11px;font-weight:700;color:var(--ink-3);
+  width:16px;flex:none;font-variant-numeric:tabular-nums}
+.th{width:54px;height:54px;flex:none;border:1px solid var(--rule);background:var(--wash);
+  object-fit:cover;display:block}
+.th-ph{width:54px;height:54px;flex:none;border:1px solid var(--rule);background:var(--wash);
+  display:flex;align-items:center;justify-content:center;font-family:Archivo,sans-serif;
+  font-size:9.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);text-align:center;padding:4px}
+.tmain{flex:1 1 180px;min-width:0}
+.tname{font-family:Archivo,sans-serif;font-weight:600;font-size:14.5px;line-height:1.3;overflow-wrap:anywhere}
+.tmeta{font-size:13px;color:var(--ink-3);margin-top:3px}
+.tnums{display:flex;gap:20px;flex:none}
+.tnum{font-family:Archivo,sans-serif;font-variant-numeric:tabular-nums;text-align:right;min-width:52px}
+.tnum b{display:block;font-size:15px;font-weight:600}
+.tnum i{display:block;font-style:normal;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-3);margin-top:3px}
+.badge{display:inline-block;font-family:Archivo,sans-serif;font-size:9.5px;font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase;padding:2px 6px;border:1px solid var(--rule-2);color:var(--ink-2);margin-left:8px}
+@media(max-width:600px){
+  .trow{flex-wrap:wrap}
+  .tnums{width:100%;justify-content:flex-start;gap:26px;padding-left:30px}
+  .tnum{text-align:left;min-width:0}
+}
+
+/* motion: only where it helps the number land or the trend read --------- */
+@keyframes drawline{to{stroke-dashoffset:0}}
+.drawn{animation:drawline 1.15s cubic-bezier(.22,.61,.36,1) forwards}
+@media(prefers-reduced-motion:reduce){ .drawn{animation:none;stroke-dashoffset:0} }
+
 /* statement ----------------------------------------------------------- */
 .sec{margin-top:46px}
 .sec>h2{margin:0 0 4px;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
@@ -259,15 +311,52 @@ function render(){
       return '<button role="tab" aria-selected="'+(x.id===p.id)+'" data-tab="'+x.id+'">'+esc(x.label)+'</button>';
     }).join('')+'</div>';
 
+  h+=kpiCards(A,P,c,isE,rows,p);
   h+=statement(A,P,c,isE);
   if(live.length>1) h+=splitTable(rows,p,live,cur,isE);
   if(isE && A.hasShop) h+=attribution(A,cur);
   h+=chart(rows,p,c,isE);
+  h+=topBlocks(D,c,isE);
 
   h+='<footer><span class="ui">Prepared by Per4mance Guru &middot; '+esc(stamp(D.generatedAt))+'</span>'
    + '<a href="'+esc(D.agencySite||'https://per4mance.guru')+'" target="_blank" rel="noopener">per4mance.guru</a></footer>';
 
   document.getElementById('sheet').innerHTML=h;
+  animate();
+}
+
+// Two pieces of motion, both doing a job: the headline figures settle into place so the eye
+// lands on them first, and the trend line draws left to right so the shape of the period reads
+// as a sequence. Nothing moves that the reader has to wait for; the final values are already in
+// the HTML, so with animation off or JavaScript half-loaded the page is correct at rest.
+function animate(){
+  var reduce=false;
+  try{ reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){}
+  var path=document.querySelector('svg path.trendline');
+  if(path&&!reduce){
+    try{
+      var L=path.getTotalLength();
+      path.style.strokeDasharray=L; path.style.strokeDashoffset=L;
+      path.classList.add('drawn');
+    }catch(e){}
+  }
+  var els=[].slice.call(document.querySelectorAll('[data-cu]'));
+  if(reduce||!els.length||!window.requestAnimationFrame) return;
+  var cur=(STATE.data&&STATE.data.client&&STATE.data.client.currency)||'INR';
+  var fmt=function(f,v){ return f==='money'?money(v,cur):f==='x'?xx(v):num(v); };
+  els.forEach(function(el){ el.setAttribute('data-final',el.textContent); });
+  var t0=null, DUR=720;
+  function step(ts){
+    if(t0===null) t0=ts;
+    var k=Math.min(1,(ts-t0)/DUR), e=1-Math.pow(1-k,3);
+    for(var i=0;i<els.length;i++){
+      var el=els[i];
+      if(k>=1){ el.textContent=el.getAttribute('data-final'); continue; }
+      el.textContent=fmt(el.getAttribute('data-fmt'),(parseFloat(el.getAttribute('data-cu'))||0)*e);
+    }
+    if(k<1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
 }
 
 function stamp(iso){
@@ -307,34 +396,173 @@ function verdict(A,P,c,isE,p){
     + (word? '<span class="stamp"><i class="dot '+(tone==='good'?'good':tone==='warn'?'warn':'')+'"></i>'+esc(word)+'</span>':'');
 }
 
+// Four headline figures as cards. Nothing here repeats in the statement table below: the cards
+// carry what the client came for, the table carries the working behind it.
+function card(k,value,sub,tone,opts){
+  var o=opts||{};
+  return '<div class="kpi'+(o.flip?' flip':'')+(o.hero?' hero':'')+'">'
+    + '<div class="k">'+esc(k)+'</div>'
+    + '<div class="n"'+(o.cu!=null?' data-cu="'+o.cu+'" data-fmt="'+(o.fmt||'num')+'"':'')+'>'+value+'</div>'
+    + (sub?'<div class="s'+(tone?' '+tone:'')+'">'+sub+'</div>':'')
+    + (o.was?'<div class="was">'+o.was+'</div>':'')
+    + (o.plain?'<div class="plain">'+o.plain+'</div>':'')
+    + (o.spark?sparkline(o.spark):'')
+    + '</div>';
+}
+
+// A number alone says where you are; the shape says where you are heading. Drawn flat to the
+// card's width with no axis, because it is read as a gesture and not measured. The stroke is
+// held at one pixel through the stretch so it does not thicken on a wide card.
+function sparkline(vals){
+  if(!vals||vals.length<3) return '';
+  var max=0, i;
+  for(i=0;i<vals.length;i++) if(vals[i]>max) max=vals[i];
+  if(!max) return '';
+  var W=120,H=26,n=vals.length,line='';
+  for(i=0;i<n;i++){
+    var x=(i/(n-1))*W, y=H-1.5-((vals[i]||0)/max)*(H-3);
+    line+=(i?' L':'M')+x.toFixed(1)+' '+y.toFixed(1);
+  }
+  return '<svg class="spark" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" aria-hidden="true" focusable="false">'
+   + '<path d="'+line+' L'+W+' '+H+' L0 '+H+' Z" fill="var(--accent)" opacity=".11"></path>'
+   + '<path d="'+line+'" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></path>'
+   + '</svg>';
+}
+
+// One value per day across the selected period, so a sparkline lines up with the figure above it.
+function daySeries(rows,p,pick){
+  var by={}, out=[], d=p.start, guard=0;
+  rows.forEach(function(r){ if(inRange(r,p.start,p.end)) (by[r.date]=by[r.date]||[]).push(r); });
+  while(d<=p.end && guard++<400){ out.push(pick(by[d]||[])); d=addDays(d,1); }
+  return out;
+}
+var sumAds=function(rs,k){ var t=0; rs.forEach(function(r){ if(ADS.indexOf(r.platform)>-1) t+=r[k]||0; }); return t; };
+var sumShop=function(rs,k){ var t=0; rs.forEach(function(r){ if(r.platform==='shopify') t+=r[k]||0; }); return t; };
+function dsub(now,prev){
+  if(!isFinite(now)||!isFinite(prev)||!prev) return ['',''];
+  var d=(now-prev)/prev*100;
+  if(Math.abs(d)<0.5) return ['Level vs last period',''];
+  return [(d>0?'▲':'▼')+' '+Math.abs(d).toFixed(0)+'% vs last period', d>0?'up':'down'];
+}
+function kpiCards(A,P,c,isE,rows,p){
+  var cur=c.currency, sym=SYM[cur]||((cur||'')+' ');
+  var was=function(v,fmt){ return P? (fmt==='money'?money(v,cur):num(v))+' last period' : ''; };
+  var d=function(now,prev){ return P?dsub(now,prev):['','']; };
+  var spSeries=daySeries(rows,p,function(rs){ return sumAds(rs,'spend'); });
+  var h='<div class="kpis">';
+
+  var s1=d(A.spend,P&&P.spend);
+  h+=card('Ad spend',money(A.spend,cur),s1[0],'',{cu:A.spend,fmt:'money',was:was(P&&P.spend,'money'),spark:spSeries});
+
+  if(isE){
+    var shop=A.hasShop;
+    var retKey=shop?'netSales':'revenue', retLabel=shop?'Net sales':'Revenue';
+    var retSeries=daySeries(rows,p,shop?function(rs){ return sumShop(rs,'netSales'); }:function(rs){ return sumAds(rs,'revenue'); });
+    var cntSeries=daySeries(rows,p,shop?function(rs){ return sumShop(rs,'orders'); }:function(rs){ return sumAds(rs,'purchases'); });
+    var ret=A[retKey], retP=P&&P[retKey];
+    var cnt=shop?A.orders:A.purchases, cntP=P&&(shop?P.orders:P.purchases);
+    var ratio=shop?A.mer:A.roas, ratioP=P&&(shop?P.mer:P.roas);
+
+    var s2=d(ret,retP), s3=d(cnt,cntP), s4=d(ratio,ratioP);
+    h+=card(retLabel,money(ret,cur),s2[0],s2[1],{cu:ret,fmt:'money',was:was(retP,'money'),spark:retSeries});
+    h+=card(shop?'Orders':'Purchases',num(cnt),s3[0],s3[1],{cu:cnt,fmt:'num',was:was(cntP,'num'),spark:cntSeries});
+    h+=card('Return on ad spend',xx(ratio),s4[0],s4[1],{cu:ratio,fmt:'x',hero:true,
+      plain: ratio? 'Every '+sym+'100 of ad spend returned '+sym+Math.round(ratio*100).toLocaleString(cur==='INR'?'en-IN':'en-US')+'.' : ''});
+  }else{
+    var ldSeries=daySeries(rows,p,function(rs){ return sumAds(rs,'leads'); });
+    var ckSeries=daySeries(rows,p,function(rs){ return sumAds(rs,'clicks'); });
+    var l2=d(A.leads,P&&P.leads), l3=d(A.cpl,P&&P.cpl), l4=d(A.clicks,P&&P.clicks);
+    h+=card('Enquiries',num(A.leads),l2[0],l2[1],{cu:A.leads,fmt:'num',was:was(P&&P.leads,'num'),spark:ldSeries});
+    h+=card('Cost per enquiry',money(A.cpl,cur),l3[0],l3[1],{cu:A.cpl,fmt:'money',flip:true,hero:true,
+      plain: (A.cpl&&isFinite(A.cpl))? 'Every '+sym+'10,000 of ad spend brought about '+Math.round(10000/A.cpl)+' enquiries.' : ''});
+    h+=card('Clicks to site',num(A.clicks),l4[0],l4[1],{cu:A.clicks,fmt:'num',was:was(P&&P.clicks,'num'),spark:ckSeries});
+  }
+  return h+'</div>';
+}
+
+// Top five products, campaigns and creatives. These come off the entity tree, which the sync
+// rebuilds over a rolling 30-day window, so they always mean the last 30 days whatever period
+// the reader has selected above. The heading says so rather than leaving it to be assumed.
+function tRow(i,thumbHtml,name,meta,nums){
+  return '<div class="trow"><span class="rank">'+(i+1)+'</span>'+(thumbHtml||'')
+   + '<div class="tmain"><div class="tname">'+name+'</div>'+(meta?'<div class="tmeta">'+meta+'</div>':'')+'</div>'
+   + '<div class="tnums">'+nums.map(function(n){ return '<span class="tnum"><b>'+n[0]+'</b><i>'+esc(n[1])+'</i></span>'; }).join('')+'</div></div>';
+}
+function pic(url,label){
+  if(!url) return '<div class="th-ph">'+esc(label||'No image')+'</div>';
+  // fbcdn and Shopify links can expire or be blocked; a dead image must not leave a broken icon.
+  return '<img class="th" src="'+esc(url)+'" alt="" loading="lazy" referrerpolicy="no-referrer" '
+   + 'onerror="this.outerHTML=\'<div class=&quot;th-ph&quot;>'+esc(label||'No image')+'</div>\'">';
+}
+function topBlocks(D,c,isE){
+  var t=D.top; if(!t) return '';
+  var cur=c.currency, h='';
+  var win='Last 30 days';
+
+  if(t.products&&t.products.length){
+    h+='<div class="sec"><h2>Best selling products</h2>'
+     + '<p class="lede">'+win+', ranked by the revenue each product actually brought in.</p>';
+    t.products.forEach(function(p,i){
+      h+=tRow(i,pic(p.image,'No photo'),esc(p.title),
+        (p.price?exact(p.price,cur)+' each':''),
+        [[money(p.revenue,cur),'Revenue'],[num(p.units),'Units']]);
+    });
+    h+='</div>';
+  }
+
+  if(t.campaigns&&t.campaigns.length){
+    h+='<div class="sec"><h2>Campaigns doing the work</h2>'
+     + '<p class="lede">'+win+', ranked by '+(isE?'the sales each campaign brought back':'the enquiries each campaign brought in')+', not by the headline percentage. A small campaign with a flattering ratio does not belong at the top of this list.</p>';
+    t.campaigns.forEach(function(x,i){
+      h+=tRow(i,'',esc(x.name)+'<span class="badge">'+esc(x.platform)+'</span>',
+        exact(x.spend,cur)+' spent',
+        isE? [[money(x.revenue,cur),'Revenue'],[xx(x.roas),'Return']]
+           : [[num(x.leads),'Enquiries'],[exact(x.cpl,cur),'Each']]);
+    });
+    h+='</div>';
+  }
+
+  if(t.creatives&&t.creatives.length){
+    h+='<div class="sec"><h2>Creatives doing the work</h2>'
+     + '<p class="lede">'+win+'. Videos show their cover frame here rather than playing.</p>';
+    t.creatives.forEach(function(x,i){
+      h+=tRow(i,pic(x.thumb,x.format||'Creative'),esc(x.name)+'<span class="badge">'+esc(x.format||'')+'</span>',
+        exact(x.spend,cur)+' spent'+(x.ctr?' · '+pc(x.ctr)+' click rate':''),
+        isE? [[money(x.revenue,cur),'Revenue'],[xx(x.roas),'Return']]
+           : [[num(x.leads),'Enquiries'],[exact(x.cpl,cur),'Each']]);
+    });
+    h+='</div>';
+  }
+  return h;
+}
+
 function row(label,hint,value,d,major,flip,plain){
   return '<tr class="'+(major?'major ':'')+(flip?'flip ':'')+(plain?'plain':'')+'">'
     + '<th>'+esc(label)+(hint?'<span>'+esc(hint)+'</span>':'')+'</th>'
     + '<td><span class="v">'+value+'</span>'+(d||'')+'</td></tr>';
 }
 
+// The cards above carry the headline figures. This table carries the working behind them, so
+// no number appears in both places.
 function statement(A,P,c,isE){
-  var cur=c.currency, h='<div class="sec"><h2>The numbers</h2>';
+  var cur=c.currency, h='<div class="sec"><h2>Behind those numbers</h2>';
   h+='<table class="stmt"><tbody>';
-  // Spend moving is neither good nor bad on its own, so its delta stays uncoloured.
-  h+=row('Advertising spend','Meta and Google combined',exact(A.spend,cur),P?delta(A.spend,P.spend):'',false,false,true);
   if(isE){
     if(A.hasShop){
-      h+=row('Orders','Recorded in your store',num(A.orders),P?delta(A.orders,P.orders):'');
-      h+=row('Net sales','After discounts and returns',exact(A.netSales,cur),P?delta(A.netSales,P.netSales):'');
       h+=row('Average order value','Net sales divided by orders',exact(A.aov,cur),P?delta(A.aov,P.aov):'');
       h+=row('Cost per order','What it cost in ads to win one order',exact(A.cpa,cur),P?delta(A.cpa,P.cpa):'',false,true);
-      if(A.refunds) h+=row('Returns','Refunded in the period',exact(A.refunds,cur),P?delta(A.refunds,P.refunds):'',false,true);
-      h+=row('Return on ad spend','Net sales for every rupee of ad spend',xx(A.mer),P?delta(A.mer,P.mer):'',true);
+      if(A.refunds) h+=row('Returns','Refunded in this period',exact(A.refunds,cur),P?delta(A.refunds,P.refunds):'',false,true);
+      if(A.newCustomerOrders) h+=row('First-time buyers','Orders from customers buying for the first time',num(A.newCustomerOrders),P?delta(A.newCustomerOrders,P.newCustomerOrders):'');
     }else{
-      h+=row('Purchases','As reported by the ad platforms',num(A.purchases),P?delta(A.purchases,P.purchases):'');
-      h+=row('Revenue','As reported by the ad platforms',exact(A.revenue,cur),P?delta(A.revenue,P.revenue):'');
-      h+=row('Return on ad spend','Revenue for every rupee of ad spend',xx(A.roas),P?delta(A.roas,P.roas):'',true);
+      h+=row('Average order value','Revenue divided by purchases',exact(A.aov,cur),P?delta(A.aov,P.aov):'');
+      h+=row('Cost per purchase','What it cost in ads to win one sale',exact(A.cpa,cur),P?delta(A.cpa,P.cpa):'',false,true);
     }
+    h+=row('Clicks to your store','People who came through from an ad',num(A.clicks),P?delta(A.clicks,P.clicks):'');
+    h+=row('Click rate','Share of people who saw an ad and clicked',pc(A.ctr),P?delta(A.ctr,P.ctr):'');
   }else{
-    h+=row('Enquiries','Forms and messages from the ads',num(A.leads),P?delta(A.leads,P.leads):'');
-    h+=row('Clicks to your site','',num(A.clicks),P?delta(A.clicks,P.clicks):'');
-    h+=row('Cost per enquiry','Ad spend divided by enquiries',exact(A.cpl,cur),P?delta(A.cpl,P.cpl):'',true,true);
+    h+=row('Click rate','Share of people who saw an ad and clicked',pc(A.ctr),P?delta(A.ctr,P.ctr):'');
+    h+=row('Cost per click','',exact(A.spend/(A.clicks||1),cur),'',false,true);
+    h+=row('Times your ads were seen','',num(A.impressions),P?delta(A.impressions,P.impressions):'');
   }
   return h+'</tbody></table></div>';
 }
@@ -443,7 +671,7 @@ function chart(rows,p,c,isE){
    + '<line x1="'+L+'" y1="'+(T+ih)+'" x2="'+(W-R)+'" y2="'+(T+ih)+'" stroke="var(--rule-2)" stroke-width="1"></line>'
    + bars
    + '<path d="'+area+'" fill="var(--accent)" opacity="0.10"></path>'
-   + '<path d="'+line+'" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>'
+   + '<path class="trendline" d="'+line+'" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>'
    + '<circle cx="'+(L+iw-bw/2).toFixed(1)+'" cy="'+(T+ih-(last.ret/max*ih)).toFixed(1)+'" r="3.5" fill="var(--accent)"></circle>'
    + '<text x="'+L+'" y="'+(H-8)+'" font-family="Archivo,sans-serif" font-size="11" fill="var(--ink-3)">'+esc(fmtD(first.date))+'</text>'
    + '<text x="'+(W-R)+'" y="'+(H-8)+'" text-anchor="end" font-family="Archivo,sans-serif" font-size="11" fill="var(--ink-3)">'+esc(fmtD(last.date))+'</text>'
@@ -475,7 +703,26 @@ function sampleData(){
     daily.push({date:d,platform:'google',spend:Math.round(spend*0.26),impressions:Math.round(spend*3),clicks:Math.round(spend*0.09),purchases:Math.round(spend/3400),revenue:Math.round(spend*0.8)});
     daily.push({date:d,platform:'shopify',orders:Math.round(spend/1400),netSales:Math.round(spend*3.6),refunds:Math.round(spend*0.1),newCustomerOrders:Math.round(spend/2100)});
   }
-  return {agency:'Per4mance Guru',agencySite:'https://per4mance.guru',demo:true,
+  var top={window:'last 30 days',
+    products:[
+      {title:'Raglan Waffle Lavender T-Shirt',revenue:412300,units:294,orders:271,image:'',price:1399},
+      {title:'Oversized Cotton Hoodie, Ecru',revenue:318900,units:182,orders:176,image:'',price:1799},
+      {title:'Knit Polo, Deep Olive',revenue:241600,units:161,orders:155,image:'',price:1499},
+      {title:'Pleated Trouser, Charcoal',revenue:188400,units:104,orders:101,image:'',price:1899},
+      {title:'Linen Shirt, Bone',revenue:141250,units:96,orders:94,image:'',price:1599}],
+    campaigns:[
+      {name:'Retargeting · Category Wise Catalog',platform:'Meta',spend:92400,purchases:214,leads:0,revenue:498600,roas:5.4,cpl:null},
+      {name:'Prospecting · Shirts Statics',platform:'Meta',spend:118200,purchases:171,leads:0,revenue:377800,roas:3.2,cpl:null},
+      {name:'Consideration · Waffle Range',platform:'Meta',spend:64100,purchases:98,leads:0,revenue:211900,roas:3.31,cpl:null},
+      {name:'Performance Max Shopping',platform:'Google',spend:41700,purchases:52,leads:0,revenue:119300,roas:2.86,cpl:null},
+      {name:'Prospecting · Broad Video',platform:'Meta',spend:37900,purchases:41,leads:0,revenue:88200,roas:2.33,cpl:null}],
+    creatives:[
+      {name:'Waffle Tee Studio Carousel',format:'Carousel',thumb:'',spend:44800,purchases:112,leads:0,revenue:268400,roas:5.99,cpl:null,ctr:2.4},
+      {name:'Founder Voiceover 30s',format:'Video',thumb:'',spend:39600,purchases:81,leads:0,revenue:191700,roas:4.84,cpl:null,ctr:1.9},
+      {name:'Price Drop Static',format:'Static',thumb:'',spend:31200,purchases:54,leads:0,revenue:126800,roas:4.06,cpl:null,ctr:1.6},
+      {name:'UGC Unboxing Reel',format:'Video',thumb:'',spend:28700,purchases:44,leads:0,revenue:98300,roas:3.43,cpl:null,ctr:2.1},
+      {name:'Fabric Close-Up Static',format:'Static',thumb:'',spend:19400,purchases:26,leads:0,revenue:57100,roas:2.94,cpl:null,ctr:1.3}]};
+  return {agency:'Per4mance Guru',agencySite:'https://per4mance.guru',demo:true,top:top,
     client:{name:'Sample Brand',currency:'INR',type:'ecom'},today:today,generatedAt:new Date().toISOString(),daily:daily};
 }
 
