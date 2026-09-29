@@ -26,6 +26,7 @@ export function normalizeClient(c) {
     budget: Number(c.budget) || 0,               // monthly ads budget across platforms
     target: type === 'ecom' ? { roas: Number(c.target?.roas) || 3 } : { cpl: Number(c.target?.cpl) || 500 },
     am: c.am || '',
+    contact: c.contact || '',                     // the client's own person, greeted on their report
     accounts: {
       meta: c.accounts?.meta ? String(c.accounts.meta).replace(/^act_/, '') : '',
       google: c.accounts?.google ? String(c.accounts.google).replace(/-/g, '') : '',

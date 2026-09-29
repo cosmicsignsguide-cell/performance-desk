@@ -24,6 +24,63 @@ const PUBLIC_FIELDS = [
   'sessions',
 ];
 
+// ---------------------------------------------------------------------------
+// Campaign and ad names are written for the agency, not the client:
+//   "PG | Firvt | MOF | Catgory Wise - Catalog | 03-09-26"
+// Shown as-is that reads as amateur, and it hands over the whole internal naming
+// system, funnel structure and testing cadence to anyone the client forwards it to.
+// So the cleaning happens HERE, on the server, and the raw name never enters the
+// payload at all. Funnel codes become words a client already understands.
+const FUNNEL = { TOF:'Prospecting', TOFU:'Prospecting', COLD:'Prospecting',
+                 MOF:'Consideration', MOFU:'Consideration', WARM:'Consideration',
+                 BOF:'Retargeting', BOFU:'Retargeting', RT:'Retargeting', RTG:'Retargeting', RMK:'Retargeting' };
+// Buying structures, test markers and agency shorthand. None of it means anything to a client.
+const NOISE = new Set(['ABO','CBO','ASC','ADV','AAA','DPA','DABA','LAL','LLA','FT','BAU','DCT','CT','PG','P4G',
+                       'TEST','TESTING','COPY','NEW','OLD','FINAL','DRAFT','V1','V2','V3','V4','A','B','C']);
+const DATEY = /^\d{1,2}[-/.]\d{1,2}([-/.]\d{2,4})?$/;
+const MONTHY = /^\d{1,2}\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*\d{0,4}$/i;
+
+function titleish(t) {
+  // Shouty tokens get title case; anything already mixed case is left exactly as written.
+  if (!/[a-z]/.test(t) && t.length > 3) return t.toLowerCase().replace(/\b[a-z]/g, (m) => m.toUpperCase());
+  return t;
+}
+
+export function cleanName(raw, clientName, kind) {
+  // Pipes are the usual separator, but underscores are just as common and leak the same way,
+  // so fall back to them before giving up and treating the name as one opaque string.
+  const src = String(raw || '').trim();
+  let parts = src.split(/\s*\|\s*/).map((s) => s.trim()).filter(Boolean);
+  if (parts.length < 2) parts = src.split(/\s*_\s*/).map((s) => s.trim()).filter(Boolean);
+  if (parts.length < 2) parts = src.split(/\s+-\s+/).map((s) => s.trim()).filter(Boolean);  // spaced dash only, so "Anti-Tarnish" survives
+  const list = parts.length > 1 ? parts : [src];
+  const client = String(clientName || '').toLowerCase();
+  let stage = '';
+  const keep = [];
+  for (let t of list) {
+    t = t.replace(/[\s-]*\b\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}\b\s*$/, '').trim();   // trailing glued date
+    if (!t) continue;
+    const u = t.toUpperCase();
+    if (FUNNEL[u]) { stage = stage || FUNNEL[u]; continue; }
+    if (NOISE.has(u)) continue;
+    if (DATEY.test(t) || MONTHY.test(t)) continue;
+    if (/^[\d\s-]+$/.test(t)) continue;                       // pure numbers
+    if (t.toLowerCase() === client) continue;                 // the client's own name
+    keep.push(titleish(t.replace(/\s*-\s*/g, ' ').replace(/\s+/g, ' ')));
+  }
+  // Last line of defence. Whatever the separator was, a name that still carries the client's
+  // own name or a bare funnel code gets it stripped here, because this string is about to be
+  // shown to that client and there is no second chance to catch it.
+  let body = keep.join(' ').trim();
+  if (client) body = body.replace(new RegExp('\\b' + client.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'ig'), '').trim();
+  body = body.replace(/\b(TOFU?|MOFU?|BOFU?|ABO|CBO|RTG?)\b/gi, (m2) => { stage = stage || FUNNEL[m2.toUpperCase()] || ''; return ''; });
+  body = body.replace(/\s{2,}/g, ' ').replace(/^[\s·,-]+|[\s·,-]+$/g, '').trim();
+  if (stage && body) return `${stage} · ${body}`;
+  if (stage) return stage;
+  if (body) return body;
+  return kind === 'ad' ? 'Creative' : 'Campaign';
+}
+
 // One report doc per client, keyed by the token itself so a lookup is a single get().
 export async function ensureReportTokens(store, clients) {
   const existing = await store.list('reports');
@@ -84,12 +141,48 @@ export async function reportPayload(store, clientId) {
     })
     .sort((a, b) => (a.date < b.date ? -1 : 1));
 
+  // Top performers. These come off the entity tree, which the sync rebuilds over a rolling
+  // 30-day window, so they are ALWAYS last-30-days regardless of which period the reader has
+  // selected. The page labels them that way rather than quietly letting them mean something
+  // different per tab.
+  const ent = (await store.get('entities', clientId)) || {};
+  const isE = c.type !== 'lead';
+  const score = (x) => (isE ? (x.revenue || 0) : (x.leads || 0));
+  const roasOf = (x) => (x.spend ? round((x.revenue || 0) / x.spend, 2) : 0);
+  const cplOf = (x) => (x.leads ? round(x.spend / x.leads, 2) : null);
+  const top = (arr, n) => (arr || []).filter((x) => x && x.spend > 0)
+    .sort((a, b) => score(b) - score(a) || (b.spend || 0) - (a.spend || 0)).slice(0, n);
+
+  const campaigns = top(ent.campaigns, 5).map((x) => ({
+    name: cleanName(x.name, c.name, 'campaign'),
+    platform: x.platform === 'google' ? 'Google' : 'Meta',
+    spend: round(x.spend), purchases: x.purchases || 0, leads: x.leads || 0,
+    revenue: round(x.revenue || 0), roas: roasOf(x), cpl: cplOf(x),
+  }));
+
+  const creatives = top(ent.ads, 5).map((x) => ({
+    name: cleanName(x.name, c.name, 'ad'),
+    format: x.format || (x.isVideo ? 'Video' : 'Static'),
+    // fbcdn thumbnail links are signed and expire, so the page must survive a dead image.
+    // They are refreshed on every sync, which is one more reason the schedules matter.
+    thumb: x.thumb || '',
+    spend: round(x.spend), purchases: x.purchases || 0, leads: x.leads || 0,
+    revenue: round(x.revenue || 0), roas: roasOf(x), cpl: cplOf(x),
+    ctr: x.ctr || 0,
+  }));
+
+  const products = (ent.products || []).slice()
+    .sort((a, b) => (b.revenue || 0) - (a.revenue || 0)).slice(0, 5)
+    .map((p) => ({ title: p.title || 'Product', revenue: round(p.revenue || 0), units: p.units || 0, orders: p.orders || 0, image: p.image || '', price: round(p.price || 0) }));
+
   // The client's own name for themselves, never the internal slug, and never the AM, the
   // budget or the target: those are the agency's side of the relationship, not the client's.
   return {
+    top: { window: 'last 30 days', campaigns, creatives, products },
     agency: process.env.DESK_AGENCY_NAME || 'Per4mance Guru',
     agencySite: process.env.DESK_AGENCY_SITE || 'https://per4mance.guru',
-    client: { name: c.name, currency: c.currency || 'INR', type: c.type === 'lead' ? 'lead' : 'ecom' },
+    // contact is the client's own person, so it belongs to them; am stays out, it is ours.
+    client: { name: c.name, currency: c.currency || 'INR', type: c.type === 'lead' ? 'lead' : 'ecom', contact: c.contact || '' },
     today,
     generatedAt: nowIso(),
     daily,
