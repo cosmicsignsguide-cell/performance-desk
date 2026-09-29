@@ -19,30 +19,30 @@
 :root{
   color-scheme:light;
   --paper:#FFFFFF;
-  --wash:#F7F4F0;          /* warm, so the neutrals sit with the vermilion rather than against it */
-  --ink:#16130F;
-  --ink-2:#57503F;
-  --ink-3:#8C8371;
-  --rule:#E6DFD3;
-  --rule-2:#CFC5B4;
-  --accent:#D8451F;
+  --wash:#FAF8F5;          /* warm, so the neutrals sit with the vermilion rather than against it */
+  --ink:#221F19;           /* softened off near-black: the page reads lighter without losing contrast */
+  --ink-2:#5F5849;
+  --ink-3:#978E7C;
+  --rule:#EFEAE1;
+  --rule-2:#DFD8CB;
+  --accent:#E04A21;
   --good:#1E6B4A;
   --warn:#96650F;
-  --shadow:rgba(22,19,15,.07);
+  --shadow:rgba(34,31,25,.06);
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     color-scheme:dark;
-    --paper:#121110; --wash:#1B1917; --ink:#F4EEE4; --ink-2:#BEB5A6; --ink-3:#8C8375;
-    --rule:#2B2724; --rule-2:#433D36; --accent:#FF6A45; --good:#4CAF85; --warn:#D9A441;
-    --shadow:rgba(0,0,0,.4);
+    --paper:#171614; --wash:#201E1B; --ink:#F6F1E8; --ink-2:#C5BCAD; --ink-3:#948B7D;
+    --rule:#302C28; --rule-2:#494139; --accent:#FF6A45; --good:#4CAF85; --warn:#D9A441;
+    --shadow:rgba(0,0,0,.45);
   }
 }
 :root[data-theme="dark"]{
   color-scheme:dark;
-  --paper:#121110; --wash:#1B1917; --ink:#F4EEE4; --ink-2:#BEB5A6; --ink-3:#8C8375;
-  --rule:#2B2724; --rule-2:#433D36; --accent:#FF6A45; --good:#4CAF85; --warn:#D9A441;
-  --shadow:rgba(0,0,0,.4);
+  --paper:#171614; --wash:#201E1B; --ink:#F6F1E8; --ink-2:#C5BCAD; --ink-3:#948B7D;
+  --rule:#302C28; --rule-2:#494139; --accent:#FF6A45; --good:#4CAF85; --warn:#D9A441;
+  --shadow:rgba(0,0,0,.45);
 }
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -68,7 +68,9 @@ h1,h2,h3,.ui,th,.fig,.eyebrow,button,.tabs{font-family:Archivo,"Helvetica Neue",
   text-transform:uppercase;color:var(--ink-3);margin-bottom:12px}
 
 /* the sentence -------------------------------------------------------- */
+.hello{margin:24px 0 0;font-size:clamp(18px,3.2vw,21px);line-height:1.4;color:var(--ink-2)}
 .verdict{margin:26px 0 0;font-size:clamp(19px,3.4vw,23px);line-height:1.5;max-width:60ch}
+.hello + .verdict{margin-top:10px}
 .verdict b{font-weight:600}
 .verdict .hi{color:var(--accent);font-weight:600}
 .stamp{display:inline-flex;align-items:center;gap:8px;margin-top:20px;padding:5px 11px 5px 9px;
@@ -87,11 +89,17 @@ h1,h2,h3,.ui,th,.fig,.eyebrow,button,.tabs{font-family:Archivo,"Helvetica Neue",
 .tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
 
 /* kpi cards ----------------------------------------------------------- */
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule);
-  border:1px solid var(--rule);margin-top:30px}
-.kpi{background:var(--paper);padding:17px 16px 15px;min-width:0;overflow:hidden}
+/* Separated cards on the page's own ground, rather than cells cut out of one ruled block. The
+   softer treatment is kept to this row and the two counting panels; the statement table and the
+   top-five lists stay on hairlines, so the page still has a hierarchy instead of one flat texture. */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:30px}
+.kpi{background:var(--paper);border:1px solid var(--rule);border-radius:12px;
+  padding:17px 16px 15px;min-width:0;overflow:hidden;
+  box-shadow:0 1px 2px var(--shadow), 0 10px 24px -16px var(--shadow)}
+/* Two lines' worth of space is reserved whatever the label says, so a label that wraps
+   ("Return on ad spend") does not push its number below the numbers beside it. */
 .kpi .k{font-family:Archivo,sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.1em;
-  text-transform:uppercase;color:var(--ink-3)}
+  text-transform:uppercase;color:var(--ink-3);line-height:1.35;min-height:2.7em}
 .kpi .n{font-family:Archivo,sans-serif;font-size:clamp(21px,4vw,27px);font-weight:800;letter-spacing:-.025em;
   margin-top:9px;font-variant-numeric:tabular-nums;line-height:1.05;word-break:keep-all;white-space:nowrap}
 .kpi .s{font-family:Archivo,sans-serif;font-size:11.5px;font-weight:500;letter-spacing:.03em;color:var(--ink-3);margin-top:6px}
@@ -171,15 +179,16 @@ h1,h2,h3,.ui,th,.fig,.eyebrow,button,.tabs{font-family:Archivo,"Helvetica Neue",
 .wrap-x{overflow-x:auto;-webkit-overflow-scrolling:touch}
 
 /* attribution --------------------------------------------------------- */
-.two{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:4px}
-.two>div{background:var(--paper);padding:20px 18px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.two>div{background:var(--paper);border:1px solid var(--rule);border-radius:12px;padding:20px 18px;
+  box-shadow:0 1px 2px var(--shadow), 0 10px 24px -16px var(--shadow)}
 .two .k{font-family:Archivo,sans-serif;font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
 .two .n{font-family:Archivo,sans-serif;font-size:clamp(24px,5vw,30px);font-weight:800;letter-spacing:-.022em;margin-top:8px;font-variant-numeric:tabular-nums}
 .two .t{font-size:14px;color:var(--ink-2);margin-top:7px;line-height:1.45}
 .note{margin-top:16px;font-size:15px;color:var(--ink-2);max-width:62ch}
 
 /* chart --------------------------------------------------------------- */
-.chartbox{margin-top:6px;border:1px solid var(--rule);padding:18px 16px 12px;background:var(--wash)}
+.chartbox{margin-top:6px;border:1px solid var(--rule);border-radius:12px;padding:18px 16px 12px;background:var(--wash)}
 .legend{display:flex;gap:18px;flex-wrap:wrap;font-family:Archivo,sans-serif;font-size:11.5px;
   letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);margin-bottom:14px}
 .legend span{display:inline-flex;align-items:center;gap:7px}
@@ -304,6 +313,9 @@ function render(){
    + '<span class="period">'+esc(p.label)+(p.id==='d90'?'':' '+p.start.slice(0,4))+'</span></div>';
   h+='<h1 class="title"><small>Performance statement</small>'+esc(c.name)+'</h1>';
 
+  // Their own person, greeted by name, before anything is reported at them.
+  if(c.contact) h+='<p class="hello">Hi '+esc(c.contact)+',</p>';
+
   // The sentence the client came for, before any table.
   h+=verdict(A,P,c,isE,p);
 
@@ -381,19 +393,10 @@ function verdict(A,P,c,isE,p){
     s = 'In '+esc(p.label)+', <b>'+exact(A.spend,cur)+'</b> went into advertising and brought '
       + '<b>'+num(A.leads)+'</b> enquir'+(A.leads===1?'y':'ies')+', at <span class="hi">'+exact(A.cpl,cur)+'</span> each.';
   }
-  var tone='', word='';
-  if(P&&P.spend){
-    var now=isE?(A.hasShop?A.mer:A.roas):A.cpl, was=isE?(P.hasShop?P.mer:P.roas):P.cpl;
-    if(isFinite(now)&&isFinite(was)&&was){
-      var better = isE? now>=was : now<=was;
-      var gap=Math.abs((now-was)/was*100);
-      if(gap<3){ tone='neutral'; word='Holding steady against '+p.pLabel+'.'; }
-      else if(better){ tone='good'; word='Up '+gap.toFixed(0)+'% on '+p.pLabel+'.'; }
-      else { tone='warn'; word='Down '+gap.toFixed(0)+'% on '+p.pLabel+'.'; }
-    }
-  }
-  return '<p class="verdict">'+s+'</p>'
-    + (word? '<span class="stamp"><i class="dot '+(tone==='good'?'good':tone==='warn'?'warn':'')+'"></i>'+esc(word)+'</span>':'');
+  // No verdict badge under this. The cards below already carry every comparison against the
+  // previous period, each next to the figure it belongs to, so a separate summary label only
+  // repeated them in a vaguer form.
+  return '<p class="verdict">'+s+'</p>';
 }
 
 // Four headline figures as cards. Nothing here repeats in the statement table below: the cards
@@ -723,7 +726,7 @@ function sampleData(){
       {name:'UGC Unboxing Reel',format:'Video',thumb:'',spend:28700,purchases:44,leads:0,revenue:98300,roas:3.43,cpl:null,ctr:2.1},
       {name:'Fabric Close-Up Static',format:'Static',thumb:'',spend:19400,purchases:26,leads:0,revenue:57100,roas:2.94,cpl:null,ctr:1.3}]};
   return {agency:'Per4mance Guru',agencySite:'https://per4mance.guru',demo:true,top:top,
-    client:{name:'Sample Brand',currency:'INR',type:'ecom'},today:today,generatedAt:new Date().toISOString(),daily:daily};
+    client:{name:'Sample Brand',currency:'INR',type:'ecom',contact:'Swapnil'},today:today,generatedAt:new Date().toISOString(),daily:daily};
 }
 
 (function(){
