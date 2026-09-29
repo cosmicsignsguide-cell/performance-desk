@@ -16,6 +16,7 @@ import * as shopify from './fetchers/shopify.js';
 import * as ga4 from './fetchers/ga4.js';
 import { runSitewatch } from './sitewatch.js';
 import { computeSignals } from './signals.js';
+import { ensureReportTokens, listLinks, reportPayload, reportUrl, resolveToken, rotateReportToken } from './report.js';
 import { raise } from './alerts.js';
 import Sample from './sample.cjs';
 
@@ -219,10 +220,18 @@ async function main() {
     const http = await import('node:http');
     const port = parseInt(process.env.PORT || '10000', 10);
     const running = new Set();
+    // Report links point at the dashboard host, which serves report.html; that page then calls
+    // this API for the data. Falls back to this host so /links still returns something usable
+    // before DESK_REPORT_BASE is set.
+    const reportBase = (req) => (process.env.DESK_REPORT_BASE || '').replace(/\/$/, '') || `https://${req.headers.host}`;
 
     async function runMode(mode) {
       await syncClientsFromFile();
       const clients = await loadClients();
+      // A new client gets its report link the first time it syncs. Existing links are never
+      // regenerated here, so a link already sent to a client keeps working across deploys.
+      const made = await ensureReportTokens(store, clients);
+      if (made) log(`reports: created ${made} client link${made > 1 ? 's' : ''}`);
       if (mode === 'sitewatch') {
         await runSitewatch(clients);
         await store.merge('meta', 'lastRun', { sitewatch: nowIso() });
@@ -240,10 +249,44 @@ async function main() {
       if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
       const url = new URL(req.url, 'http://x');
       if (url.pathname === '/health' || url.pathname === '/') { res.end('ok'); return; }
-      if (url.pathname !== '/sync' && url.pathname !== '/run') { res.writeHead(404); res.end('not found'); return; }
+
+      // GET /r/<token> — the client report feed. Public by design: the token is the credential.
+      // A bad, unknown or revoked token gets the same flat 404 as a missing route, so the
+      // endpoint cannot be used to find out which tokens exist.
+      if (url.pathname.startsWith('/r/')) {
+        res.setHeader('Cache-Control', 'no-store');
+        res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+        const clientId = await resolveToken(store, url.pathname.slice(3));
+        const data = clientId ? await reportPayload(store, clientId) : null;
+        if (!data) { res.writeHead(404); res.end('not found'); return; }
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(data));
+        return;
+      }
+
+      if (!['/sync', '/run', '/links', '/rotate'].includes(url.pathname)) { res.writeHead(404); res.end('not found'); return; }
 
       const key = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || url.searchParams.get('key') || '';
       if (!process.env.DESK_SYNC_KEY || key !== process.env.DESK_SYNC_KEY) { res.writeHead(401); res.end('unauthorized'); return; }
+
+      // GET /links — every client's report URL, for pasting into an email. Behind the sync key.
+      if (url.pathname === '/links') {
+        const clients = await loadClients();
+        const rows = await listLinks(store, clients, reportBase(req));
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(rows, null, 1));
+        return;
+      }
+
+      // GET /rotate?client=<id> — kill the old link and issue a new one.
+      if (url.pathname === '/rotate') {
+        const id = url.searchParams.get('client') || '';
+        if (!id) { res.writeHead(400); res.end('client required'); return; }
+        const token = await rotateReportToken(store, id);
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ ok: true, client: id, url: reportUrl(reportBase(req), token) }));
+        return;
+      }
 
       const asked = url.searchParams.get('mode');
       const mode = ['daily', 'hourly', 'sitewatch'].includes(asked) ? asked : 'hourly';
