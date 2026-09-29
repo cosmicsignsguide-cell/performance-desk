@@ -553,6 +553,23 @@ td.call{min-width:300px;white-space:normal} td.call .sub{max-width:none}
 .tree tr.lvl0 td.name{color:var(--text);font-weight:600}
 .tw{display:inline-block;width:18px;color:var(--faint);font-size:10px;cursor:pointer;user-select:none;transition:transform .15s} .tw.on{transform:rotate(90deg);color:var(--cyan)}
 .thumb{width:40px;height:40px;border-radius:6px;object-fit:cover;background:rgba(20,20,20,0.06);vertical-align:middle;margin-right:10px;flex:none}
+.thumb.ph{display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.5}
+/* A video creative is the one row on this page you cannot judge from its numbers, so it plays
+   here rather than sending the AM to Ads Manager to look at it. */
+.crplay{position:relative;display:inline-block;cursor:pointer;flex:none;line-height:0}
+.crplay i{position:absolute;left:0;top:0;width:40px;height:40px;border-radius:6px;background:rgba(10,10,10,.34);
+  display:flex;align-items:center;justify-content:center;transition:background .15s}
+.crplay:hover i{background:rgba(10,10,10,.52)}
+.crplay i::after{content:"";border-left:10px solid #fff;border-top:6px solid transparent;border-bottom:6px solid transparent;margin-left:3px}
+.crplay:focus-visible{outline:2px solid var(--accent,#E04A21);outline-offset:2px;border-radius:6px}
+.crvid{width:180px;max-width:42vw;border-radius:8px;margin-right:10px;vertical-align:middle;background:#000;flex:none}
+.crchips{display:inline-flex;gap:4px;margin-left:12px;flex-wrap:wrap;vertical-align:middle}
+.crchip{appearance:none;font:inherit;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  padding:3px 9px;border-radius:99px;cursor:pointer;background:transparent;
+  border:1px solid rgba(125,125,125,.34);color:inherit;opacity:.62;transition:opacity .15s,background .15s}
+.crchip:hover{opacity:1}
+.crchip.on{opacity:1;background:rgba(224,74,33,.15);border-color:rgba(224,74,33,.5)}
+.crchip[disabled]{opacity:.28;cursor:default}
 .adname{display:flex;align-items:center}
 .spark{width:84px;height:26px;vertical-align:middle;margin-right:8px} .spark polyline{fill:none;stroke-width:1.5;stroke:var(--idle)} .spark polyline.up{stroke:var(--green)} .spark polyline.down{stroke:var(--red)}
 .pace{display:flex;align-items:center;gap:10px;min-width:150px}
@@ -701,9 +718,13 @@ async function loadLive(){
   const today=isoToday(); const since=addDays(today,-RANGE_DAYS);
   const PFX=(window.DESK_CONFIG&&window.DESK_CONFIG.collectionPrefix)||'';
   const col=async(name,q)=>{ let ref=fb.db.collection(PFX+name); if(q) ref=q(ref); const s=await ref.get(); return s.docs.map(d=>({id:d.id,...d.data()})); };
-  const [clients,daily,ents,sigs,sws,syncsArr,alerts,intra,meta]=await Promise.all([col('clients'),col('daily',r=>r.where('date','>=',since)),col('entities'),col('signals'),col('sitewatch'),col('syncs'),col('alerts',r=>r.where('at','>=',new Date(Date.now()-48*3600000).toISOString())),col('intraday',r=>r.where('date','>=',addDays(today,-8))),fb.db.collection(PFX+'meta').doc('lastRun').get().then(d=>d.exists?d.data():{})]);
+  // reports carries each client's report token. It is read here so a video creative can be
+  // played on this page through the same server route the client's own report uses, which keeps
+  // the Meta access token on the server instead of shipping it to a browser.
+  const [clients,daily,ents,sigs,sws,syncsArr,alerts,intra,meta,reports]=await Promise.all([col('clients'),col('daily',r=>r.where('date','>=',since)),col('entities'),col('signals'),col('sitewatch'),col('syncs'),col('alerts',r=>r.where('at','>=',new Date(Date.now()-48*3600000).toISOString())),col('intraday',r=>r.where('date','>=',addDays(today,-8))),fb.db.collection(PFX+'meta').doc('lastRun').get().then(d=>d.exists?d.data():{}),col('reports').catch(()=>[])]);
   const byId=(arr)=>Object.fromEntries(arr.map(x=>[x.clientId||x.id,x]));
-  return {today,clients:clients.filter(c=>c.active!==false),daily,entities:byId(ents),signals:byId(sigs),sitewatch:byId(sws),syncs:byId(syncsArr),alerts,intraday:Object.fromEntries(intra.map(x=>[x.id,x])),lastRun:meta};
+  const tokens={}; (reports||[]).forEach(r=>{ if(r.clientId&&r.enabled!==false) tokens[r.clientId]=r.id; });
+  return {today,clients:clients.filter(c=>c.active!==false),daily,entities:byId(ents),signals:byId(sigs),sitewatch:byId(sws),syncs:byId(syncsArr),alerts,intraday:Object.fromEntries(intra.map(x=>[x.id,x])),lastRun:meta,reportTokens:tokens};
 }
 
 /* ============================== RANGES / METRICS ========================= */
@@ -763,7 +784,10 @@ function summarize(D,c,range){
   const expected=c.budget?c.budget*dom/dim:0; const paceRatio=expected?mtd.spend/expected:0; const projected=mtd.spend/dom*dim;
   const kpi=kpiOf(c,cur), status=kpiStatus(c,kpi); const delta7=kpiDelta(c,kpiOf(c,last7),kpiOf(c,prev7));
   const ent=D.entities[c.id]||{campaigns:[],adsets:[],ads:[],products:[],issues:[],recentOrders:[]};
-  const adsTotal={spend:(ent.ads||[]).reduce((s,a)=>s+a.spend,0)}; const ads=(ent.ads||[]).map(a=>({...a,...adStatus(a,c,adsTotal)}));
+  // adStatus replaces .status with the desk's own verdict (Scale, Pause, Fatiguing...), so the
+  // platform's own ACTIVE/PAUSED/DISAPPROVED is kept aside first. The creative filter reads that
+  // one: "running" has to mean running on Meta, not our opinion of it.
+  const adsTotal={spend:(ent.ads||[]).reduce((s,a)=>s+a.spend,0)}; const ads=(ent.ads||[]).map(a=>({...a,pstatus:a.status,...adStatus(a,c,adsTotal)}));
   const sig=D.signals[c.id]||{items:[]}; const sw=D.sitewatch[c.id]||null; const sync=D.syncs[c.id]||{};
   const flags=[];
   (sig.items||[]).forEach(i=>flags.push({sev:i.severity==='critical'?'bad':(i.severity==='warning'?'warn':'info'),text:i.message,type:i.type}));
@@ -821,7 +845,7 @@ const ICONS={
 
 /* ============================== STATE / RENDER =========================== */
 let D=null, S={};
-const state={view:'overview',clientId:null,range:'today',tab:'campaigns',q:'',ovView:'table',showInfo:false,expanded:new Set(),sort:{overview:{key:'health',dir:'asc'},campaigns:{key:'spend',dir:'desc'},ads:{key:'spend',dir:'desc'},products:{key:'revenue',dir:'desc'},orders:{key:'at',dir:'desc'}}};
+const state={view:'overview',clientId:null,range:'today',tab:'campaigns',crf:'spending',q:'',ovView:'table',showInfo:false,expanded:new Set(),sort:{overview:{key:'health',dir:'asc'},campaigns:{key:'spend',dir:'desc'},ads:{key:'spend',dir:'desc'},products:{key:'revenue',dir:'desc'},orders:{key:'at',dir:'desc'}}};
 const root=document.getElementById('root');
 function readHash(){ const m=location.hash.match(/^#c\/([a-z0-9-]+)/); if(m&&D&&D.clients.some(c=>c.id===m[1])){state.view='client';state.clientId=m[1]} else {state.view='overview';state.clientId=null} }
 function go(id){ if(id){location.hash='#c/'+id} else { try{history.replaceState(null,'',location.href.split('#')[0])}catch(e){location.hash=''} readHash(); render(); window.scrollTo(0,0); } }
@@ -1454,15 +1478,44 @@ function entityTable(x){
   if(tab==='products'){ rows=(ent.products||[]).map(e=>({e,m:{}})); title='Products <span class="sub">last 30 days · stock from Shopify</span>';
     cols=[{key:'title',label:'Product',f:r=>'<td class="row-title"><span class="adname">'+(r.e.image?'<img class="thumb" src="'+esc(r.e.image)+'" alt="">':'')+'<span>'+esc(r.e.title)+(r.e.price?'<span class="sub">'+fmtMoney(r.e.price,c)+'</span>':'')+'</span></span></td>',v:r=>r.e.title},{key:'revenue',label:'Revenue',num:1,f:r=>fmtMoney(r.e.revenue,c),v:r=>r.e.revenue},{key:'units',label:'Units',num:1,f:r=>fmtNum(r.e.units),v:r=>r.e.units},{key:'units7',label:'Units, 7d',num:1,f:r=>fmtNum(r.e.units7),v:r=>r.e.units7},{key:'orders',label:'Orders',num:1,f:r=>fmtNum(r.e.orders),v:r=>r.e.orders},{key:'inventory',label:'Stock',num:1,f:r=>r.e.inventory==null?'<span class="faint">n/a</span>':fmtNum(r.e.inventory),v:r=>r.e.inventory==null?-1:r.e.inventory},{key:'days',label:'Days of stock',f:r=>stockChip(r.e),v:r=>{const pd=(r.e.units7||0)/7; return r.e.inventory==null||!pd?9999:r.e.inventory/pd}}];
     empty='No Shopify product data yet. Connect the store token to see best sellers and stock.'; note='Revenue is line-item value before discounts. Days of stock = current inventory divided by the last 7 days sales rate.';
-  } else { rows=(x.ads||[]).map(e=>({e,m:entRange(e,spec)})); const adTotal=rows.reduce((s,r)=>s+r.m.spend,0); title='Creatives <span class="sub">spend, CTR and results for '+spec.label+' · hook, hold, frequency and the call use the last 30 days</span>';
-    cols=[{key:'name',label:'Creative',f:r=>'<td class="row-title"><span class="adname">'+(r.e.thumb?'<img class="thumb" src="'+esc(r.e.thumb)+'" alt="" loading="lazy">':'')+'<span>'+esc(r.e.name)+'<span class="sub">'+esc(r.e.adsetName||'')+'</span></span></span></td>',v:r=>r.e.name},{key:'format',label:'Format',f:r=>'<td>'+esc(r.e.format||'')+'</td>',v:r=>r.e.format||''},{key:'spend',label:'Spend',num:1,f:r=>fmtMoney(r.m.spend,c)+' <span class="faint">'+pct(adTotal?r.m.spend/adTotal:0)+'</span>',v:r=>r.m.spend},{key:'hookRate',label:'Hook',num:1,f:r=>r.e.hookRate==null?'<span class="faint">static</span>':fmtPct(r.e.hookRate),v:r=>r.e.hookRate==null?-1:r.e.hookRate},{key:'holdRate',label:'Hold',num:1,f:r=>r.e.holdRate==null?'<span class="faint">static</span>':fmtPct(r.e.holdRate),v:r=>r.e.holdRate==null?-1:r.e.holdRate},{key:'ctr',label:'CTR',num:1,f:r=>fmtPct(r.m.ctr)+(r.e.ctrTrend?' <span class="delta '+(r.e.ctrTrend<0.9?'down':(r.e.ctrTrend>1.05?'up':'flat'))+'" title="last 7 days vs the 7 before">'+(r.e.ctrTrend>=1?'+':'')+Math.round((r.e.ctrTrend-1)*100)+'%</span>':''),v:r=>r.m.ctr},{key:res,label:cap(res),num:1,f:r=>fmtNum(r.m[res]),v:r=>r.m[res]},kpiCol,{key:'freq',label:'Freq',num:1,f:r=>((r.e.last7&&r.e.last7.freq)||r.e.freq||0).toFixed(1),v:r=>(r.e.last7&&r.e.last7.freq)||r.e.freq||0},{key:'daysLive',label:'Days',num:1,f:r=>r.e.daysLive==null?'<span class="faint">n/a</span>':r.e.daysLive,v:r=>r.e.daysLive||0},{key:'status',label:'Call',f:r=>'<td class="call"><span class="chip '+r.e.tone+'">'+r.e.status+'</span><span class="sub">'+esc(r.e.why)+'</span></td>',v:r=>({Pause:0,Fatiguing:1,Watch:2,Testing:3,Steady:4,Scale:5}[r.e.status]??-1)}];
-    empty='No Meta creatives yet.'; note='Hook = 3 second plays / impressions. Hold = ThruPlays / 3 second plays. Fatiguing = frequency past 3.2 with CTR falling 15%+ and CPM rising 12%+ in the same week.';
+  } else { rows=(x.ads||[]).map(e=>({e,m:entRange(e,spec)})).filter(r=>crMatch(r,state.crf)); const adTotal=rows.reduce((s,r)=>s+r.m.spend,0); title='Creatives <span class="sub">spend, CTR and results for '+spec.label+' · hook, hold, frequency and the call use the last 30 days</span>';
+    cols=[{key:'name',label:'Creative',f:r=>'<td class="row-title"><span class="adname">'+crThumb(r.e,c)+'<span>'+esc(r.e.name)+'<span class="sub">'+esc(r.e.adsetName||'')+'</span></span></span></td>',v:r=>r.e.name},{key:'format',label:'Format',f:r=>'<td>'+esc(r.e.format||'')+'</td>',v:r=>r.e.format||''},{key:'spend',label:'Spend',num:1,f:r=>fmtMoney(r.m.spend,c)+' <span class="faint">'+pct(adTotal?r.m.spend/adTotal:0)+'</span>',v:r=>r.m.spend},{key:'hookRate',label:'Hook',num:1,f:r=>r.e.hookRate==null?'<span class="faint">static</span>':fmtPct(r.e.hookRate),v:r=>r.e.hookRate==null?-1:r.e.hookRate},{key:'holdRate',label:'Hold',num:1,f:r=>r.e.holdRate==null?'<span class="faint">static</span>':fmtPct(r.e.holdRate),v:r=>r.e.holdRate==null?-1:r.e.holdRate},{key:'ctr',label:'CTR',num:1,f:r=>fmtPct(r.m.ctr)+(r.e.ctrTrend?' <span class="delta '+(r.e.ctrTrend<0.9?'down':(r.e.ctrTrend>1.05?'up':'flat'))+'" title="last 7 days vs the 7 before">'+(r.e.ctrTrend>=1?'+':'')+Math.round((r.e.ctrTrend-1)*100)+'%</span>':''),v:r=>r.m.ctr},{key:res,label:cap(res),num:1,f:r=>fmtNum(r.m[res]),v:r=>r.m[res]},kpiCol,{key:'freq',label:'Freq',num:1,f:r=>((r.e.last7&&r.e.last7.freq)||r.e.freq||0).toFixed(1),v:r=>(r.e.last7&&r.e.last7.freq)||r.e.freq||0},{key:'daysLive',label:'Days',num:1,f:r=>r.e.daysLive==null?'<span class="faint">n/a</span>':r.e.daysLive,v:r=>r.e.daysLive||0},{key:'status',label:'Call',f:r=>'<td class="call"><span class="chip '+r.e.tone+'">'+r.e.status+'</span><span class="sub">'+esc(r.e.why)+'</span></td>',v:r=>({Pause:0,Fatiguing:1,Watch:2,Testing:3,Steady:4,Scale:5}[r.e.status]??-1)}];
+    empty=state.crf==='all'?'No Meta creatives yet.':'No creatives in this group. Try another filter above.'; note='Hook = 3 second plays / impressions. Hold = ThruPlays / 3 second plays. Fatiguing = frequency past 3.2 with CTR falling 15%+ and CPM rising 12%+ in the same week.';
   }
   const so=state.sort[tab]; const sorted=rows.slice().sort((a,b)=>{ const col=cols.find(cl=>cl.key===so.key)||cols[0]; let va=col.v(a),vb=col.v(b); if(typeof va==='number'&&!isFinite(va)) va=so.dir==='asc'?Infinity:-Infinity; if(typeof vb==='number'&&!isFinite(vb)) vb=so.dir==='asc'?Infinity:-Infinity; if(typeof va==='string') return so.dir==='asc'?va.localeCompare(vb):vb.localeCompare(va); return so.dir==='asc'?va-vb:vb-va; });
-  let h='<div class="glass-panel"><h2>'+title+'</h2><div class="data-table-wrap"><table class="dtable">'+thead(cols,tab)+'<tbody>';
+  let h='<div class="glass-panel"><h2>'+title+crChips(x)+'</h2><div class="data-table-wrap"><table class="dtable">'+thead(cols,tab)+'<tbody>';
   if(!sorted.length) h+='<tr><td colspan="'+cols.length+'" class="faint">'+empty+'</td></tr>';
   sorted.forEach(r=>{h+='<tr>'+cols.map(cl=>{const v=String(cl.f(r));return v.startsWith('<td')?v:'<td class="'+(cl.num?'num':'')+'">'+v+'</td>'}).join('')+'</tr>'});
   return h+'</tbody></table></div>'+(note?'<div class="note">'+note+'</div>':'')+'</div>';
+}
+/* --- creative filter and media ------------------------------------------------
+   Meta's effective_status has a dozen values. An AM only ever asks three questions of this list:
+   what is eating budget, what is live, and what is switched off. So the vocabulary is collapsed
+   to that, and "spending" is the default because a creative with no spend cannot be the answer
+   to why a week went the way it did. */
+const CRF=[['spending','Spending'],['active','Running'],['inactive','Not running'],['all','All']];
+function crState(e){ return String(e.pstatus||'').toLowerCase().indexOf('active')===0?'active':'inactive'; }
+function crMatch(r,f){
+  if(f==='all'||!f) return true;
+  if(f==='spending') return (r.m?r.m.spend:r.e.spend)>0;
+  return crState(r.e)===f;
+}
+function crChips(x){
+  if(state.tab!=='ads') return '';
+  const all=(x.ads||[]).map(e=>({e,m:entRange(e,x.spec)}));
+  return '<span class="crchips">'+CRF.map(k=>{
+    const n=all.filter(r=>crMatch(r,k[0])).length;
+    return '<button class="crchip'+(state.crf===k[0]?' on':'')+'" data-act="crf" data-crf="'+k[0]+'"'+(n?'':' disabled')+'>'+k[1]+' '+n+'</button>';
+  }).join('')+'</span>';
+}
+// The still, and for a video the still with a play button over it. Pressing play asks our own
+// server for the file through this client's report route: the server checks the ad belongs to
+// that client and then fetches the source with the agency token, which never reaches this page.
+function crThumb(e,c){
+  const tok=(D.reportTokens||{})[c.id]||'';
+  const img=e.thumb?'<img class="thumb" src="'+esc(e.thumb)+'" alt="" loading="lazy">':'<span class="thumb ph">'+esc((e.format||'?').slice(0,3))+'</span>';
+  if(!(e.isVideo&&e.videoId&&tok)) return img;
+  return '<span class="crplay" data-act="play" data-ad="'+esc(e.id)+'" data-tok="'+esc(tok)+'" title="Play this video" role="button" tabindex="0">'+img+'<i></i></span>';
 }
 function stockChip(r){ if(r.inventory==null) return '<span class="faint">n/a</span>'; const pd=(r.units7||0)/7; if(!pd) return '<span class="chip neutral">no recent sales</span>'; const d=r.inventory/pd; return '<span class="chip '+(d<5?'bad':d<14?'warn':'good')+'">'+Math.round(d)+' days</span>'; }
 function ordersPanel(x){
@@ -1515,6 +1568,21 @@ document.addEventListener('click',e=>{
   if(act==='nav'){ e.preventDefault(); go(el.dataset.client||null); }
   else if(act==='range'){ state.range=el.dataset.range; render(); }
   else if(act==='tab'){ state.tab=el.dataset.tab; render(); }
+  else if(act==='crf'){ if(!el.disabled){ state.crf=el.dataset.crf; render(); } }
+  else if(act==='play'){
+    // Swapped in place rather than opened in a modal: the row's numbers stay next to the video,
+    // which is the whole reason for watching it here instead of in Ads Manager.
+    // Same service the Sync now button talks to, so nothing new has to be configured. syncUrl is
+    // sometimes given with the /sync path on it, so the base is taken back off it.
+    const cfg=window.DESK_CONFIG||{};
+    const api=String(cfg.api||cfg.syncUrl||'').replace(/\/(sync|run)\/?$/,'').replace(/\/$/,'');
+    if(!api) return;
+    const v=document.createElement('video');
+    v.className='crvid'; v.controls=true; v.autoplay=true; v.playsInline=true;
+    v.onerror=function(){ v.outerHTML='<span class="thumb ph" title="Meta has no playable file for this creative">n/a</span>'; };
+    el.replaceWith(v);
+    v.src=api.replace(/\/$/,'')+'/r/'+encodeURIComponent(el.dataset.tok)+'/v/'+encodeURIComponent(el.dataset.ad);
+  }
   else if(act==='ovview'){ state.ovView=el.dataset.v; render(); }
   else if(act==='toggleinfo'){ state.showInfo=!state.showInfo; render(); }
   else if(act==='toggle'){ e.stopPropagation(); const id=el.dataset.id; if(state.expanded.has(id)) state.expanded.delete(id); else state.expanded.add(id); render(); }
