@@ -81,9 +81,11 @@ export async function computeSignals(client, entities, { mode = 'hourly' } = {})
     // 8. KPI vs target over the last 7 days
     const w = daysBack(7).flatMap((d) => on(d, ADS));
     const sp = sum(w, 'spend');
+    // Only fires where a target was actually agreed. Raising "KPI miss" against a default
+    // nobody set is noise that trains the team to ignore the flag it most needs to read.
     if (sp > 0) {
-      if (isE) { const roas = sum(w, 'revenue') / sp; if (roas < client.target.roas * 0.8) items.push({ type: 'kpi-miss', severity: 'warning', message: `7-day ROAS ${round(roas, 2)}x against ${client.target.roas}x target.`, value: round(roas, 2), baseline: client.target.roas }); }
-      else { const leads = sum(w, 'leads'); const cpl = leads ? sp / leads : Infinity; if (cpl > client.target.cpl * 1.25) items.push({ type: 'kpi-miss', severity: 'warning', message: `7-day CPL ${Number.isFinite(cpl) ? Math.round(cpl) : 'n/a'} against ${client.target.cpl} target.`, value: Number.isFinite(cpl) ? Math.round(cpl) : null, baseline: client.target.cpl }); }
+      if (isE && client.target?.roas) { const roas = sum(w, 'revenue') / sp; if (roas < client.target.roas * 0.8) items.push({ type: 'kpi-miss', severity: 'warning', message: `7-day ROAS ${round(roas, 2)}x against ${client.target.roas}x target.`, value: round(roas, 2), baseline: client.target.roas }); }
+      else if (!isE && client.target?.cpl) { const leads = sum(w, 'leads'); const cpl = leads ? sp / leads : Infinity; if (cpl > client.target.cpl * 1.25) items.push({ type: 'kpi-miss', severity: 'warning', message: `7-day CPL ${Number.isFinite(cpl) ? Math.round(cpl) : 'n/a'} against ${client.target.cpl} target.`, value: Number.isFinite(cpl) ? Math.round(cpl) : null, baseline: client.target.cpl }); }
     }
     // 9. Creative fatigue and learning limited, from entities
     const fatigued = (entities?.ads || []).filter((a) => a.last7?.freq > 3.2 && a.prev7?.ctr && a.last7.ctr < a.prev7.ctr * 0.85 && a.prev7?.cpm && a.last7.cpm > a.prev7.cpm * 1.12 && a.last7.spend > 0);

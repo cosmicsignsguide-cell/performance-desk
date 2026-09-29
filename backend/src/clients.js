@@ -24,7 +24,13 @@ export function normalizeClient(c) {
     active: c.active !== false,
     currency: c.currency || 'INR',
     budget: Number(c.budget) || 0,               // monthly ads budget across platforms
-    target: type === 'ecom' ? { roas: Number(c.target?.roas) || 3 } : { cpl: Number(c.target?.cpl) || 500 },
+    // An unset target is null, not a stand-in. It used to default to 3x ROAS or 500 CPL, which
+    // read everywhere as a number the client had agreed to: the desk raised "KPI miss" against
+    // it and, now that the target is shown on the client's own report, it would have appeared
+    // there as a commitment nobody made. A target has to be entered to exist.
+    target: type === 'ecom'
+      ? { roas: Number(c.target?.roas) > 0 ? Number(c.target.roas) : null }
+      : { cpl: Number(c.target?.cpl) > 0 ? Number(c.target.cpl) : null },
     am: c.am || '',
     contact: c.contact || '',                     // the client's own person, greeted on their report
     accounts: {

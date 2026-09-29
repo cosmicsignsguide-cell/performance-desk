@@ -17,7 +17,7 @@ import * as shopify from './fetchers/shopify.js';
 import * as ga4 from './fetchers/ga4.js';
 import { runSitewatch } from './sitewatch.js';
 import { computeSignals } from './signals.js';
-import { ensureReportTokens, listLinks, reportPayload, reportUrl, resolveToken, rotateReportToken } from './report.js';
+import { ensureReportTokens, listLinks, reportPayload, reportUrl, resolveToken, rotateReportToken, videoUrlFor } from './report.js';
 import { raise } from './alerts.js';
 import Sample from './sample.cjs';
 
@@ -266,8 +266,24 @@ async function main() {
       if (url.pathname.startsWith('/r/')) {
         res.setHeader('Cache-Control', 'no-store');
         res.setHeader('X-Robots-Tag', 'noindex, nofollow');
-        const clientId = await resolveToken(store, url.pathname.slice(3));
-        const data = clientId ? await reportPayload(store, clientId) : null;
+        // /r/<token>            the report feed
+        // /r/<token>/v/<adId>   a playable URL for one video creative of that client
+        const [tok, kind, id] = url.pathname.slice(3).split('/');
+        const clientId = await resolveToken(store, tok);
+        if (!clientId) { res.writeHead(404); res.end('not found'); return; }
+
+        if (kind === 'v') {
+          // The Meta token is used here, on the server, and the browser is sent on to the signed
+          // file. Nothing that identifies the account or authorises anything reaches the page.
+          const src = await videoUrlFor(store, clientId, id);
+          if (!src) { res.writeHead(404); res.end('not found'); return; }
+          res.writeHead(302, { Location: src });
+          res.end();
+          return;
+        }
+        if (kind) { res.writeHead(404); res.end('not found'); return; }
+
+        const data = await reportPayload(store, clientId);
         if (!data) { res.writeHead(404); res.end('not found'); return; }
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify(data));

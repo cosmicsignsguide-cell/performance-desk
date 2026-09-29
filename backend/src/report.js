@@ -13,6 +13,7 @@
 
 import crypto from 'node:crypto';
 import { addDays, nowIso, round, todayStr } from './util.js';
+import * as meta from './fetchers/meta.js';
 
 const DAYS = 95;                 // enough for this month, last month, and a 90-day trend
 const newToken = () => crypto.randomBytes(24).toString('base64url');   // 192 bits
@@ -125,6 +126,21 @@ export async function resolveToken(store, token) {
   return row.clientId;
 }
 
+// A playable URL for one of this client's video creatives.
+//
+// Two checks before Meta is ever called, because this route is reachable by anyone holding a
+// report link: the token must resolve to a client, and the ad id must belong to THAT client's
+// own entity tree. Without the second check a client with a valid link could read any ad id off
+// another client's account by guessing, which is the same cross-client leak the payload
+// allow-list exists to prevent. An id that is not in the tree is treated as not found.
+export async function videoUrlFor(store, clientId, adId) {
+  if (!clientId || !/^\d{5,25}$/.test(String(adId || ''))) return '';
+  const ent = await store.get('entities', clientId);
+  const ad = (ent?.ads || []).find((a) => String(a.id) === String(adId));
+  if (!ad || !ad.videoId) return '';
+  return meta.videoSource(ad.videoId);
+}
+
 export async function reportPayload(store, clientId) {
   const c = await store.get('clients', clientId);
   if (!c || c.active === false) return null;
@@ -160,29 +176,52 @@ export async function reportPayload(store, clientId) {
     revenue: round(x.revenue || 0), roas: roasOf(x), cpl: cplOf(x),
   }));
 
-  const creatives = top(ent.ads, 5).map((x) => ({
-    name: cleanName(x.name, c.name, 'ad'),
-    format: x.format || (x.isVideo ? 'Video' : 'Static'),
-    // fbcdn thumbnail links are signed and expire, so the page must survive a dead image.
-    // They are refreshed on every sync, which is one more reason the schedules matter.
-    thumb: x.thumb || '',
-    spend: round(x.spend), purchases: x.purchases || 0, leads: x.leads || 0,
-    revenue: round(x.revenue || 0), roas: roasOf(x), cpl: cplOf(x),
-    ctr: x.ctr || 0,
-  }));
+  // Creatives carry a filter on the page, so enough of them are sent to filter through: the
+  // spending ones the client came to see, and the paused and never-run ones behind a chip. Still
+  // ranked by what each brought back, so the head of the list is the same whichever chip is on.
+  const creatives = (ent.ads || []).slice()
+    .sort((a, b) => score(b) - score(a) || (b.spend || 0) - (a.spend || 0))
+    .slice(0, 40)
+    .map((x) => ({
+      id: x.id,
+      name: cleanName(x.name, c.name, 'ad'),
+      format: x.format || (x.isVideo ? 'Video' : 'Static'),
+      // ACTIVE, PAUSED, DISAPPROVED and so on, lowercased. The page groups these into the three
+      // states a client cares about rather than showing Meta's vocabulary.
+      status: String(x.status || '').toLowerCase(),
+      isVideo: !!x.isVideo,
+      // Whether a play button should appear. The playable file is fetched through this server
+      // when the client presses play, so no Meta token is ever put on the page.
+      hasVideo: !!(x.isVideo && x.videoId),
+      // fbcdn thumbnail links are signed and expire, so the page must survive a dead image.
+      // They are refreshed on every sync, which is one more reason the schedules matter.
+      thumb: x.thumb || '',
+      spend: round(x.spend || 0), purchases: x.purchases || 0, leads: x.leads || 0,
+      revenue: round(x.revenue || 0), roas: roasOf(x), cpl: cplOf(x),
+      ctr: x.ctr || 0,
+    }));
 
   const products = (ent.products || []).slice()
     .sort((a, b) => (b.revenue || 0) - (a.revenue || 0)).slice(0, 5)
     .map((p) => ({ title: p.title || 'Product', revenue: round(p.revenue || 0), units: p.units || 0, orders: p.orders || 0, image: p.image || '', price: round(p.price || 0) }));
 
-  // The client's own name for themselves, never the internal slug, and never the AM, the
-  // budget or the target: those are the agency's side of the relationship, not the client's.
+  // Budget and target now go to the client, by decision: they are what was agreed, so the client
+  // is entitled to see the month measured against them. Both are sent only when they are actually
+  // set on the client record. An unset target used to fall back to 3x, which put an invented
+  // number on a page the client reads as a commitment; nothing is invented here, and the page
+  // says "not set" rather than guessing. The AM and the internal slug still stay out.
+  const target = c.type === 'lead' ? (c.target?.cpl ?? null) : (c.target?.roas ?? null);
   return {
     top: { window: 'last 30 days', campaigns, creatives, products },
     agency: process.env.DESK_AGENCY_NAME || 'Per4mance Guru',
     agencySite: process.env.DESK_AGENCY_SITE || 'https://per4mance.guru',
     // contact is the client's own person, so it belongs to them; am stays out, it is ours.
-    client: { name: c.name, currency: c.currency || 'INR', type: c.type === 'lead' ? 'lead' : 'ecom', contact: c.contact || '' },
+    client: {
+      name: c.name, currency: c.currency || 'INR', type: c.type === 'lead' ? 'lead' : 'ecom',
+      contact: c.contact || '',
+      budget: Number(c.budget) > 0 ? Number(c.budget) : null,
+      target: Number(target) > 0 ? Number(target) : null,
+    },
     today,
     generatedAt: nowIso(),
     daily,
