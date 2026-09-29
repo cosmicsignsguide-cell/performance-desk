@@ -14,6 +14,17 @@ const ABANDONED_Q = `query DeskAbandoned($q: String!, $after: String) { abandone
 const PRODUCTS_Q = `query DeskProducts($ids: [ID!]!) { nodes(ids: $ids) { ... on Product { id title totalInventory featuredMedia { preview { image { url } } } variants(first: 1) { nodes { price } } } } }`;
 const SHOP_Q = `query DeskShop { shop { name myshopifyDomain currencyCode ianaTimezone plan { publicDisplayName } primaryDomain { url } } }`;
 
+// ShopifyQL against Shopify's own reporting engine. This is the whole point: gross sales, discounts,
+// returns and net sales come back already defined the way the merchant sees them in Analytics, so the
+// dashboard cannot drift from their reports. Computing these from raw orders was wrong three separate
+// ways at once (tax sat inside the subtotal, refunds were credited to the order's date rather than the
+// refund's, and the current* money fields keep changing after the row is stored), and every one of
+// those bugs pushed net sales UP, which is the direction a performance dashboard must never be wrong in.
+// Needs the read_reports scope; where a store's token predates it, fetchDaily quietly keeps the old
+// per-order arithmetic so that client does not simply go blank.
+const SALES_QL = (since, until) =>
+  `FROM sales SHOW orders, gross_sales, discounts, returns, net_sales TIMESERIES day SINCE ${since} UNTIL ${until}`;
+
 async function gql(client, query, variables) {
   const token = shopifyTokenFor(client);
   if (!token) throw new Error('no shopify token');
@@ -38,6 +49,36 @@ async function allPages(client, query, q, key) {
 // Dates in the desk timezone. Shopify query dates are interpreted in the shop timezone; we pass ISO with offset.
 function dayOf(iso) { return new Date(iso).toLocaleDateString('en-CA', { timeZone: config.tz }); }
 
+// Returns { 'YYYY-MM-DD': {orders, grossSales, discounts, refunds, netSales} }, or null when this
+// store's token cannot read reports. Discounts and returns come back negative from ShopifyQL; they
+// are stored positive here so the dashboard can show "returned" as a quantity rather than a subtraction.
+async function salesByDay(client, since, until) {
+  let body;
+  try {
+    body = await gql(client, `query DeskSales($q: String!) { shopifyqlQuery(query: $q) { parseErrors tableData { columns { name } rows } } }`, { q: SALES_QL(since, until) });
+  } catch (e) {
+    log(`shopify ${client.id}: reports unavailable (${String(e.message || e).slice(0, 120)}), falling back to per-order totals`);
+    return null;
+  }
+  const res = body?.shopifyqlQuery;
+  if (res?.parseErrors?.length) { log(`shopify ${client.id}: ShopifyQL rejected the query (${res.parseErrors.join('; ')})`); return null; }
+  const rows = res?.tableData?.rows;
+  if (!Array.isArray(rows)) { log(`shopify ${client.id}: reports returned no table, falling back to per-order totals`); return null; }
+  const out = {};
+  for (const r of rows) {
+    const d = String(r.day || r.date || '').slice(0, 10);
+    if (!d) continue;
+    out[d] = {
+      orders: Math.round(num(r.orders)),
+      grossSales: round(num(r.gross_sales)),
+      discounts: round(Math.abs(num(r.discounts))),
+      refunds: round(Math.abs(num(r.returns))),
+      netSales: round(num(r.net_sales)),
+    };
+  }
+  return out;
+}
+
 export async function fetchDaily(client, since, until) {
   const off = tzOffset();
   const q = `created_at:>='${since}T00:00:00${off}' created_at:<='${until}T23:59:59${off}'`;
@@ -53,7 +94,12 @@ export async function fetchDaily(client, since, until) {
     const d = dayOf(o.createdAt); const r = row(d);
     r.checkoutsStarted += 1;
     if (o.cancelledAt || o.displayFinancialStatus === 'VOIDED') continue;
-    const gross = num(o.currentTotalPriceSet?.shopMoney?.amount), net = num(o.currentSubtotalPriceSet?.shopMoney?.amount), refunded = num(o.totalRefundedSet?.shopMoney?.amount);
+    const gross = num(o.currentTotalPriceSet?.shopMoney?.amount), subtotal = num(o.currentSubtotalPriceSet?.shopMoney?.amount), refunded = num(o.totalRefundedSet?.shopMoney?.amount);
+    // Net sales is after returns, the way Shopify's own reports define it. Leaving refunds out
+    // inflated net sales, and with them AOV, MER and ROAS, which is the one direction a
+    // performance dashboard must never be wrong in. Refunds stay on the row as well so the
+    // return rate can be read on its own.
+    const net = Math.max(0, subtotal - refunded);
     r.orders += 1; r.grossSales += gross; r.netSales += net; r.refunds += refunded;
     if (o.customerJourneySummary?.customerOrderIndex === 1 || (!o.customerJourneySummary && o.customer?.numberOfOrders === 1)) r.newCustomerOrders += 1;
     for (const li of o.lineItems?.nodes || []) {
@@ -65,7 +111,13 @@ export async function fetchDaily(client, since, until) {
     }
   }
   for (const a of abandoned) { if (!a.completedAt) row(dayOf(a.createdAt)).checkoutsStarted += 1; }
-  const rows = Object.values(byDay).map((r) => ({ ...r, grossSales: round(r.grossSales), netSales: round(r.netSales), refunds: round(r.refunds) }));
+
+  // Shopify's own figures win wherever it will give them. The per-order pass above still supplies
+  // units, first-time buyers, checkouts started and the product list, none of which ShopifyQL carries.
+  const sales = await salesByDay(client, since, until);
+  if (sales) for (const d in sales) { if (byDay[d]) Object.assign(byDay[d], sales[d]); }
+
+  const rows = Object.values(byDay).map((r) => ({ ...r, grossSales: round(r.grossSales), netSales: round(r.netSales), discounts: round(r.discounts || 0), refunds: round(r.refunds) }));
   // Recent orders feed: the last two days, newest first, for the dashboard's Orders tab.
   const cutoff = addDays(until, -1);
   const recentOrders = orders.filter((o) => dayOf(o.createdAt) >= cutoff).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, 60).map((o) => ({
