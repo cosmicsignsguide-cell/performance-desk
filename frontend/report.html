@@ -38,7 +38,16 @@
   --warn:#96650F;
   --shadow:rgba(34,31,25,.05);
   --shadow-2:rgba(34,31,25,.09);
+  /* Spend and what came back are the two things being compared, so they get two colours that
+     cannot be mistaken for each other. Spend is teal, which is vermilion's opposite and so
+     separates at a glance even for the red-green colour blind; what came back stays the agency
+     vermilion. The old chart had pale beige bars against a pale red wash, which is why nothing
+     in it could be read. */
+  --bar:#4E8C85;
+  --bar-hi:#356B65;
 }
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){ --bar:#5FA79E; --bar-hi:#86C4BC; } }
+:root[data-theme="dark"]{ --bar:#5FA79E; --bar-hi:#86C4BC; }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     color-scheme:dark;
@@ -162,7 +171,7 @@ table.split{width:100%;border-collapse:collapse;font-size:13px}
 .split tr:last-child td{border-bottom:0;font-weight:800}
 .split .pf{display:inline-flex;align-items:center;gap:7px}
 .swatch{width:9px;height:9px;border-radius:2px;background:var(--accent);flex:none}
-.swatch.g{background:var(--ink-2)} .swatch.t{background:var(--rule-2)}
+.swatch.g{background:var(--ink-2)} .swatch.t{background:var(--rule-2)} .swatch.spend{background:var(--bar)}
 
 /* two ways of counting ------------------------------------------------------- */
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -179,6 +188,31 @@ table.split{width:100%;border-collapse:collapse;font-size:13px}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .legend .pk{margin-left:auto;color:var(--ink-3)}
 svg{display:block;width:100%;height:auto;max-width:100%}
+
+/* A chart with only its two end dates labelled is a shape, not a figure. Gridlines give every
+   bar a value you can read without touching anything; the hover gives the exact day. Both,
+   rather than one, because a printed or screenshotted copy has no hover. */
+.chartwrap{position:relative}
+.chartwrap svg{cursor:crosshair}
+/* Pinned to the top of the plot and placed to whichever side of the hovered day has more room,
+   so it never sits on top of the point it is describing and never jumps around vertically while
+   the mouse moves along the chart. */
+.tip{position:absolute;top:4px;z-index:6;pointer-events:none;opacity:0;transition:opacity .12s;
+  background:var(--paper);border:1px solid var(--rule-2);border-radius:9px;padding:8px 11px 9px;
+  box-shadow:0 10px 24px -10px var(--shadow-2);white-space:nowrap;max-width:100%}
+.tip.on{opacity:1}
+.tip .td{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);
+  margin-bottom:5px}
+.tip .tl{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;margin-top:3px}
+.tip .tl i{width:8px;height:8px;border-radius:2px;flex:none;font-style:normal}
+.tip .tl b{margin-left:auto;padding-left:14px;font-weight:700}
+.tip .tr{margin-top:6px;padding-top:5px;border-top:1px solid var(--rule);font-size:11.5px;color:var(--ink-3)}
+.tip .tr b{color:var(--accent);font-weight:700}
+.gridline{stroke:var(--rule);stroke-width:1}
+.gridtext{font-family:Archivo,sans-serif;font-size:10px;fill:var(--ink-3)}
+.guide{stroke:var(--ink-3);stroke-width:1;stroke-dasharray:3 3;opacity:0}
+.guide.on{opacity:.65}
+.focusdot{opacity:0} .focusdot.on{opacity:1}
 @keyframes drawline{to{stroke-dashoffset:0}}
 .drawn{animation:drawline 1.05s cubic-bezier(.22,.61,.36,1) forwards}
 
@@ -409,6 +443,7 @@ function render(){
 
   document.getElementById('board').innerHTML=h;
   animate();
+  bindChart();
 }
 
 // Two pieces of motion, both doing a job: the headline figures settle into place so the eye lands
@@ -660,35 +695,127 @@ function chartPanel(rows,p,c,isE){
   }
   if(!pts.some(function(x){return x.spend||x.ret})) return '';
 
-  var W=760,H=188,L=8,R=8,T=12,B=24;
+  // Left margin carries the value labels. Without them the whole chart is a shape with no
+  // quantity attached to it, which was the state it shipped in.
+  var W=760,H=196,L=54,R=10,T=14,B=24;
   var iw=W-L-R, ih=H-T-B;
   var max=Math.max.apply(null,pts.map(function(x){return Math.max(x.spend,x.ret)}))||1;
   var bw=iw/pts.length;
-  var bars='', line='';
+  var fmtV=function(v){ return isE?money(v,cur):num(v); };
+
+  // One unit for the whole axis, chosen from the peak. money() switches unit at a lakh on its
+  // own, which would otherwise label the same axis "₹62,817" and "₹1.26 L" and make the reader
+  // do the conversion between two adjacent labels.
+  var sym=SYM[cur]||((cur||'')+' ');
+  var axis;
+  if(!isE) axis=function(v){ return num(v); };
+  else if(cur==='INR'&&max>=1e7) axis=function(v){ return sym+(v/1e7).toFixed(2)+' Cr'; };
+  else if(cur==='INR'&&max>=1e5) axis=function(v){ return sym+(v/1e5).toFixed(2)+' L'; };
+  else if(cur!=='INR'&&max>=1e6) axis=function(v){ return sym+(v/1e6).toFixed(2)+'M'; };
+  else axis=function(v){ return sym+Math.round(v).toLocaleString(cur==='INR'?'en-IN':'en-US'); };
+
+  // Gridlines at a fixed fraction of the peak, labelled, so any bar can be read off the page
+  // with nothing hovered, including on a printout or a screenshot.
+  var grid='';
+  [0,0.5,1].forEach(function(f){
+    var y=T+ih-f*ih;
+    grid+='<line class="gridline" x1="'+L+'" y1="'+y.toFixed(1)+'" x2="'+(W-R)+'" y2="'+y.toFixed(1)+'"></line>'
+       +  '<text class="gridtext" x="'+(L-8)+'" y="'+(y+3.5).toFixed(1)+'" text-anchor="end">'+esc(f?axis(max*f):(isE?sym+'0':'0'))+'</text>';
+  });
+
+  var bars='', line='', hits='';
   pts.forEach(function(x,i){
-    var bh=x.spend/max*ih, bx=L+i*bw+bw*0.24, bwid=bw*0.52;
-    bars+='<rect x="'+bx.toFixed(1)+'" y="'+(T+ih-bh).toFixed(1)+'" width="'+bwid.toFixed(1)+'" height="'+Math.max(0,bh).toFixed(1)+'" rx="1" fill="var(--rule-2)"></rect>';
+    var bh=x.spend/max*ih, bx=L+i*bw+bw*0.24, bwid=Math.max(1.5,bw*0.52);
+    bars+='<rect class="bar" data-i="'+i+'" x="'+bx.toFixed(1)+'" y="'+(T+ih-bh).toFixed(1)+'" width="'+bwid.toFixed(1)+'" height="'+Math.max(0,bh).toFixed(1)+'" rx="1.5" fill="var(--bar)"></rect>';
     var cx=L+i*bw+bw/2, cy=T+ih-(x.ret/max*ih);
     line+=(i?' L':'M')+cx.toFixed(1)+' '+cy.toFixed(1);
+    hits+='<rect x="'+(L+i*bw).toFixed(1)+'" y="'+T+'" width="'+bw.toFixed(1)+'" height="'+ih+'" fill="transparent"></rect>';
   });
   var area=line+' L'+(L+iw-bw/2).toFixed(1)+' '+(T+ih)+' L'+(L+bw/2).toFixed(1)+' '+(T+ih)+' Z';
   var first=pts[0], last=pts[pts.length-1];
   var fmtD=function(s){ var m=+s.slice(5,7); return +s.slice(8,10)+' '+MONTHS[m-1].slice(0,3); };
   var retLabel = isE? (anyShop?'Net sales':'Revenue reported') : 'Enquiries';
 
-  return '<div class="panel c7"><h2>Day by day<em>'+(pts.length<=45?'per day':'per week')+'</em></h2>'
-   + '<div class="legend"><span><i class="swatch t"></i>Ad spend</span>'
+  // Handed to the hover code, which needs the geometry to turn a mouse position into a day.
+  CHART={pts:pts,W:W,L:L,T:T,ih:ih,bw:bw,max:max,cur:cur,isE:isE,retLabel:retLabel,
+    weekly:pts.length!==days.length};
+
+  return '<div class="panel c7"><h2>Day by day<em>'+(CHART.weekly?'per week, hover for a week':'per day, hover for a day')+'</em></h2>'
+   + '<div class="legend"><span><i class="swatch spend"></i>Ad spend</span>'
    + '<span><i class="swatch"></i>'+esc(retLabel)+'</span>'
-   + '<span class="pk">Peak '+esc(isE?money(max,cur):num(max))+'</span></div>'
-   + '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(retLabel+' against ad spend, peak '+(isE?money(max,cur):num(max)))+'">'
-   + '<line x1="'+L+'" y1="'+(T+ih)+'" x2="'+(W-R)+'" y2="'+(T+ih)+'" stroke="var(--rule-2)" stroke-width="1"></line>'
+   + '<span class="pk">Peak '+esc(fmtV(max))+'</span></div>'
+   + '<div class="chartwrap" id="cwrap">'
+   + '<svg id="csvg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(retLabel+' against ad spend, peak '+fmtV(max))+'">'
+   + grid
+   + '<line class="guide" id="cguide" x1="0" y1="'+T+'" x2="0" y2="'+(T+ih)+'"></line>'
    + bars
-   + '<path d="'+area+'" fill="var(--accent)" opacity="0.10"></path>'
-   + '<path class="trendline" d="'+line+'" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>'
+   + '<path d="'+area+'" fill="var(--accent)" opacity="0.09"></path>'
+   + '<path class="trendline" d="'+line+'" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"></path>'
    + '<circle cx="'+(L+iw-bw/2).toFixed(1)+'" cy="'+(T+ih-(last.ret/max*ih)).toFixed(1)+'" r="3.2" fill="var(--accent)"></circle>'
-   + '<text x="'+L+'" y="'+(H-7)+'" font-size="10.5" fill="var(--ink-3)" font-family="Archivo,sans-serif">'+esc(fmtD(first.date))+'</text>'
-   + '<text x="'+(W-R)+'" y="'+(H-7)+'" text-anchor="end" font-size="10.5" fill="var(--ink-3)" font-family="Archivo,sans-serif">'+esc(fmtD(last.date))+'</text>'
-   + '</svg></div>';
+   + '<circle class="focusdot" id="cdot" r="4.5" fill="var(--accent)" stroke="var(--paper)" stroke-width="2"></circle>'
+   + '<text x="'+L+'" y="'+(H-6)+'" font-size="10.5" fill="var(--ink-3)" font-family="Archivo,sans-serif">'+esc(fmtD(first.date))+'</text>'
+   + '<text x="'+(W-R)+'" y="'+(H-6)+'" text-anchor="end" font-size="10.5" fill="var(--ink-3)" font-family="Archivo,sans-serif">'+esc(fmtD(last.date))+'</text>'
+   + '<g id="chits">'+hits+'</g>'
+   + '</svg><div class="tip" id="ctip"></div></div></div>';
+}
+
+// Hover. The chart is drawn in viewBox units and displayed at whatever width the panel is, so a
+// mouse position is converted back into viewBox units before it is turned into a day index.
+// Pointer events rather than mouse events, so a tap on a phone reads a day too.
+var CHART=null;
+function bindChart(){
+  var svg=document.getElementById('csvg'), tip=document.getElementById('ctip'),
+      guide=document.getElementById('cguide'), dot=document.getElementById('cdot'),
+      wrap=document.getElementById('cwrap');
+  if(!svg||!CHART) return;
+  var bars=svg.querySelectorAll('.bar'), shown=-1;
+
+  function hide(){
+    shown=-1; tip.className='tip'; guide.classList.remove('on'); dot.classList.remove('on');
+    for(var i=0;i<bars.length;i++) bars[i].setAttribute('fill','var(--bar)');
+  }
+  function show(i){
+    var C=CHART, p=C.pts[i];
+    if(!p) return;
+    if(i!==shown){
+      for(var k=0;k<bars.length;k++) bars[k].setAttribute('fill', k===i?'var(--bar-hi)':'var(--bar)');
+      shown=i;
+    }
+    var cx=C.L+i*C.bw+C.bw/2, cy=C.T+C.ih-(p.ret/C.max*C.ih);
+    guide.setAttribute('x1',cx); guide.setAttribute('x2',cx); guide.classList.add('on');
+    dot.setAttribute('cx',cx); dot.setAttribute('cy',cy); dot.classList.add('on');
+
+    var ratio = p.spend? p.ret/p.spend : 0;
+    var d=new Date(p.date+'T12:00:00Z');
+    var DAY=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    var head = C.weekly
+      ? 'Week of '+d.getUTCDate()+' '+MONTHS[d.getUTCMonth()].slice(0,3)
+      : DAY[d.getUTCDay()]+', '+d.getUTCDate()+' '+MONTHS[d.getUTCMonth()].slice(0,3);
+    tip.innerHTML='<div class="td">'+esc(head)+'</div>'
+      + '<div class="tl"><i style="background:var(--bar)"></i>Ad spend<b>'+(C.isE?exact(p.spend,C.cur):num(p.spend))+'</b></div>'
+      + '<div class="tl"><i style="background:var(--accent)"></i>'+esc(C.retLabel)+'<b>'+(C.isE?exact(p.ret,C.cur):num(p.ret))+'</b></div>'
+      + (C.isE&&p.spend? '<div class="tr">Returned <b>'+xx(ratio)+'</b> on '+(C.weekly?'the week’s':'that day’s')+' spend</div>' : '');
+    tip.className='tip on';   // made visible first so offsetHeight below is the real height
+
+    // Placed on whichever side of the hovered day has more room, then clamped into the panel.
+    // The plot is only about 200px tall, so anything sitting above or below the point covers
+    // either the line or the bars; to the side it covers neither.
+    var r=svg.getBoundingClientRect(), wr=wrap.getBoundingClientRect(), sc=r.width/C.W;
+    var px=cx*sc, tw=tip.offsetWidth;
+    var left = (px < wr.width/2) ? px+14 : px-14-tw;
+    tip.style.left=Math.max(2,Math.min(wr.width-tw-2,left))+'px';
+  }
+  function at(e){
+    var C=CHART, r=svg.getBoundingClientRect();
+    if(!r.width) return;
+    var x=(e.clientX-r.left)/r.width*C.W;
+    var i=Math.floor((x-C.L)/C.bw);
+    if(i<0||i>=C.pts.length){ hide(); return; }
+    show(i);
+  }
+  svg.addEventListener('pointermove',at);
+  svg.addEventListener('pointerdown',at);
+  svg.addEventListener('pointerleave',hide);
 }
 
 /* --- top five -------------------------------------------------------------- */
