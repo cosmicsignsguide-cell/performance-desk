@@ -1036,5 +1036,29 @@
     },
     "active": true,
     "contact": ""
+  },
+  {
+    "id": "hnl-india",
+    "name": "H&L IND",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 500000,
+    "target": {
+      "roas": 3.0
+    },
+    "am": "",
+    "accounts": {
+      "meta": "675477810231935",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "https://hideandleather.com",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
   }
 ]
