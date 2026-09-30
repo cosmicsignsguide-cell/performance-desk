@@ -310,7 +310,32 @@ async function main() {
       return { mode, clients: list.length, ...(only ? { client: only } : {}), ...(failures.length ? { failures } : {}) };
     }
 
-    http.createServer(async (req, res) => {
+    // Every request is wrapped, because until this existed a single Firestore failure took the
+    // whole API down: the rejection went unhandled, node exited, Render restarted it, and the next
+    // request killed it again. Health flapped between 200 and 502 and nothing said why. A broken
+    // dependency should make the desk answer "I cannot reach the store", not disappear.
+    http.createServer((req, res) => { handle(req, res).catch((e) => {
+      const msg = String(e && e.message || e);
+      log(`request ${req.method} ${String(req.url).split('?')[0]} FAILED: ${msg.slice(0, 300)}`);
+      // ACCOUNT_STATE_INVALID, UNAUTHENTICATED and PERMISSION_DENIED from googleapis all mean the
+      // service account itself has been rejected. That is a credential problem in the Google
+      // project, not a bad request, so it is named rather than buried in a generic 500.
+      const cred = /ACCOUNT_STATE_INVALID|UNAUTHENTICATED|PERMISSION_DENIED|invalid_grant/i.test(msg);
+      try {
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: cred ? 'datastore credential rejected' : 'request failed', detail: msg.slice(0, 400) }));
+      } catch { /* response already gone */ }
+    }); }).listen(port, () => log(`desk api listening on ${port} (/sync, /run, /health)`));
+
+    // The last line of defence. A background run started by /run has no request to answer to, so
+    // a rejection inside it would otherwise still kill the process. These handlers log and carry
+    // on: a failed sync must cost that sync, never the service. Deliberately not wrapped around
+    // startup errors, which should still stop the process, because a desk that cannot read its
+    // own clients file has nothing useful to serve.
+    process.on('unhandledRejection', (e) => log(`unhandled rejection: ${String(e && e.message || e).slice(0, 300)}`));
+    process.on('uncaughtException', (e) => log(`uncaught exception: ${String(e && e.message || e).slice(0, 300)}`));
+
+    async function handle(req, res) {
       res.setHeader('Access-Control-Allow-Origin', process.env.DESK_ALLOWED_ORIGIN || '*');
       res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -427,7 +452,7 @@ async function main() {
       try { const r = await runMode(mode, days, url); res.end(JSON.stringify({ ok: true, ...r })); }
       catch (e) { res.writeHead(500); res.end(String(e.message || e)); }
       finally { running.delete(lock); }
-    }).listen(port, () => log(`desk api listening on ${port} (/sync, /run, /health)`));
+    }
     return;
   }
 
