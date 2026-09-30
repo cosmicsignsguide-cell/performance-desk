@@ -70,7 +70,7 @@
       "ga4": ""
     },
     "site": {
-      "url": "",
+      "url": "https://www.franklywearing.com",
       "productPath": "",
       "expectText": ""
     },
@@ -142,7 +142,7 @@
       "ga4": ""
     },
     "site": {
-      "url": "",
+      "url": "https://mackly.com",
       "productPath": "",
       "expectText": ""
     },
@@ -166,7 +166,7 @@
       "ga4": ""
     },
     "site": {
-      "url": "https://tresnova.com",
+      "url": "https://www.tresnova.com",
       "productPath": "",
       "expectText": ""
     },
@@ -214,7 +214,7 @@
       "ga4": ""
     },
     "site": {
-      "url": "",
+      "url": "https://zayma.in",
       "productPath": "",
       "expectText": ""
     },
@@ -262,7 +262,7 @@
       "ga4": ""
     },
     "site": {
-      "url": "",
+      "url": "https://hideandleather.com",
       "productPath": "",
       "expectText": ""
     },
@@ -286,7 +286,7 @@
       "ga4": ""
     },
     "site": {
-      "url": "",
+      "url": "https://whimsyindia.com",
       "productPath": "",
       "expectText": ""
     },
@@ -310,7 +310,7 @@
       "ga4": ""
     },
     "site": {
-      "url": "",
+      "url": "https://whimsyindia.com",
       "productPath": "",
       "expectText": ""
     },
@@ -406,7 +406,7 @@
       "ga4": ""
     },
     "site": {
-      "url": "",
+      "url": "https://fashioncolour.in",
       "productPath": "",
       "expectText": ""
     },
@@ -430,7 +430,7 @@
       "ga4": ""
     },
     "site": {
-      "url": "",
+      "url": "https://fashioncolour.in",
       "productPath": "",
       "expectText": ""
     },
@@ -454,7 +454,7 @@
       "ga4": ""
     },
     "site": {
-      "url": "",
+      "url": "https://assemblytravel.com",
       "productPath": "",
       "expectText": ""
     },
@@ -478,7 +478,7 @@
       "ga4": ""
     },
     "site": {
-      "url": "",
+      "url": "https://assemblytravel.com",
       "productPath": "",
       "expectText": ""
     },
@@ -502,7 +502,7 @@
       "ga4": ""
     },
     "site": {
-      "url": "",
+      "url": "https://assemblytravel.com",
       "productPath": "",
       "expectText": ""
     },
@@ -526,7 +526,7 @@
       "ga4": ""
     },
     "site": {
-      "url": "",
+      "url": "https://assemblytravel.com",
       "productPath": "",
       "expectText": ""
     },
@@ -550,7 +550,7 @@
       "ga4": ""
     },
     "site": {
-      "url": "",
+      "url": "https://hideandleather.com",
       "productPath": "",
       "expectText": ""
     },
@@ -574,7 +574,7 @@
       "ga4": ""
     },
     "site": {
-      "url": "",
+      "url": "https://www.dhanuka.com",
       "productPath": "",
       "expectText": ""
     },
@@ -584,11 +584,11 @@
   {
     "id": "honestenergy",
     "name": "Honest Energy+",
-    "type": "lead",
+    "type": "ecom",
     "currency": "INR",
     "budget": 0,
     "target": {
-      "cpl": null
+      "roas": null
     },
     "am": "",
     "accounts": {
@@ -598,7 +598,7 @@
       "ga4": ""
     },
     "site": {
-      "url": "",
+      "url": "https://honestenergyplus.com",
       "productPath": "",
       "expectText": ""
     },
@@ -622,7 +622,7 @@
       "ga4": ""
     },
     "site": {
-      "url": "",
+      "url": "https://www.brahmaverse.ai",
       "productPath": "",
       "expectText": ""
     },
@@ -670,7 +670,7 @@
       "ga4": ""
     },
     "site": {
-      "url": "",
+      "url": "https://www.oneverse.io",
       "productPath": "",
       "expectText": ""
     },

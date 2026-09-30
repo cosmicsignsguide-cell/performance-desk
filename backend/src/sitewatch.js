@@ -57,6 +57,14 @@ export async function checkSiteLight(client) {
 
   const home = await timed(async () => {
     const res = await req(url, { timeout: T });
+    // A bot wall is not an outage. Some stores sit behind AWS WAF or Cloudflare, which answer a
+    // non-browser request with 403/405 and a challenge while serving real customers normally.
+    // Treating that as "site down" would light the account red every hour forever, and an alert
+    // that is always on is an alert nobody reads. Reported as a skip so it is visible, not hidden.
+    const wafHeader = res.headers.get('x-amzn-waf-action') || res.headers.get('cf-mitigated') || '';
+    if (wafHeader || ([403, 405, 429].includes(res.status) && !res.ok)) {
+      return `skipped: bot protection answered HTTP ${res.status}${wafHeader ? ' (' + wafHeader + ')' : ''}, real visitors unaffected`;
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     html = await res.text();
     if (/enter using password|opening soon/i.test(html)) throw new Error('store is password protected');
