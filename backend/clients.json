@@ -261,7 +261,10 @@
     "accounts": {
       "meta": "198147135387697",
       "google": "",
-      "shopify": null,
+      "shopify": {
+        "shop": "hide-and-leather-online.myshopify.com",
+        "tokenEnv": "SHOPIFY_TOKEN_HIDELEATHER"
+      },
       "ga4": ""
     },
     "site": {
