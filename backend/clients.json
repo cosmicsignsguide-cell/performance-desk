@@ -988,5 +988,53 @@
     },
     "active": false,
     "contact": ""
+  },
+  {
+    "id": "tankhapay",
+    "name": "TankhaPay",
+    "type": "lead",
+    "currency": "INR",
+    "budget": 500000,
+    "target": {
+      "cpl": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "10201164623511130",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "jjv",
+    "name": "JJV",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 500000,
+    "target": {
+      "roas": 3.0
+    },
+    "am": "",
+    "accounts": {
+      "meta": "256111917383470",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
   }
 ]
