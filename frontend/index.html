@@ -64,6 +64,46 @@ a{color:var(--cyan)}
    still emits the elements; killing the paint is cheaper and safer than editing the shell. */
 .bg-blobs,.blob,.bg-grid{display:none}
 
+/* ---- Boot screen -----------------------------------------------------------------------------
+   Near-black rather than pure black, because #000 against a warm-white dashboard is a hard cut
+   that reads as a flash. The mark lands first, the wordmark wipes in behind it, and a hairline
+   fills while the data loads. Then the whole plate lifts and scales away, so the dashboard looks
+   like it was underneath the whole time instead of appearing from nowhere. */
+.boot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:#0B0A09;
+  transition:opacity .52s cubic-bezier(.4,0,.2,1),transform .52s cubic-bezier(.4,0,.2,1),visibility .52s;
+  will-change:opacity,transform}
+.boot::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(760px 420px at 50% 46%,rgba(240,100,69,.10),transparent 68%)}
+.boot-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;padding:0 24px}
+.boot-mark{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;
+  font-family:"Inter",sans-serif;font-size:25px;font-weight:800;letter-spacing:-.05em;color:#fff;background:#F06445;
+  box-shadow:0 0 0 0 rgba(240,100,69,.45);
+  animation:bootMark .62s cubic-bezier(.2,1.25,.35,1) both,bootHalo 2.1s ease-out .5s infinite}
+@keyframes bootMark{from{opacity:0;transform:scale(.55) translateY(8px)}to{opacity:1;transform:none}}
+@keyframes bootHalo{0%{box-shadow:0 0 0 0 rgba(240,100,69,.34)}70%{box-shadow:0 0 0 22px rgba(240,100,69,0)}100%{box-shadow:0 0 0 0 rgba(240,100,69,0)}}
+.boot-word{margin-top:26px;font-family:"Inter",sans-serif;font-size:clamp(26px,4.6vw,42px);font-weight:800;
+  letter-spacing:.02em;line-height:1;color:#F7F4F0;white-space:nowrap;
+  clip-path:inset(0 100% 0 0);animation:bootWipe .72s cubic-bezier(.22,.9,.28,1) .26s both}
+.boot-word i{font-style:normal;color:#F06445}
+@keyframes bootWipe{to{clip-path:inset(0 0 0 0)}}
+.boot-sub{margin-top:14px;font-family:"DM Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9.5px;
+  text-transform:uppercase;letter-spacing:.34em;color:#8C8780;white-space:nowrap;
+  animation:bootFade .6s ease-out .62s both}
+@keyframes bootFade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+/* The hairline is a real signal: it creeps to 88% on its own, then the app's own ready callback
+   drives it home. A progress bar that lies about progress is worse than none. */
+.boot-rule{margin-top:30px;width:min(212px,52vw);height:1px;background:rgba(255,255,255,.10);overflow:hidden;display:block}
+.boot-rule i{display:block;height:100%;width:0;background:#F06445;
+  animation:bootFill 2.4s cubic-bezier(.16,.72,.24,1) .34s both}
+@keyframes bootFill{to{width:88%}}
+.boot.done .boot-rule i{width:100%;transition:width .3s ease-out}
+.boot.leaving{opacity:0;transform:scale(1.035);visibility:hidden;pointer-events:none}
+/* Nothing here is load-bearing, so anyone who asked for less motion gets the dashboard directly. */
+@media (prefers-reduced-motion:reduce){
+  .boot{display:none}
+  .boot-mark,.boot-word,.boot-sub,.boot-rule i{animation:none}
+}
+
 /* Surfaces. No blur, no gradient, no inner sheen: a white card, a hairline, and one soft shadow. */
 .glass{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--lift-1)}
 .glass-panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:24px 26px;position:relative;transition:border-color .18s ease,box-shadow .18s ease;min-width:0;box-shadow:var(--lift-1)}
@@ -709,6 +749,61 @@ textarea.upd{width:100%;min-height:240px;border:1px solid var(--border);border-r
 </style>
 </head>
 <body>
+<!-- Boot screen. It is not only a title card: the desk signs in to Firebase and pulls every
+     client's rows before it can draw anything, and without this the first second of the morning
+     is a blank warm-white page. So the overlay holds until the app has actually painted, and the
+     animation is timed to the wait rather than the wait being padded to fit the animation.
+     Leaves on click, on any key, or on a hard 3.2s failsafe, whichever comes first. -->
+<div id="boot" class="boot" role="presentation">
+  <div class="boot-inner">
+    <span class="boot-mark">4</span>
+    <span class="boot-word">PER<i>4</i>MANCE</span>
+    <span class="boot-sub">GURU &nbsp;&middot;&nbsp; PERFORMANCE DESK</span>
+    <span class="boot-rule"><i></i></span>
+  </div>
+</div>
+<script>
+// Runs before the app bundle so the plate is interactive from the first frame: nobody should have
+// to sit through a title card they have already seen because the JS that dismisses it is still
+// parsing. The app hands its arrival animation to __bootReady, and it fires as the plate lifts,
+// so the figures count up into view rather than behind the curtain.
+(function(){
+  var el=document.getElementById('boot'); if(!el) return;
+  var reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  // Measured from navigation start, not from when this script happens to run. The plate paints as
+  // soon as the inline CSS parses, but a still-loading webfont blocks script execution, so timing
+  // the hold from here would charge the user twice for the same wait.
+  var MIN=1600, MAX=3400, gone=false, reveal=null, armed=false;
+  var t0=Date.now()-((window.performance&&performance.now&&performance.now())||0);
+  var since=function(){ return Date.now()-t0; };
+  function drop(){
+    if(gone) return; gone=true;
+    document.documentElement.style.overflow='';
+    el.classList.add('done');
+    // One frame on 100% before the lift, so the line visibly completes instead of jumping.
+    setTimeout(function(){
+      el.classList.add('leaving');
+      try{ if(reveal) reveal(); }catch(e){}
+      setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); },700);
+    }, 160);
+  }
+  if(reduced){ el.parentNode.removeChild(el); window.__bootReady=function(cb){ if(cb) cb(); }; return; }
+  document.documentElement.style.overflow='hidden';
+  // Skip: the desk gets opened all day, and the second time is already one time too many.
+  var skip=function(){ drop(); };
+  el.addEventListener('click',skip);
+  window.addEventListener('keydown',skip,{once:true});
+  // Failsafe. If the app never reports ready, because auth failed or a fetch hung, the plate must
+  // still leave: an error screen the user cannot see is worse than the error.
+  setTimeout(drop,Math.max(0,MAX-since()));
+  window.__bootReady=function(cb){
+    reveal=cb||null;
+    if(gone){ try{ if(reveal) reveal(); }catch(e){} return; }
+    if(armed) return; armed=true;
+    setTimeout(drop,Math.max(0,MIN-since()));
+  };
+})();
+</script>
 <div class="bg-blobs"><div class="blob blob-1"></div><div class="blob blob-2"></div><div class="blob blob-3"></div></div>
 <div class="bg-grid"></div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -913,7 +1008,12 @@ function render(){
   if(anim){ countUp(); drawSparks(); }
   // The full arrival runs once a session. An internal desk gets opened and re-rendered dozens of
   // times a day, and a 1.5 second overture on every tab click stops being premium by mid-morning.
-  if(FIRST_PAINT){ FIRST_PAINT=false; countFigures(); sweepOnce(); }
+  // It is handed to the boot plate so it fires on the reveal, not behind it.
+  if(FIRST_PAINT){
+    FIRST_PAINT=false;
+    const arrive=()=>{ countFigures(); sweepOnce(); };
+    if(window.__bootReady) window.__bootReady(arrive); else arrive();
+  }
 }
 let FIRST_PAINT=true;
 const reduced=()=>window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
