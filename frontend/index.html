@@ -1525,7 +1525,7 @@ function clientView(x){
   let h='<button class="detail-back" data-act="nav" data-client="">'+ICONS.back+'Command Center</button>';
   h+='<div class="page-head"><div><h1 class="disp">'+esc(c.name)+'</h1><p class="subtitle">'+(isE?'Ecom':'Lead gen')+' · '+esc(pfLabel(c))+(c.budget?' · '+fmtMoney(c.budget,c)+' per month':'')+(kpiTarget(c)?' · target '+(isE?fmtX(kpiTarget(c))+' ROAS':fmtMoney(kpiTarget(c),c)+' CPL'):' · <span class="faint">no target set</span>')+(c.am?' · AM '+esc(c.am):'')+(acct&&acct.statusCode&&acct.statusCode!==1?' <span class="chip bad">Meta account: '+esc(acct.status)+'</span>':'')+'</p></div><div class="meta">'+niceDate(D.today)+'<br>'+syncChips(x)+'</div></div>';
   h+='<div class="toolbar">'+rangeBar()+'<select class="mobile-pick" id="mobilePick"><option value="">All clients</option>'+D.clients.map(k=>'<option value="'+k.id+'">'+esc(k.name)+'</option>').join('')+'</select><div class="grow"></div>'+(LIVE&&CFG.syncUrl?'<button class="btn btn-ghost btn-small" data-act="syncnow">'+ICONS.refresh+' Sync now</button>':'')+'<button class="btn btn-primary btn-small" data-act="update">'+ICONS.copy+' Copy client update</button></div>';
-  if(!x.hasData) return h+'<div class="glass-panel"><h2>No data yet</h2><div class="note">Once a token is added in Render and the daily sync runs, this page fills in. Site Watch works from the store URL alone.</div></div>';
+  if(!x.hasData) return h+noDataPanel(x);
   const V=(cur,prev,inv)=>vs(cur,prev,inv)+' vs '+spec.prevLabel;
   h+='<div class="kpi-grid six">';
   if(isE){
@@ -1607,6 +1607,42 @@ function platformSplit(x){
   h+='</tbody></table></div>';
   h+='<div class="note">Every platform counts conversions its own way, on its own attribution window, so Meta and Google both take credit for some of the same orders. Adding these revenue figures together overstates sales. Shopify net sales and MER above are the numbers to trust; this table is for comparing the two platforms against each other, not for totalling them.</div>';
   return h+'</div></div>';
+}
+// A client with no rows is either not wired up yet or actively broken, and those need opposite
+// actions. The old empty state said "add a token in Render" in both cases, which sends an AM to
+// re-paste a token that is already there and working for thirty other accounts. The reason for the
+// failure is already stored on the sync record; it was just buried in a tooltip nobody hovers.
+const SYNC_HINTS=[
+  [/does not have permission|\(#200\)|#200|Ad account owner has NOT grant/i,'The token works, but it has no access to this ad account. Add the account to the agency Business Manager, or assign it to the system user that owns the token.'],
+  [/Unsupported get request|does not exist|cannot be loaded|#803/i,'Meta cannot find this ID. Check the ad account number in clients.json, it is usually a digit off or belongs to a different account.'],
+  [/Error validating access token|session has been invalidated|expired|#190/i,'The token itself has expired or been invalidated. Generate a new one and update it in Render. This will be failing for every client, not just this one.'],
+  [/rate limit|#17|#4\b|too many calls|reduce the amount of data/i,'Meta is rate limiting the account. This clears on its own, so it is only a problem if it is still here tomorrow.'],
+  [/no shopify token|no token/i,'No token is set for this source yet. Add it in Render and run a sync.'],
+  [/read_reports|requires.*scope|access scope/i,'The token is missing a scope. It needs reinstalling with the fuller permission set.'],
+  [/ENOTFOUND|ETIMEDOUT|ECONNRESET|socket hang up|fetch failed/i,'The network call did not complete. Usually temporary, so try a sync before doing anything else.'],
+];
+function syncHint(msg){ for(const [re,tip] of SYNC_HINTS) if(re.test(msg||'')) return tip; return ''; }
+function noDataPanel(x){
+  const c=x.c, s=x.sync||{}, cfg=c.accounts||{};
+  const wired=['meta','google','shopify','ga4'].filter(k=>cfg[k]);
+  const failed=Object.keys(s).filter(k=>s[k]&&typeof s[k]==='object'&&s[k].ok===false&&s[k].error);
+  let h='<div class="glass-panel"><h2>'+(failed.length?'This account is not syncing':'No data yet')+'</h2>';
+  if(failed.length){
+    h+='<div class="srclist" style="gap:12px">'+failed.map(k=>{
+      const v=s[k], tip=syncHint(v.error);
+      return '<div class="fstage" style="border-left:3px solid var(--red)">'
+        +'<div class="l">'+cap(k==='ga4'?'GA4':k)+(v.at?' &middot; last tried '+esc(ago(v.at)):'')+'</div>'
+        +'<div style="font-size:12.5px;color:var(--text);margin:8px 0 0;font-family:\'DM Mono\',ui-monospace,monospace;line-height:1.5;white-space:pre-wrap;word-break:break-word">'+esc(v.error)+'</div>'
+        +(tip?'<div style="font-size:12.5px;color:var(--dim);margin-top:10px;line-height:1.6">'+tip+'</div>':'')
+      +'</div>';
+    }).join('')+'</div>';
+    h+='<div class="note">This is what Meta or the store sent back, word for word, not our summary of it. Nothing on this page is wrong or stale, the sync simply never returned any rows to draw.</div>';
+  } else if(!wired.length){
+    h+='<div class="note">No ad account or store is set for this client yet. Add the account IDs in clients.json, put the token in Render, and this page fills in on the next sync. Site Watch works from the store URL alone.</div>';
+  } else {
+    h+='<div class="note">'+wired.map(cap).join(', ')+' '+(wired.length>1?'are':'is')+' configured but no sync has completed yet. If this is a new client, the first daily run has not reached it; if it is not new, check that the token is set in Render.</div>';
+  }
+  return h+'</div>';
 }
 function syncChips(x){ const s=x.sync||{}; const order=['meta','google','shopify','ga4','sitewatch']; return order.filter(k=>s[k]&&typeof s[k]==='object').map(k=>{ const v=s[k]; const tone=v.mode==='sample'?'warn':v.ok?'good':(v.mode==='waiting'?'neutral':'bad'); const label=v.mode==='sample'?'sample':v.mode==='waiting'?'waiting':v.ok?ago(v.at):'failed'; return '<span class="chip '+tone+'" title="'+esc(v.error||'')+'">'+cap(k==='ga4'?'GA4':k==='sitewatch'?'Site':k)+' · '+label+'</span>'; }).join(' ')||'<span class="chip neutral">no sources</span>'; }
 function pacePanel(x){ const c=x.c; const dom=parseInt(D.today.slice(8),10), dim=new Date(parseInt(D.today.slice(0,4)),parseInt(D.today.slice(5,7)),0).getDate(); const tone=x.paceRatio>1.15?'bad':(x.paceRatio<0.85?'warn':'');
