@@ -16,7 +16,9 @@
 // come out roughly 10% too HIGH (tax sits inside the subtotal and refunds land on the order's
 // date rather than the refund's). Every store needs read_reports or its numbers flatter us.
 
-const crypto = require('crypto');
+// package.json sets "type": "module", so this file is ESM. The version before this one used
+// require() and therefore could not run in this repo at all.
+import crypto from 'node:crypto';
 
 const SCOPES = 'read_orders,read_products,read_inventory,read_customers,read_reports';
 const REDIRECT = process.env.DESK_SHOPIFY_REDIRECT || 'https://desk-api-si2w.onrender.com/shopify/callback';

@@ -4,6 +4,9 @@
 // Field notes (Ads Insights API):
 //   actions[action_type=purchase|omni_purchase] -> purchases; action_values[...] -> revenue
 //   actions[action_type=lead] -> leads (covers instant forms and website leads)
+//   actions[action_type=mobile_app_install|omni_app_install] -> installs. An app-install client has
+//     no purchases and no leads to report, so without this its page is spend and nothing else.
+//     In-app purchases already arrive under omni_purchase, so revenue and ROAS need no special case.
 //   actions[action_type=video_view] -> 3 second video plays  (Ads Manager "3-second video plays")
 //   video_thruplay_watched_actions -> ThruPlays; video_play_actions -> plays
 //   landing_page_view / add_to_cart / initiate_checkout -> pixel funnel (omni_ variants preferred)
@@ -25,6 +28,7 @@ function act(v, types) {
 }
 const PURCHASE = ['omni_purchase', 'purchase', 'offsite_conversion.fb_pixel_purchase'];
 const LEAD = ['lead', 'onsite_conversion.lead_grouped', 'offsite_conversion.fb_pixel_lead'];
+const INSTALL = ['omni_app_install', 'mobile_app_install', 'app_install'];
 const LPV = ['landing_page_view'];
 const ATC = ['omni_add_to_cart', 'add_to_cart', 'offsite_conversion.fb_pixel_add_to_cart'];
 const IC = ['omni_initiated_checkout', 'initiate_checkout', 'offsite_conversion.fb_pixel_initiate_checkout'];
@@ -135,6 +139,7 @@ function rowFromInsight(clientId, r, platform = 'meta') {
   row.spend = num(r.spend); row.impressions = num(r.impressions); row.clicks = num(r.clicks);
   row.purchases = act(r.actions, PURCHASE); row.revenue = act(r.action_values, PURCHASE);
   row.leads = act(r.actions, LEAD);
+  row.installs = act(r.actions, INSTALL);
   row.lpv = act(r.actions, LPV); row.atc = act(r.actions, ATC); row.ic = act(r.actions, IC);
   return row;
 }
@@ -153,6 +158,7 @@ function metrics(r) {
   return {
     spend, impressions: imp, clicks,
     purchases: act(r.actions, PURCHASE), revenue: act(r.action_values, PURCHASE), leads: act(r.actions, LEAD),
+    installs: act(r.actions, INSTALL),
     freq: round(num(r.frequency), 2),
     ctr: imp ? round(clicks / imp * 100, 2) : 0,
     cpm: imp ? round(spend / imp * 1000, 2) : 0,
@@ -161,7 +167,8 @@ function metrics(r) {
     plays: act(r.video_play_actions, ['video_view']),
   };
 }
-const dayTuple = (r) => [round(num(r.spend)), num(r.impressions), num(r.clicks), act(r.actions, PURCHASE), round(act(r.action_values, PURCHASE)), act(r.actions, LEAD)];
+// Seventh slot is installs. Appended rather than inserted so tuples already stored stay readable.
+const dayTuple = (r) => [round(num(r.spend)), num(r.impressions), num(r.clicks), act(r.actions, PURCHASE), round(act(r.action_values, PURCHASE)), act(r.actions, LEAD), act(r.actions, INSTALL)];
 function daysMap(rows, idKey) {
   const out = {};
   for (const r of rows) { const m = (out[r[idKey]] = out[r[idKey]] || {}); m[r.date_start] = dayTuple(r); }

@@ -886,9 +886,9 @@ function rangeSpec(range,today){ const dom=parseInt(today.slice(8),10);
   } }
 function window_(today,spec){ const end=addDays(today,-spec.offset); return {start:addDays(end,-(spec.days-1)),end}; }
 function rowsIn(rows,today,spec){ const w=window_(today,spec); return rows.filter(r=>r.date>=w.start&&r.date<=w.end); }
-function daysIn(days,today,spec){ const w=window_(today,spec); const o={spend:0,impressions:0,clicks:0,purchases:0,revenue:0,leads:0}; for(const d in days){ if(d>=w.start&&d<=w.end){ const t=days[d]; o.spend+=t[0]||0; o.impressions+=t[1]||0; o.clicks+=t[2]||0; o.purchases+=t[3]||0; o.revenue+=t[4]||0; o.leads+=t[5]||0; } } return o; }
+function daysIn(days,today,spec){ const w=window_(today,spec); const o={spend:0,impressions:0,clicks:0,purchases:0,revenue:0,leads:0,installs:0}; for(const d in days){ if(d>=w.start&&d<=w.end){ const t=days[d]; o.spend+=t[0]||0; o.impressions+=t[1]||0; o.clicks+=t[2]||0; o.purchases+=t[3]||0; o.revenue+=t[4]||0; o.leads+=t[5]||0; o.installs+=t[6]||0; } } return o; }
 const ADS=['meta','google'];
-const SUMS=['spend','impressions','clicks','purchases','revenue','leads','lpv','atc','ic','orders','grossSales','netSales','refunds','newCustomerOrders','units','checkoutsStarted','sessions','srcMeta','srcGoogle','srcDirect','srcOther','srcUnknown','srcNone','ga4Atc','ga4Checkouts','ga4Purchases'];
+const SUMS=['spend','impressions','clicks','purchases','revenue','leads','lpv','atc','ic','orders','grossSales','netSales','refunds','newCustomerOrders','units','checkoutsStarted','installs','sessions','srcMeta','srcGoogle','srcDirect','srcOther','srcUnknown','srcNone','ga4Atc','ga4Checkouts','ga4Purchases'];
 function agg(rows){ const o={}; SUMS.forEach(k=>o[k]=0); let hasShop=false,hasGa=false; rows.forEach(r=>{ SUMS.forEach(k=>{o[k]+=r[k]||0}); if(r.platform==='shopify') hasShop=true; if(r.platform==='ga4') hasGa=true; }); o.hasShop=hasShop; o.hasGa=hasGa; return derive(o); }
 function derive(o){
   o.ctr=o.impressions?o.clicks/o.impressions*100:0; o.cpm=o.impressions?o.spend/o.impressions*1000:0; o.cpc=o.clicks?o.spend/o.clicks:Infinity;
@@ -899,18 +899,28 @@ function derive(o){
   o.coverage=o.hasShop&&o.orders?o.purchases/o.orders:null;
   o.storeCvr=o.hasGa&&o.sessions?(o.hasShop?o.orders:o.ga4Purchases)/o.sessions*100:null;
   o.cpl=o.leads?o.spend/o.leads:Infinity; o.lpcvr=o.clicks?o.leads/o.clicks*100:0;
+  // App clients: the install is the outcome, so cost per install is their headline efficiency
+  // number. In-app purchases still arrive under purchases/revenue, so ROAS stays meaningful too.
+  o.cpi=o.installs?o.spend/o.installs:Infinity; o.installCvr=o.clicks?o.installs/o.clicks*100:0;
   o.newShare=o.hasShop&&o.orders?o.newCustomerOrders/o.orders*100:null;
   o.abandoned=o.hasShop?Math.max(0,o.checkoutsStarted-o.orders):null;
   return o; }
-function kpiOf(c,a){ return c.type==='ecom'?a.roas:a.cpl }
-function kpiTarget(c){ return c.type==='ecom'?(c.target?.roas||0):(c.target?.cpl||0) }
+const isApp=(c)=>c.type==='app';
+const typeLabel=(c)=>c.type==='ecom'?'Ecom':isApp(c)?'App installs':'Lead gen';
+function kpiOf(c,a){ return c.type==='ecom'?a.roas:isApp(c)?a.cpi:a.cpl }
+function kpiTarget(c){ return c.type==='ecom'?(c.target?.roas||0):isApp(c)?(c.target?.cpi||0):(c.target?.cpl||0) }
 function kpiStatus(c,v){ const t=kpiTarget(c); if(!t) return 'neutral'; if(!isFinite(v)||v===0) return 'bad'; if(c.type==='ecom') return v>=t?'good':(v>=t*0.85?'warn':'bad'); return v<=t?'good':(v<=t*1.15?'warn':'bad'); }
+// Lower is better for both CPL and CPI, so the delta is flipped for each.
+function kpiLabel(c){ return c.type==='ecom'?'ROAS':isApp(c)?'CPI':'CPL' }
+function kpiFmt(c,v,cc){ return c.type==='ecom'?fmtX(v):fmtMoney(v,cc||c) }
 function kpiDelta(c,now,prev){ if(!isFinite(now)||!isFinite(prev)||!prev) return 0; const d=(now-prev)/prev*100; return c.type==='ecom'?d:-d; }
 const RANK={bad:0,warn:1,good:2,neutral:2};
 function adStatus(ad,c,total){
   const share=total.spend?ad.spend/total.spend:0; const isE=c.type==='ecom'; const t=kpiTarget(c);
-  const roas=ad.spend?ad.revenue/ad.spend:0, cpl=ad.leads?ad.spend/ad.leads:Infinity;
-  const eff=isE?(t?roas/t:0):(isFinite(cpl)&&cpl&&t?t/cpl:0);
+  const roas=ad.spend?ad.revenue/ad.spend:0;
+  // For an app creative the unit cost is per install, priced and judged exactly like a lead.
+  const unit=isApp(c)?(ad.installs?ad.spend/ad.installs:Infinity):(ad.leads?ad.spend/ad.leads:Infinity), cpl=unit;
+  const eff=isE?(t?roas/t:0):(isFinite(unit)&&unit&&t?t/unit:0);
   const l7=ad.last7||{}, p7=ad.prev7||{};
   const fatigue=(l7.freq||ad.freq)>3.2&&p7.ctr&&l7.ctr<p7.ctr*0.85&&p7.cpm&&l7.cpm>p7.cpm*1.12&&l7.spend>0;
   const ctrTrend=p7.ctr?l7.ctr/p7.ctr:null, cpmTrend=p7.cpm?l7.cpm/p7.cpm:null;
@@ -918,7 +928,7 @@ function adStatus(ad,c,total){
   if(share<0.05&&(ad.daysLive||99)<6) return {status:'Testing',tone:'neutral',why:'Under 5% of spend, '+ad.daysLive+' days live. Let it reach signal before judging.',ctrTrend,cpmTrend};
   if(fatigue) return {status:'Fatiguing',tone:'warn',why:'CTR down '+pct(1-ctrTrend)+', CPM up '+pct(cpmTrend-1)+', frequency '+(l7.freq||ad.freq).toFixed(1)+' this week. Brief a refresh now, not after it dies.',ctrTrend,cpmTrend};
   if(eff>=1.15&&(l7.freq||ad.freq)<3) return {status:'Scale',tone:'good',why:'Beating target by '+pct(eff-1)+' at frequency '+(l7.freq||ad.freq).toFixed(1)+'. Room to add budget.',ctrTrend,cpmTrend};
-  if(eff<0.7&&share>0.08) return {status:'Pause',tone:'bad',why:'Taking '+pct(share)+' of spend while '+(isE?'ROAS':'CPL')+' misses target by '+pct(1-eff)+'.',ctrTrend,cpmTrend};
+  if(eff<0.7&&share>0.08) return {status:'Pause',tone:'bad',why:'Taking '+pct(share)+' of spend while '+kpiLabel(c)+' misses target by '+pct(1-eff)+'.',ctrTrend,cpmTrend};
   if(eff<0.85) return {status:'Watch',tone:'warn',why:'Under target by '+pct(1-eff)+'. Give it 3 more days at current budget, then cut 30% if it has not moved.',ctrTrend,cpmTrend};
   return {status:'Steady',tone:'accent',why:'Within range of target. Watch frequency past 3.',ctrTrend,cpmTrend}; }
 function summarize(D,c,range){
@@ -947,7 +957,7 @@ function summarize(D,c,range){
   });
   if(sw&&sw.ok===false){ const f=(sw.checks||[]).filter(x=>!x.ok&&!x.skipped); if(f.length) flags.unshift({sev:'bad',text:'Site check failing: '+f.map(x=>x.name+' ('+x.detail+')').join('; '),type:'sitewatch'}); }
   Object.entries(sync).forEach(([k,v])=>{ if(v&&typeof v==='object'&&v.ok===false&&v.mode==='error') flags.push({sev:'warn',text:cap(k)+' sync failed: '+(v.error||'').slice(0,120),type:'sync'}); });
-  if(status==='bad'&&range!=='today'&&!flags.some(f=>f.type==='kpi-miss')) flags.push({sev:'bad',text:(c.type==='ecom'?'ROAS '+fmtX(kpi)+' against '+fmtX(kpiTarget(c))+' target':'CPL '+fmtMoney(kpi,c)+' against '+fmtMoney(kpiTarget(c),c)+' target')+', '+spec.label+'.',type:'kpi'});
+  if(status==='bad'&&range!=='today'&&!flags.some(f=>f.type==='kpi-miss')) flags.push({sev:'bad',text:kpiLabel(c)+' '+kpiFmt(c,kpi)+' against '+kpiFmt(c,kpiTarget(c))+' target, '+spec.label+'.',type:'kpi'});
   let health=status==='neutral'?'good':status; if(flags.some(f=>f.sev==='bad')) health='bad'; else if(flags.some(f=>f.sev==='warn')&&health==='good') health='warn';
   const spark=[]; for(let d=14;d>=1;d--) spark.push(kpiOf(c,agg(rowsIn(rows,today,{days:1,offset:d}))));
   const waiting=Object.entries(sync).filter(([k,v])=>v&&typeof v==='object'&&v.mode==='waiting').map(([k])=>k);
@@ -1115,7 +1125,7 @@ function sidebar(){
   if(!list.length) h+='<li class="empty-note" style="padding:12px">No client matches.</li>';
   const maxSpend=Math.max(...D.clients.map(k=>S[k.id].cur.spend),1);
   list.forEach(c=>{ const x=S[c.id]; const share=Math.max(2,Math.round(x.cur.spend/maxSpend*100));
-    h+='<li><button class="nav-item client'+(state.clientId===c.id?' active':'')+'" data-act="nav" data-client="'+c.id+'" title="'+esc(c.name)+' · '+fmtMoney(x.cur.spend,c)+' this period"><span class="hdot '+x.health+'"></span><span class="nm">'+esc(c.name.replace(' (sample)',''))+'</span><span class="tp">'+(c.type==='ecom'?'ecom':'leads')+'</span><span class="share"><i style="width:'+share+'%"></i></span></button></li>'; });
+    h+='<li><button class="nav-item client'+(state.clientId===c.id?' active':'')+'" data-act="nav" data-client="'+c.id+'" title="'+esc(c.name)+' · '+fmtMoney(x.cur.spend,c)+' this period"><span class="hdot '+x.health+'"></span><span class="nm">'+esc(c.name.replace(' (sample)',''))+'</span><span class="tp">'+(c.type==='ecom'?'ecom':c.type==='app'?'app':'leads')+'</span><span class="share"><i style="width:'+share+'%"></i></span></button></li>'; });
   h+='</ul><div class="cmdk-hint" data-act="cmdk"><span>Jump to client</span><kbd>Ctrl K</kbd></div>';
   const email=LIVE?(fb.auth.currentUser?.email||''):'demo@per4mance.guru'; const name=LIVE?(fb.auth.currentUser?.displayName||email.split('@')[0]):'Demo viewer';
   h+='<div class="user-block"><div class="user-avatar">'+esc((name||'?')[0].toUpperCase())+'</div><div class="user-meta"><div class="user-name">'+esc(name)+'</div><div class="user-role">'+(LIVE?'Team':'Connect Firebase to go live')+'</div></div><button class="icon-btn" data-act="theme" title="Switch to '+(currentTheme()==='dark'?'light':'dark')+' theme" aria-label="Switch theme">'+(currentTheme()==='dark'?ICONS.sun:ICONS.moon)+'</button>'+(LIVE?'<button class="icon-btn" data-act="signout" title="Sign out">'+ICONS.out+'</button>':'')+'</div>';
@@ -1275,7 +1285,7 @@ function portfolioMap(list,spec){
       +'<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="'+r.toFixed(1)+'" fill="'+col+'" opacity=".22"/>'
       +'<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="'+(r*0.42).toFixed(1)+'" fill="'+col+'"/>'
       +'<text x="'+cx.toFixed(1)+'" y="'+(cy-r-7).toFixed(1)+'" text-anchor="middle">'+esc(x.c.name.replace(' (sample)','').slice(0,22))+'</text>'
-      +'<title>'+esc(x.c.name)+' · '+fmtMoney(x.cur.spend,x.c)+' · '+(isE?fmtX(x.kpi)+' ROAS against '+fmtX(kpiTarget(x.c)):fmtMoney(x.kpi,x.c)+' CPL against '+fmtMoney(kpiTarget(x.c),x.c))+'</title></g>';
+      +'<title>'+esc(x.c.name)+' · '+fmtMoney(x.cur.spend,x.c)+' · '+kpiFmt(x.c,x.kpi)+' '+kpiLabel(x.c)+' against '+kpiFmt(x.c,kpiTarget(x.c))+'</title></g>';
   });
 
   const inFix=pts.filter(x=>x.cur.spend>maxSpend/2&&perfRatio(x)<1);
@@ -1480,11 +1490,11 @@ function overviewView(){
     const spark=sparkArea(series14(r=>r.clientId===c.id&&ADS.includes(r.platform),m=>m.spend),x.health==='good'?'good':x.health==='bad'?'bad':'warn');
     h+='<button class="rrow '+x.health+'" data-act="nav" data-client="'+c.id+'" title="'+esc(c.name)+'">'
       +'<span class="rtick"></span>'
-      +'<span class="rname">'+esc(c.name.replace(' (sample)',''))+'<em>'+(isE?'Ecom':'Lead gen')+' &middot; '+esc(pfLabel(c))+(c.am?' &middot; '+esc(c.am):'')+'</em></span>'
+      +'<span class="rname">'+esc(c.name.replace(' (sample)',''))+'<em>'+typeLabel(c)+' &middot; '+esc(pfLabel(c))+(c.am?' &middot; '+esc(c.am):'')+'</em></span>'
       +paceCell(x)
-      +'<span class="rkpi disp '+x.status+'">'+(isE?fmtX(x.kpi):fmtMoney(x.kpi,c))+'<i>'+(t?'target '+(isE?fmtX(t):fmtMoney(t,c)):'no target')+'</i></span>'
+      +'<span class="rkpi disp '+x.status+'">'+kpiFmt(c,x.kpi)+'<i>'+(t?'target '+kpiFmt(c,t):'no target')+'</i></span>'
       +'<span class="rnum">'+fmtMoney(x.cur.spend,c)+'<s>spend</s></span>'
-      +'<span class="rnum ord">'+fmtNum(isE?x.cur.salesCount:x.cur.leads)+'<s>'+(isE?'orders':'leads')+'</s></span>'
+      +'<span class="rnum ord">'+fmtNum(isE?x.cur.salesCount:isApp(c)?x.cur.installs:x.cur.leads)+'<s>'+(isE?'orders':isApp(c)?'installs':'leads')+'</s></span>'
       +'<span class="rspark">'+spark+'</span>'
       +'<span class="rflag'+(x.flags.length?'':' none')+'">'+(x.flags.length||'—')+'</span>'
     +'</button>'; });
@@ -1501,7 +1511,7 @@ function overviewView(){
     const rows=all.slice().sort((a,b)=>{ let va,vb; switch(so.key){ case 'name':va=a.c.name;vb=b.c.name;break; case 'spend':va=a.cur.spend;vb=b.cur.spend;break; case 'pace':va=a.paceRatio;vb=b.paceRatio;break; case 'kpi':va=RANK[a.status]*10+(a.c.type==='ecom'?a.kpi/(kpiTarget(a.c)||1):(kpiTarget(a.c)||1)/(a.kpi||1));vb=RANK[b.status]*10+(b.c.type==='ecom'?b.kpi/(kpiTarget(b.c)||1):(kpiTarget(b.c)||1)/(b.kpi||1));break; case 'sales':va=a.c.type==='ecom'?a.cur.salesCount:a.cur.leads;vb=b.c.type==='ecom'?b.cur.salesCount:b.cur.leads;break; case 'trend':va=a.delta7;vb=b.delta7;break; case 'site':va=a.sw?(a.sw.ok?1:0):2;vb=b.sw?(b.sw.ok?1:0):2;break; default:va=RANK[a.health]*100-a.flags.length;vb=RANK[b.health]*100-b.flags.length; } if(va<vb) return so.dir==='asc'?-1:1; if(va>vb) return so.dir==='asc'?1:-1; return 0; });
     h+='<div class="data-table-wrap"><table class="dtable"><thead><tr>'+cols.map(cl=>'<th data-act="sort" data-table="overview" data-key="'+cl.key+'" class="'+(cl.num?'num ':'')+(so.key===cl.key?'sorted':'')+'">'+cl.label+(so.key===cl.key?(so.dir==='asc'?' \u2191':' \u2193'):'')+'</th>').join('')+'</tr></thead><tbody>';
     rows.forEach(x=>{ const c=x.c, t=kpiTarget(c), isE=c.type==='ecom';
-      h+='<tr class="rowlink" tabindex="0" data-act="nav" data-client="'+c.id+'"><td class="row-title">'+esc(c.name)+'<span class="sub">'+(isE?'Ecom':'Lead gen')+', '+esc(pfLabel(c))+(c.am?', '+esc(c.am):'')+'</span></td><td class="num">'+fmtMoney(x.cur.spend,c)+' '+vs(x.cur.spend,x.prev.spend)+'</td><td><span class="chip '+x.status+'">'+(isE?fmtX(x.kpi):fmtMoney(x.kpi,c))+(t?' / '+(isE?fmtX(t):fmtMoney(t,c)):'')+'</span> '+vs(x.kpi,kpiOf(c,x.prev),!isE)+'</td><td class="num">'+fmtNum(isE?x.cur.salesCount:x.cur.leads)+' '+vs(isE?x.cur.salesCount:x.cur.leads,isE?x.prev.salesCount:x.prev.leads)+'</td><td>'+paceBar(x)+'</td><td>'+spark(x.spark,x.delta7)+deltaHtml(x.delta7,'last 7 days vs the 7 before')+'</td><td>'+(!x.sw?'<span class="chip neutral">not set</span>':x.sw.ok?'<span class="chip good">OK</span>':'<span class="chip bad">Failing</span>')+'</td><td>'+(x.flags.length?'<span class="chip '+x.health+'">'+x.flags.length+' flag'+(x.flags.length>1?'s':'')+'</span>':'<span class="chip good">Clean</span>')+'</td></tr>'; });
+      h+='<tr class="rowlink" tabindex="0" data-act="nav" data-client="'+c.id+'"><td class="row-title">'+esc(c.name)+'<span class="sub">'+typeLabel(c)+', '+esc(pfLabel(c))+(c.am?', '+esc(c.am):'')+'</span></td><td class="num">'+fmtMoney(x.cur.spend,c)+' '+vs(x.cur.spend,x.prev.spend)+'</td><td><span class="chip '+x.status+'">'+kpiFmt(c,x.kpi)+(t?' / '+kpiFmt(c,t):'')+'</span> '+vs(x.kpi,kpiOf(c,x.prev),!isE)+'</td><td class="num">'+fmtNum(isE?x.cur.salesCount:isApp(c)?x.cur.installs:x.cur.leads)+' '+vs(isE?x.cur.salesCount:isApp(c)?x.cur.installs:x.cur.leads,isE?x.prev.salesCount:isApp(c)?x.prev.installs:x.prev.leads)+'</td><td>'+paceBar(x)+'</td><td>'+spark(x.spark,x.delta7)+deltaHtml(x.delta7,'last 7 days vs the 7 before')+'</td><td>'+(!x.sw?'<span class="chip neutral">not set</span>':x.sw.ok?'<span class="chip good">OK</span>':'<span class="chip bad">Failing</span>')+'</td><td>'+(x.flags.length?'<span class="chip '+x.health+'">'+x.flags.length+' flag'+(x.flags.length>1?'s':'')+'</span>':'<span class="chip good">Clean</span>')+'</td></tr>'; });
     h+='</tbody></table></div>';
   }
   h+='</div></section>';
@@ -1523,7 +1533,7 @@ function spark(vals,delta){ const v=vals.map(x=>isFinite(x)?x:null).filter(x=>x!
 function clientView(x){
   const c=x.c, a=x.cur, p=x.prev, isE=c.type==='ecom', spec=x.spec, acct=x.ent.account;
   let h='<button class="detail-back" data-act="nav" data-client="">'+ICONS.back+'Command Center</button>';
-  h+='<div class="page-head"><div><h1 class="disp">'+esc(c.name)+'</h1><p class="subtitle">'+(isE?'Ecom':'Lead gen')+' · '+esc(pfLabel(c))+(c.budget?' · '+fmtMoney(c.budget,c)+' per month':'')+(kpiTarget(c)?' · target '+(isE?fmtX(kpiTarget(c))+' ROAS':fmtMoney(kpiTarget(c),c)+' CPL'):' · <span class="faint">no target set</span>')+(c.am?' · AM '+esc(c.am):'')+(acct&&acct.statusCode&&acct.statusCode!==1?' <span class="chip bad">Meta account: '+esc(acct.status)+'</span>':'')+'</p></div><div class="meta">'+niceDate(D.today)+'<br>'+syncChips(x)+'</div></div>';
+  h+='<div class="page-head"><div><h1 class="disp">'+esc(c.name)+'</h1><p class="subtitle">'+typeLabel(c)+' · '+esc(pfLabel(c))+(c.budget?' · '+fmtMoney(c.budget,c)+' per month':'')+(kpiTarget(c)?' · target '+kpiFmt(c,kpiTarget(c))+' '+kpiLabel(c):' · <span class="faint">no target set</span>')+(c.am?' · AM '+esc(c.am):'')+(acct&&acct.statusCode&&acct.statusCode!==1?' <span class="chip bad">Meta account: '+esc(acct.status)+'</span>':'')+'</p></div><div class="meta">'+niceDate(D.today)+'<br>'+syncChips(x)+'</div></div>';
   h+='<div class="toolbar">'+rangeBar()+'<select class="mobile-pick" id="mobilePick"><option value="">All clients</option>'+D.clients.map(k=>'<option value="'+k.id+'">'+esc(k.name)+'</option>').join('')+'</select><div class="grow"></div>'+(LIVE&&CFG.syncUrl?'<button class="btn btn-ghost btn-small" data-act="syncnow">'+ICONS.refresh+' Sync now</button>':'')+'<button class="btn btn-primary btn-small" data-act="update">'+ICONS.copy+' Copy client update</button></div>';
   if(!x.hasData) return h+noDataPanel(x);
   const V=(cur,prev,inv)=>vs(cur,prev,inv)+' vs '+spec.prevLabel;
@@ -1540,6 +1550,17 @@ function clientView(x){
       +kpi(ICONS.users,'CPA',noSpend?'--':fmtMoney(a.cpa,c),'AOV '+fmtMoney(a.aov,c),'',['CAC',a.cac?fmtMoney(a.cac,c):'--'],series14(mine,m=>{const n=a.hasShop?m.orders:m.purchases; return n?m.spend/n:0;}),'money')
       +(a.hasShop?kpi(ICONS.cart,'Abandoned checkouts',fmtNum(a.abandoned),fmtNum(a.checkoutsStarted)+' checkouts started','',['Completed',fmtPct(a.checkoutsStarted?a.orders/a.checkoutsStarted*100:null)],series14(shop,m=>Math.max(0,(m.checkoutsStarted||0)-(m.orders||0))),'num')
                  :kpi(ICONS.cart,'CTR',fmtPct(a.ctr),'','',['CPM',fmtMoney(a.cpm,c)]));
+  } else if(isApp(c)){
+    // An app client's outcome is the install, and after that whatever people spend inside the app.
+    // Meta reports in-app purchase value under the same omni_purchase key a web store uses, so the
+    // revenue side needs no special handling; only the install side was missing.
+    const noSpendA=!a.spend, mine=r=>r.clientId===c.id, ads=r=>mine(r)&&ADS.includes(r.platform);
+    h+=kpi(ICONS.spend,'Ad spend, '+spec.label,fmtMoney(a.spend,c),noSpendA?'no spend in this period':V(a.spend,p.spend),'',null,series14(ads,m=>m.spend),'money')
+      +kpi(ICONS.users,'Installs',fmtNum(a.installs),V(a.installs,p.installs),'',null,series14(ads,m=>m.installs),'num')
+      +kpi(ICONS.target,'Cost per install',noSpendA?'--':fmtMoney(a.cpi,c),noSpendA?'needs spend to compute':V(a.cpi,p.cpi,true),noSpendA?'':x.status,['Target',kpiTarget(c)?fmtMoney(kpiTarget(c),c):'no target'],series14(ads,m=>m.installs?m.spend/m.installs:0),'money')
+      +kpi(ICONS.bag,'In-app purchases',fmtNum(a.purchases),a.purchases?V(a.purchases,p.purchases):'none reported yet','',['Install to purchase',fmtPct(a.installs?a.purchases/a.installs*100:null)],series14(ads,m=>m.purchases),'num')
+      +kpi(ICONS.trend,'In-app revenue',fmtMoney(a.revenue,c),a.revenue?V(a.revenue,p.revenue):'needs in-app purchase tracking','',['ROAS',a.spend&&a.revenue?fmtX(a.roas):'--'],series14(ads,m=>m.revenue),'money')
+      +kpi(ICONS.shield,'Click to install',fmtPct(a.installCvr),fmtNum(a.clicks)+' clicks','',['CPC',fmtMoney(a.cpc,c)]);
   } else {
     const noSpendL=!a.spend;
     h+=kpi(ICONS.spend,'Ad spend, '+spec.label,fmtMoney(a.spend,c),noSpendL?'no spend in this period':V(a.spend,p.spend))
@@ -1553,7 +1574,7 @@ function clientView(x){
   h+=platformSplit(x);
   if(x.flags.length) h+='<div class="section"><div class="section-head"><h2>What to fix</h2></div><div class="attn-list">'+groupFlags(x.flags).map(f=>attnItem(f.sev,groupMeta(f,''),f.text,'')).join('')+'</div></div>';
   h+='<div class="two">'+intradayPanel(x)+pacePanel(x)+'</div>';
-  h+='<div class="section"><div class="glass-panel"><h2>Spend and '+(isE?'ROAS':'CPL')+' by day</h2><div class="legend"><span><i class="bar"></i>Spend</span><span><i class="line"></i>'+(isE?'ROAS':'CPL')+'</span><span><i class="tgt"></i>Target</span></div>'+trendChart(x)+'</div></div>';
+  h+='<div class="section"><div class="glass-panel"><h2>Spend and '+kpiLabel(c)+' by day</h2><div class="legend"><span><i class="bar"></i>Spend</span><span><i class="line"></i>'+kpiLabel(c)+'</span><span><i class="tgt"></i>Target</span></div>'+trendChart(x)+'</div></div>';
   if(isE) h+=sourcePanel(x);
   if(isE) h+=funnelPanel(x);
   const tabs=isE?[['campaigns','Campaigns'],['ads','Creatives'],['orders','Orders'],['products','Products'],['site','Site Watch'],['weekly','Reports']]:[['campaigns','Campaigns'],['ads','Creatives'],['site','Site Watch'],['weekly','Reports']];
@@ -1591,14 +1612,14 @@ function platformSplit(x){
     +'<td class="num">'+(share===null?'':fmtPct(share))+'</td>'
     +'<td class="num">'+fmtNum(a.clicks)+'</td>'
     +'<td class="num">'+fmtPct(a.ctr)+'</td>'
-    +'<td class="num">'+fmtNum(isE?a.purchases:a.leads)+'</td>'
+    +'<td class="num">'+fmtNum(isE?a.purchases:isApp(c)?a.installs:a.leads)+'</td>'
     +(hasSrc?'<td class="num">'+fmtNum(storeOrders(pf))+'</td>':'')
     +(isE?'<td class="num">'+fmtMoney(a.revenue,c)+'</td>':'')
     +'<td class="num">'+(a.spend?(isE?fmtX(a.roas):fmtMoney(a.cpl,c)):'--')+'</td>'
     +'<td class="num">'+(a.spend&&isFinite(a.cpa)?fmtMoney(a.cpa,c):'--')+'</td>'
     +'</tr>';
-  let h='<div class="section"><div class="glass-panel"><h2>Where the money went <span class="sub">'+spec.label+' · deltas vs '+spec.prevLabel+' · each platform&rsquo;s own reported '+(isE?'purchases and revenue':'leads')+'</span></h2>'
-    +'<div class="data-table-wrap"><table class="dtable"><thead><tr><th>Platform</th><th class="num">Spend</th><th class="num">Share</th><th class="num">Clicks</th><th class="num">CTR</th><th class="num">'+(isE?'Purchases':'Leads')+'</th>'+(hasSrc?'<th class="num" title="Orders your store recorded as arriving from this platform, not what the platform claims">Orders, store</th>':'')+(isE?'<th class="num">Revenue</th>':'')+'<th class="num">'+(isE?'ROAS':'CPL')+'</th><th class="num">'+(isE?'CPA':'CPL, blended')+'</th></tr></thead><tbody>';
+  let h='<div class="section"><div class="glass-panel"><h2>Where the money went <span class="sub">'+spec.label+' · deltas vs '+spec.prevLabel+' · each platform&rsquo;s own reported '+(isE?'purchases and revenue':isApp(c)?'installs':'leads')+'</span></h2>'
+    +'<div class="data-table-wrap"><table class="dtable"><thead><tr><th>Platform</th><th class="num">Spend</th><th class="num">Share</th><th class="num">Clicks</th><th class="num">CTR</th><th class="num">'+(isE?'Purchases':isApp(c)?'Installs':'Leads')+'</th>'+(hasSrc?'<th class="num" title="Orders your store recorded as arriving from this platform, not what the platform claims">Orders, store</th>':'')+(isE?'<th class="num">Revenue</th>':'')+'<th class="num">'+kpiLabel(c)+'</th><th class="num">'+(isE?'CPA':'CPL, blended')+'</th></tr></thead><tbody>';
   live.forEach(pf=>{
     const a=agg(cur.filter(r=>r.platform===pf)), p=agg(prv.filter(r=>r.platform===pf));
     h+=cell(cap(pf),a,p,tot.spend?a.spend/tot.spend*100:null,'',pf);
@@ -1649,16 +1670,16 @@ function pacePanel(x){ const c=x.c; const dom=parseInt(D.today.slice(8),10), dim
   return '<div class="glass-panel"><h2>Pacing, month to date</h2>'+(c.budget?'<div class="pacelist"><span class="k">Budget</span><span class="v">'+fmtMoney(c.budget,c)+'</span><span class="k">Spent so far</span><span class="v">'+fmtMoney(x.mtd.spend,c)+'</span><span class="k">Should be at by today</span><span class="v">'+fmtMoney(x.expected,c)+'</span><span class="k">Projected month end</span><span class="v">'+fmtMoney(x.projected,c)+'</span></div><div class="pace big"><div class="pace-track"><div class="pace-fill '+tone+'" style="width:'+Math.min(100,x.mtd.spend/c.budget*100).toFixed(1)+'%"></div><div class="pace-mark" style="left:'+(dom/dim*100).toFixed(1)+'%"></div></div><span class="pace-num">'+Math.round(x.paceRatio*100)+'%</span></div><div class="note">'+(x.paceRatio>1.15?'Running hot. Either the client approved extra budget or daily caps drifted. Confirm before the invoice does.':(x.paceRatio<0.85?'Running cold. Unspent budget reads as lost opportunity to the client. Scale winners or say why you are holding.':'On track. Day '+dom+' of '+dim+'.'))+'</div>':'<div class="note">No monthly budget set. Add it in clients.json to get pacing.</div>')+'</div>'; }
 function intradayPanel(x){
   const c=x.c, isE=c.type==='ecom', t=x.intraToday, w=x.intraWeek; const hours=t?Object.keys(t.hours).sort():[];
-  if(!hours.length) return '<div class="glass-panel"><h2>Today so far</h2><div class="note" style="margin-top:0">Fills in after the first hourly sync of the day. Spend '+fmtMoney(x.todayA.spend,c)+', '+(isE?fmtNum(x.todayA.salesCount)+' '+(x.todayA.hasShop?'orders':'purchases'):fmtNum(x.todayA.leads)+' leads')+' so far.</div></div>';
+  if(!hours.length) return '<div class="glass-panel"><h2>Today so far</h2><div class="note" style="margin-top:0">Fills in after the first hourly sync of the day. Spend '+fmtMoney(x.todayA.spend,c)+', '+(isE?fmtNum(x.todayA.salesCount)+' '+(x.todayA.hasShop?'orders':'purchases'):isApp(c)?fmtNum(x.todayA.installs)+' installs':fmtNum(x.todayA.leads)+' leads')+' so far.</div></div>';
   const lastH=hours[hours.length-1]; const now=t.hours[lastH]; const wk=w&&w.hours[lastH]?w.hours[lastH]:null; const wkEnd=w?w.hours[Object.keys(w.hours).sort().pop()]:null;
-  const res=isE?(now.orders||now.purchases):now.leads, wres=wk?(isE?(wk.orders||wk.purchases):wk.leads):null;
+  const res=isE?(now.orders||now.purchases):isApp(c)?now.installs:now.leads, wres=wk?(isE?(wk.orders||wk.purchases):isApp(c)?wk.installs:wk.leads):null;
   const kpiNow=isE?(now.spend?(now.netSales||now.revenue)/now.spend:0):(res?now.spend/res:Infinity), kpiWk=wk?(isE?(wk.spend?(wk.netSales||wk.revenue)/wk.spend:0):(wres?wk.spend/wres:Infinity)):null;
   let h='<div class="glass-panel"><h2>Today so far <span class="sub">as of '+lastH+':00 · vs same weekday last week</span></h2><div class="intra">'+
     '<div><div class="k">Spend</div><div class="v disp">'+fmtMoney(now.spend,c)+'</div><div class="s">'+(wk?vs(now.spend,wk.spend)+' vs '+fmtMoney(wk.spend,c):'')+'</div></div>'+
-    '<div><div class="k">'+(isE?(now.orders?'Orders':'Purchases'):'Leads')+'</div><div class="v disp">'+fmtNum(res)+'</div><div class="s">'+(wk?vs(res,wres)+' vs '+fmtNum(wres):'')+'</div></div>'+
-    '<div><div class="k">'+(isE?(now.netSales?'MER':'ROAS'):'CPL')+'</div><div class="v disp">'+(isE?fmtX(kpiNow):fmtMoney(kpiNow,c))+'</div><div class="s">'+(wk?'last week '+(isE?fmtX(kpiWk):fmtMoney(kpiWk,c)):'')+'</div></div>'+
+    '<div><div class="k">'+(isE?(now.orders?'Orders':'Purchases'):isApp(c)?'Installs':'Leads')+'</div><div class="v disp">'+fmtNum(res)+'</div><div class="s">'+(wk?vs(res,wres)+' vs '+fmtNum(wres):'')+'</div></div>'+
+    '<div><div class="k">'+(isE?(now.netSales?'MER':'ROAS'):kpiLabel(c))+'</div><div class="v disp">'+kpiFmt(c,kpiNow)+'</div><div class="s">'+(wk?'last week '+kpiFmt(c,kpiWk):'')+'</div></div>'+
     (isE&&now.checkoutsStarted!==undefined?'<div><div class="k">Checkouts</div><div class="v disp">'+fmtNum(now.checkoutsStarted)+'</div><div class="s">'+fmtPct(now.checkoutsStarted?(now.orders/now.checkoutsStarted*100):null)+' completed</div></div>':'')+
-    (wkEnd?'<div><div class="k">Last week, full day</div><div class="v disp">'+fmtMoney(wkEnd.spend,c)+'</div><div class="s">'+fmtNum(isE?(wkEnd.orders||wkEnd.purchases):wkEnd.leads)+' '+(isE?'orders':'leads')+'</div></div>':'')+'</div>';
+    (wkEnd?'<div><div class="k">Last week, full day</div><div class="v disp">'+fmtMoney(wkEnd.spend,c)+'</div><div class="s">'+fmtNum(isE?(wkEnd.orders||wkEnd.purchases):isApp(c)?wkEnd.installs:wkEnd.leads)+' '+(isE?'orders':isApp(c)?'installs':'leads')+'</div></div>':'')+'</div>';
   const W=760,H=150,pl=54,pr=12,pt=10,pb=22,ih=H-pt-pb,iw=(W-pl-pr)/23; const maxV=Math.max(now.spend,wkEnd?wkEnd.spend:0,1)*1.05;
   const y=v=>pt+ih-(v/maxV)*ih, xx=hh=>pl+parseInt(hh,10)*iw;
   const line=(doc,cls)=>{ const ks=Object.keys(doc.hours).sort(); if(ks.length<2) return ''; return '<polyline class="'+cls+'" points="'+ks.map(k=>xx(k).toFixed(1)+','+y(doc.hours[k].spend).toFixed(1)).join(' ')+'"/>'; };
@@ -1717,26 +1738,26 @@ function trendChart(x){
   const W=1100,H=240,pl=58,pr=58,pt=14,pb=28,cnt=days.length,iw=(W-pl-pr)/cnt,ih=H-pt-pb; const maxSpend=Math.max(...days.map(d=>d.spend))*1.1||1;
   const kv=days.map(d=>d.kpi).filter(v=>isFinite(v)&&v>0); const tgt=kpiTarget(c)||(kv.length?kv[0]:1); const maxKpi=Math.max(tgt*1.2,...(kv.length?kv:[tgt]))*1.1;
   const ySpend=v=>pt+ih-(v/maxSpend)*ih, yKpi=v=>pt+ih-(v/maxKpi)*ih;
-  let s='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Daily spend and '+(isE?'ROAS':'CPL')+'">';
+  let s='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Daily spend and '+kpiLabel(c)+'">';
   for(let i=0;i<=2;i++){const y=pt+ih*i/2;s+='<line class="axis" x1="'+pl+'" x2="'+(W-pr)+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'"/><text x="'+(pl-6)+'" y="'+(y+4).toFixed(1)+'" text-anchor="end">'+fmtMoney(maxSpend*(1-i/2),c)+'</text>'; const k=maxKpi*(1-i/2); s+='<text x="'+(W-pr+6)+'" y="'+(y+4).toFixed(1)+'">'+(isE?k.toFixed(1)+'x':fmtMoney(k,c))+'</text>'}
-  days.forEach((d,i)=>{const bx=pl+i*iw+iw*0.18,bw=iw*0.64,y=ySpend(d.spend);s+='<rect class="bar'+(d.ok?'':' off')+'" x="'+bx.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+(pt+ih-y).toFixed(1)+'" rx="2"><title>'+d.date+': spend '+fmtMoney(d.spend,c)+', '+(isE?'ROAS '+fmtX(d.kpi):'CPL '+fmtMoney(d.kpi,c))+'</title></rect>'});
+  days.forEach((d,i)=>{const bx=pl+i*iw+iw*0.18,bw=iw*0.64,y=ySpend(d.spend);s+='<rect class="bar'+(d.ok?'':' off')+'" x="'+bx.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+(pt+ih-y).toFixed(1)+'" rx="2"><title>'+d.date+': spend '+fmtMoney(d.spend,c)+', '+kpiLabel(c)+' '+kpiFmt(c,d.kpi)+'</title></rect>'});
   if(kpiTarget(c)) s+='<line class="tgt" x1="'+pl+'" x2="'+(W-pr)+'" y1="'+yKpi(kpiTarget(c)).toFixed(1)+'" y2="'+yKpi(kpiTarget(c)).toFixed(1)+'"/>';
   const pts=days.map((d,i)=>isFinite(d.kpi)&&d.kpi>0?(pl+i*iw+iw/2).toFixed(1)+','+yKpi(d.kpi).toFixed(1):null).filter(Boolean); if(pts.length>1) s+='<polyline class="kpi" points="'+pts.join(' ')+'"/>';
   days.forEach((d,i)=>{if(isFinite(d.kpi)&&d.kpi>0) s+='<circle class="pt" r="2.5" cx="'+(pl+i*iw+iw/2).toFixed(1)+'" cy="'+yKpi(d.kpi).toFixed(1)+'"/>'});
   const step=cnt>16?Math.ceil(cnt/10):(cnt>8?2:1); days.forEach((d,i)=>{if(i%step===0||i===cnt-1) s+='<text x="'+(pl+i*iw+iw/2).toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle">'+d.date.slice(8)+' '+MON[+d.date.slice(5,7)-1]+'</text>'});
   return s+'</svg>';
 }
-function entRange(e,spec){ let m; if(e.days&&Object.keys(e.days).length) m=daysIn(e.days,D.today,spec); else m={spend:e.spend||0,impressions:e.impressions||0,clicks:e.clicks||0,purchases:e.purchases||0,revenue:e.revenue||0,leads:e.leads||0}; return derive(m); }
+function entRange(e,spec){ let m; if(e.days&&Object.keys(e.days).length) m=daysIn(e.days,D.today,spec); else m={spend:e.spend||0,impressions:e.impressions||0,clicks:e.clicks||0,purchases:e.purchases||0,revenue:e.revenue||0,leads:e.leads||0,installs:e.installs||0}; return derive(m); }
 function chipK(c,v){ return '<span class="chip '+kpiStatus(c,v)+'">'+(c.type==='ecom'?fmtX(v):fmtMoney(v,c))+'</span>' }
 function thead(cols,table){ const so=state.sort[table]; return '<thead><tr>'+cols.map(cl=>'<th data-act="sort" data-table="'+table+'" data-key="'+cl.key+'" class="'+(cl.num?'num ':'')+(so.key===cl.key?'sorted':'')+'">'+cl.label+(so.key===cl.key?(so.dir==='asc'?' ↑':' ↓'):'')+'</th>').join('')+'</tr></thead>'; }
 function campaignTree(x){
-  const c=x.c, isE=c.type==='ecom', ent=x.ent, spec=x.spec, res=isE?'purchases':'leads'; const so=state.sort.campaigns;
-  const val=(r)=>{ switch(so.key){ case 'name':return r.e.name; case 'status':return r.e.status||''; case 'budget':return r.e.dailyBudget||r.e.lifetimeBudget||0; case 'results':return r.m[res]; case 'cpr':return isE?r.m.cpa:r.m.cpl; case 'kpi':return isE?r.m.roas:r.m.cpl; case 'ctr':return r.m.ctr; case 'cpm':return r.m.cpm; default:return r.m.spend; } };
+  const c=x.c, isE=c.type==='ecom', ent=x.ent, spec=x.spec, res=isE?'purchases':isApp(c)?'installs':'leads'; const so=state.sort.campaigns;
+  const val=(r)=>{ switch(so.key){ case 'name':return r.e.name; case 'status':return r.e.status||''; case 'budget':return r.e.dailyBudget||r.e.lifetimeBudget||0; case 'results':return r.m[res]; case 'cpr':return isE?r.m.cpa:isApp(c)?r.m.cpi:r.m.cpl; case 'kpi':return isE?r.m.roas:isApp(c)?r.m.cpi:r.m.cpl; case 'ctr':return r.m.ctr; case 'cpm':return r.m.cpm; default:return r.m.spend; } };
   const cmp=(a,b)=>{ let va=val(a),vb=val(b); if(typeof va==='string') return so.dir==='asc'?va.localeCompare(vb):vb.localeCompare(va); if(!isFinite(va)) va=so.dir==='asc'?Infinity:-Infinity; if(!isFinite(vb)) vb=so.dir==='asc'?Infinity:-Infinity; return so.dir==='asc'?va-vb:vb-va; };
   const camps=(ent.campaigns||[]).map(e=>({e,m:entRange(e,spec),pm:entRange(e,spec.prev)})).sort(cmp); const totalSpend=camps.reduce((s,r)=>s+r.m.spend,0); const rows=[];
   for(const r of camps){ const kids=(ent.adsets||[]).filter(s=>s.campaignId===r.e.id).map(e=>({e,m:entRange(e,spec),pm:entRange(e,spec.prev)})).sort(cmp); rows.push({lvl:0,...r,hasKids:kids.length>0,open:state.expanded.has(r.e.id)});
     if(state.expanded.has(r.e.id)) for(const s of kids){ const ads=(x.ads||[]).filter(a=>a.adsetId===s.e.id).map(e=>({e,m:entRange(e,spec),pm:entRange(e,spec.prev)})).sort(cmp); rows.push({lvl:1,...s,hasKids:ads.length>0,open:state.expanded.has(s.e.id)}); if(state.expanded.has(s.e.id)) for(const a of ads) rows.push({lvl:2,...a,hasKids:false}); } }
-  const cols=[{key:'name',label:'Campaign / ad set / ad'},{key:'status',label:'Status'},{key:'budget',label:'Budget',num:1},{key:'spend',label:'Spend',num:1},{key:'results',label:cap(res),num:1},{key:'cpr',label:isE?'CPA':'CPL',num:1},{key:'kpi',label:isE?'ROAS':'vs target',num:1},{key:'ctr',label:'CTR',num:1},{key:'cpm',label:'CPM',num:1}];
+  const cols=[{key:'name',label:'Campaign / ad set / ad'},{key:'status',label:'Status'},{key:'budget',label:'Budget',num:1},{key:'spend',label:'Spend',num:1},{key:'results',label:cap(res),num:1},{key:'cpr',label:isE?'CPA':kpiLabel(c),num:1},{key:'kpi',label:isE?'ROAS':'vs target',num:1},{key:'ctr',label:'CTR',num:1},{key:'cpm',label:'CPM',num:1}];
   let h='<div class="glass-panel"><h2>Campaigns <span class="sub">'+spec.label+' · deltas vs '+spec.prevLabel+' · click ▶ to open ad sets and ads</span></h2><div class="data-table-wrap tree"><table class="dtable">'+thead(cols,'campaigns')+'<tbody>';
   if(!rows.length) h+='<tr><td colspan="9" class="faint">No campaigns yet.</td></tr>';
   for(const r of rows){ const e=r.e,m=r.m,pm=r.pm;
@@ -1748,8 +1769,8 @@ function campaignTree(x){
 }
 function learnChip(r){ const l=(r.learning||'').toUpperCase(); if(r.status&&r.status!=='ACTIVE') return '<span class="chip neutral">'+esc(cap(r.status.toLowerCase().replace(/_/g,' ')))+'</span>'; if(l==='FAIL') return '<span class="chip warn"><span class="d"></span>Learning limited</span>'; if(l==='LEARNING') return '<span class="chip neutral"><span class="d"></span>Learning</span>'; if(l==='SUCCESS') return '<span class="chip good"><span class="d"></span>Active</span>'; return '<span class="chip neutral">'+esc(r.status||'n/a')+'</span>'; }
 function entityTable(x){
-  const c=x.c,isE=c.type==='ecom',tab=state.tab,ent=x.ent,spec=x.spec, res=isE?'purchases':'leads';
-  const kpiCol=isE?{key:'roas',label:'ROAS',num:1,f:r=>chipK(c,r.m.roas),v:r=>r.m.roas}:{key:'cpl',label:'CPL',num:1,f:r=>chipK(c,r.m.cpl),v:r=>r.m.cpl};
+  const c=x.c,isE=c.type==='ecom',tab=state.tab,ent=x.ent,spec=x.spec, res=isE?'purchases':isApp(c)?'installs':'leads';
+  const kpiCol=isE?{key:'roas',label:'ROAS',num:1,f:r=>chipK(c,r.m.roas),v:r=>r.m.roas}:isApp(c)?{key:'cpi',label:'CPI',num:1,f:r=>chipK(c,r.m.cpi),v:r=>r.m.cpi}:{key:'cpl',label:'CPL',num:1,f:r=>chipK(c,r.m.cpl),v:r=>r.m.cpl};
   let cols,rows,empty,note='',title='';
   if(tab==='products'){ rows=(ent.products||[]).map(e=>({e,m:{}})); title='Products <span class="sub">last 30 days · stock from Shopify</span>';
     cols=[{key:'title',label:'Product',f:r=>'<td class="row-title"><span class="adname">'+(r.e.image?'<img class="thumb" src="'+esc(r.e.image)+'" alt="">':'')+'<span>'+esc(r.e.title)+(r.e.price?'<span class="sub">'+fmtMoney(r.e.price,c)+'</span>':'')+'</span></span></td>',v:r=>r.e.title},{key:'revenue',label:'Revenue',num:1,f:r=>fmtMoney(r.e.revenue,c),v:r=>r.e.revenue},{key:'units',label:'Units',num:1,f:r=>fmtNum(r.e.units),v:r=>r.e.units},{key:'units7',label:'Units, 7d',num:1,f:r=>fmtNum(r.e.units7),v:r=>r.e.units7},{key:'orders',label:'Orders',num:1,f:r=>fmtNum(r.e.orders),v:r=>r.e.orders},{key:'inventory',label:'Stock',num:1,f:r=>r.e.inventory==null?'<span class="faint">n/a</span>':fmtNum(r.e.inventory),v:r=>r.e.inventory==null?-1:r.e.inventory},{key:'days',label:'Days of stock',f:r=>stockChip(r.e),v:r=>{const pd=(r.e.units7||0)/7; return r.e.inventory==null||!pd?9999:r.e.inventory/pd}}];
@@ -1850,7 +1871,7 @@ function showUpdate(x){ const text=clientUpdateText(x); const m=document.createE
 
 /* command palette */
 const cmdk=document.getElementById('cmdk'), cmdkInput=document.getElementById('cmdkInput'), cmdkResults=document.getElementById('cmdkResults'); let cmdkSel=0;
-function cmdkItems(q){ q=(q||'').toLowerCase(); const items=[{label:'Command Center',hint:'overview',run:()=>go(null)}]; (D?D.clients:[]).forEach(c=>items.push({label:c.name,hint:c.type==='ecom'?'ecom':'leads',run:()=>go(c.id),dot:S[c.id]?.health})); if(state.view==='client') items.push({label:'Copy client update',hint:'action',run:()=>showUpdate(S[state.clientId])}); ['today','yesterday','7d','14d','30d','MTD'].forEach(r=>items.push({label:'Range: '+r,hint:'action',run:()=>{state.range=r;render();}})); if(LIVE) items.push({label:'Refresh data',hint:'action',run:()=>boot(true)}); return items.filter(i=>!q||i.label.toLowerCase().includes(q)).slice(0,12); }
+function cmdkItems(q){ q=(q||'').toLowerCase(); const items=[{label:'Command Center',hint:'overview',run:()=>go(null)}]; (D?D.clients:[]).forEach(c=>items.push({label:c.name,hint:c.type==='ecom'?'ecom':c.type==='app'?'app':'leads',run:()=>go(c.id),dot:S[c.id]?.health})); if(state.view==='client') items.push({label:'Copy client update',hint:'action',run:()=>showUpdate(S[state.clientId])}); ['today','yesterday','7d','14d','30d','MTD'].forEach(r=>items.push({label:'Range: '+r,hint:'action',run:()=>{state.range=r;render();}})); if(LIVE) items.push({label:'Refresh data',hint:'action',run:()=>boot(true)}); return items.filter(i=>!q||i.label.toLowerCase().includes(q)).slice(0,12); }
 function openCmdk(){ cmdk.classList.add('open'); cmdkInput.value=''; cmdkSel=0; renderCmdk(); setTimeout(()=>cmdkInput.focus(),10); }
 function closeCmdk(){ cmdk.classList.remove('open'); }
 function renderCmdk(){ const items=cmdkItems(cmdkInput.value); cmdkResults.innerHTML=items.map((it,i)=>'<button class="cmdk-result '+(i===cmdkSel?'sel':'')+'" data-i="'+i+'">'+(it.dot?'<span class="hdot '+it.dot+'"></span>':ICONS.grid)+'<span>'+esc(it.label)+'</span><span class="hint">'+esc(it.hint)+'</span></button>').join('')||'<div class="empty-note">Nothing matches.</div>'; cmdkResults._items=items; }

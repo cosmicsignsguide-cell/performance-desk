@@ -50,6 +50,8 @@ export function emptyDaily(clientId, date, platform) {
     clientId, date, platform,
     spend: 0, impressions: 0, clicks: 0,
     purchases: 0, revenue: 0, leads: 0,
+    // App-install clients: the outcome Meta reports is an install, not a purchase or a lead.
+    installs: 0,
     // Meta pixel funnel (ads traffic only)
     lpv: 0, atc: 0, ic: 0,
     // Shopify

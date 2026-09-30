@@ -145,9 +145,14 @@ async function waitForUrl(generationId, { tries = 40, gapMs = 6000 } = {}) {
 export async function weeklyReports(store, clients, opts = {}) {
   if (!KEY()) { log('gamma: GAMMA_API_KEY is not set, skipping weekly reports'); return { made: 0, skipped: clients.length }; }
   const w = weekWindow(opts.today || todayStr());
+  // One client at a time when asked. Each deck spends credits from a finite balance, so a run
+  // that quietly bills for thirty of them is not something to trigger by accident.
+  const only = String(opts.only || '').trim().toLowerCase();
+  const list = only ? clients.filter((c) => c.id === only) : clients;
+  if (only && !list.length) { log(`gamma: no client with id "${only}"`); return { made: 0, skipped: 0, failed: 0 }; }
   let made = 0, skipped = 0, failed = 0;
 
-  for (const c of clients) {
+  for (const c of list) {
     const id = `${c.id}_${w.end}`;
     if (!opts.force && (await store.get('weekly', id))) { skipped++; continue; }   // already made this week
 

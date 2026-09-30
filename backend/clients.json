@@ -224,11 +224,11 @@
   {
     "id": "freshyzo",
     "name": "FreshyZo",
-    "type": "ecom",
+    "type": "app",
     "currency": "INR",
     "budget": 0,
     "target": {
-      "roas": null
+      "cpi": null
     },
     "am": "",
     "accounts": {

@@ -9,14 +9,35 @@ import { log, nowIso } from './util.js';
 
 const FILE = path.resolve(process.env.DESK_CLIENTS_FILE || './clients.json');
 
+// Says out loud what it found. The bare `catch { return [] }` this replaces made a missing file,
+// a file sitting in the wrong folder and a file with a stray comma all look exactly like "no
+// clients to add", and the run carried on as if nothing had happened. That silence cost two
+// rounds of guessing at why 41 clients in the repo were still showing up as 2 on the server.
 export function readClientsFile() {
-  try { return JSON.parse(fs.readFileSync(FILE, 'utf8')); } catch { return []; }
+  let text;
+  try {
+    text = fs.readFileSync(FILE, 'utf8');
+  } catch (e) {
+    log(`clients.json NOT FOUND at ${FILE} (${e.code || e.message}). Nothing will be added or updated from the file.`);
+    return [];
+  }
+  try {
+    const rows = JSON.parse(text);
+    if (!Array.isArray(rows)) { log(`clients.json at ${FILE} is not a JSON array, ignoring it`); return []; }
+    log(`clients.json: read ${rows.length} entr${rows.length === 1 ? 'y' : 'ies'} from ${FILE}`);
+    return rows;
+  } catch (e) {
+    log(`clients.json at ${FILE} is not valid JSON (${e.message}). Fix the file; nothing was added or updated.`);
+    return [];
+  }
 }
 
 export function normalizeClient(c) {
   const id = String(c.id || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
   if (!id) throw new Error('client needs an id');
-  const type = c.type === 'lead' ? 'lead' : 'ecom';
+  // Three kinds of account. 'app' is for install campaigns, where the outcome Meta reports is an
+  // install rather than a purchase or a lead, so it is priced per install.
+  const type = c.type === 'lead' ? 'lead' : c.type === 'app' ? 'app' : 'ecom';
   return {
     id,
     name: c.name || id,
@@ -30,7 +51,9 @@ export function normalizeClient(c) {
     // there as a commitment nobody made. A target has to be entered to exist.
     target: type === 'ecom'
       ? { roas: Number(c.target?.roas) > 0 ? Number(c.target.roas) : null }
-      : { cpl: Number(c.target?.cpl) > 0 ? Number(c.target.cpl) : null },
+      : type === 'app'
+        ? { cpi: Number(c.target?.cpi) > 0 ? Number(c.target.cpi) : null }
+        : { cpl: Number(c.target?.cpl) > 0 ? Number(c.target.cpl) : null },
     am: c.am || '',
     contact: c.contact || '',                     // the client's own person, greeted on their report
     accounts: {
