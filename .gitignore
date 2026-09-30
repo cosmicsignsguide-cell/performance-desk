@@ -3,3 +3,9 @@ backend/data/
 backend/.env
 frontend/config.js
 .DS_Store
+
+# Test output must never reach the site root. frontend/ is what the static host publishes, so a
+# stray screenshot from a Playwright run lands at a public URL. Two boot-screen shots got here
+# that way, from a run whose working directory happened to be frontend/. Real image assets belong
+# in frontend/assets/, which this does not touch.
+frontend/*.png
