@@ -90,6 +90,21 @@ export async function fetchDaily(client, since, until) {
   const row = (d) => (byDay[d] = byDay[d] || emptyDaily(client.id, d, 'shopify'));
   for (let d = since; d <= until; d = addDays(d, 1)) row(d);
   const products = {};
+  // Where the store itself says each order came from. This is the only honest answer to "how
+  // many orders came from Meta": the platforms each report the orders they believe their ads
+  // caused, inside their own attribution window, so their counts overlap and add up to more
+  // than the store ever sold. Shopify's firstVisit.source is a record, not a model. The data is
+  // already in the orders response, so counting it costs nothing extra.
+  const sourceOf = (o) => {
+    const s = String(o.customerJourneySummary?.firstVisit?.source || '').toLowerCase();
+    if (!s) return 'srcNone';
+    if (s.includes('instagram') || s.includes('facebook')) return 'srcMeta';
+    if (s.includes('google')) return 'srcGoogle';
+    if (s === 'direct') return 'srcDirect';
+    if (s.includes('unknown')) return 'srcUnknown';
+    return 'srcOther';
+  };
+
   for (const o of orders) {
     const d = dayOf(o.createdAt); const r = row(d);
     r.checkoutsStarted += 1;
@@ -101,6 +116,7 @@ export async function fetchDaily(client, since, until) {
     // return rate can be read on its own.
     const net = Math.max(0, subtotal - refunded);
     r.orders += 1; r.grossSales += gross; r.netSales += net; r.refunds += refunded;
+    r[sourceOf(o)] = (r[sourceOf(o)] || 0) + 1;
     if (o.customerJourneySummary?.customerOrderIndex === 1 || (!o.customerJourneySummary && o.customer?.numberOfOrders === 1)) r.newCustomerOrders += 1;
     for (const li of o.lineItems?.nodes || []) {
       r.units += li.quantity;
