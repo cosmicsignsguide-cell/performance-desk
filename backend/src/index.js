@@ -251,13 +251,32 @@ async function main() {
       if (mode === 'weekly') {
         // Built from the rows already in the store, not from a fresh pull, so the deck and the
         // dashboard are looking at exactly the same numbers.
-        const r = await weeklyReports(store, clients, { force: url.searchParams.get('force') === '1' });
+        const r = await weeklyReports(store, clients, { force: url.searchParams.get('force') === '1', only: url.searchParams.get('client') || '' });
         await store.merge('meta', 'lastRun', { weekly: nowIso() });
         return { mode, clients: clients.length, ...r };
       }
-      for (const c of clients) { const { entities } = await syncClient(store, c, { mode, days }); await computeSignals(c, entities, { mode }); }
-      await store.merge('meta', 'lastRun', { [mode]: nowIso() });
-      return { mode, clients: clients.length };
+      // ?client=<id> syncs one account instead of the whole book. Chasing a single failing client
+      // through a 31 account run costs a few thousand Firestore writes and a real dent in the Meta
+      // rate limit, and the other thirty were already fine. The run is not recorded as the day's
+      // lastRun either, because one client is not the book.
+      const only = String(url.searchParams.get('client') || '').trim().toLowerCase();
+      const list = only ? clients.filter((c) => c.id === only) : clients;
+      if (only && !list.length) return { mode, clients: 0, error: `no client with id "${only}"` };
+
+      const failures = [];
+      for (const c of list) {
+        const { entities } = await syncClient(store, c, { mode, days });
+        await computeSignals(c, entities, { mode });
+        // The per source errors are already stored for the dashboard; surfacing them in the
+        // response too means a one client run answers "why is this broken" without a log dive.
+        const sy = (await store.get('syncs', c.id)) || {};
+        for (const src of Object.keys(sy)) {
+          const v = sy[src];
+          if (v && typeof v === 'object' && v.ok === false && v.error) failures.push(`${c.id}/${src}: ${v.error}`);
+        }
+      }
+      if (!only) await store.merge('meta', 'lastRun', { [mode]: nowIso() });
+      return { mode, clients: list.length, ...(only ? { client: only } : {}), ...(failures.length ? { failures } : {}) };
     }
 
     http.createServer(async (req, res) => {
@@ -327,21 +346,25 @@ async function main() {
       // ?days=N restates N days of history instead of the usual 7. Ignored for hourly and
       // sitewatch, which have nothing to restate.
       const days = mode === 'daily' ? parseInt(url.searchParams.get('days') || '', 10) : NaN;
-      if (running.has(mode)) { res.writeHead(409); res.end(`${mode} is already running`); return; }
+      // One client's run is keyed separately from the whole book's, so debugging a broken account
+      // is not blocked by whichever cron happens to be mid-flight.
+      const lockOn = String(url.searchParams.get('client') || '').trim().toLowerCase();
+      const lock = mode + (lockOn ? ':' + lockOn : '');
+      if (running.has(lock)) { res.writeHead(409); res.end(`${lock} is already running`); return; }
 
       if (url.pathname === '/run') {          // fire and forget, answer immediately
-        running.add(mode);
-        res.writeHead(202); res.end(JSON.stringify({ ok: true, started: mode, days: Number.isFinite(days) ? days : undefined }));
-        runMode(mode, days, url).then((r) => log(`run ${mode} done (${r.clients} clients)`))
-          .catch((e) => log(`run ${mode} FAILED ${e.message || e}`))
-          .finally(() => running.delete(mode));
+        running.add(lock);
+        res.writeHead(202); res.end(JSON.stringify({ ok: true, started: lock, days: Number.isFinite(days) ? days : undefined }));
+        runMode(mode, days, url).then((r) => log(`run ${lock} done (${r.clients} clients)${r.failures ? ' with ' + r.failures.length + ' failure(s)' : ''}`))
+          .catch((e) => log(`run ${lock} FAILED ${e.message || e}`))
+          .finally(() => running.delete(lock));
         return;
       }
 
-      running.add(mode);                       // /sync: the button waits for the answer
+      running.add(lock);                       // /sync: the button waits for the answer
       try { const r = await runMode(mode, days, url); res.end(JSON.stringify({ ok: true, ...r })); }
       catch (e) { res.writeHead(500); res.end(String(e.message || e)); }
-      finally { running.delete(mode); }
+      finally { running.delete(lock); }
     }).listen(port, () => log(`desk api listening on ${port} (/sync, /run, /health)`));
     return;
   }
