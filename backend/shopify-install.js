@@ -1,106 +1,89 @@
-// Shopify Admin GraphQL fetcher. Read-only.
-// Needs a custom-app Admin API token per store (env var named in clients.json accounts.shopify.tokenEnv,
-// default SHOPIFY_TOKEN_<CLIENTID>) with scopes: read_orders, read_products, read_inventory, read_customers.
+// One-time helper: get a client store's permanent Admin API access token.
 //
-// Net sales here = current subtotal (after discounts and after any refunded line items), shipping and tax excluded.
-// New-customer order = customerJourneySummary.customerOrderIndex == 1 (Shopify's own first-order flag).
-// Checkouts started = orders + abandoned checkouts created that day (the Shopify signal for a stuck checkout).
+//   node shopify-install.js link  CLIENT_ID store.myshopify.com
+//   node shopify-install.js token CLIENT_ID CLIENT_SECRET "<the whole callback URL you landed on>"
+//
+// Why it is split in two, and why there is no local server any more:
+//
+// The old version ran a listener on http://localhost:53683 and had Shopify redirect back to it.
+// Shopify's current Dev Dashboard refuses to save a localhost redirect URL at all ("Not a valid
+// HTTP URL"), so that flow cannot even be configured on a newly created app. What works is a
+// public HTTPS redirect. The desk API already has one, so the app points there, the browser lands
+// on a URL carrying ?code=..., and `token` trades that code for the real token.
+//
+// The other thing this fixes: the old scope list left out read_reports. Without it Shopify will
+// not answer ShopifyQL, the fetcher silently falls back to adding up raw orders, and net sales
+// come out roughly 10% too HIGH (tax sits inside the subtotal and refunds land on the order's
+// date rather than the refund's). Every store needs read_reports or its numbers flatter us.
 
-import { config, shopifyTokenFor } from '../config.js';
-import { fetchJson, emptyDaily, log, num, round, addDays, tzOffset } from '../util.js';
+const crypto = require('crypto');
 
-const ORDERS_Q = `query DeskOrders($q: String!, $after: String) { orders(first: 100, after: $after, query: $q, sortKey: CREATED_AT) { pageInfo { hasNextPage endCursor } nodes { id name createdAt cancelledAt displayFinancialStatus currentSubtotalPriceSet { shopMoney { amount currencyCode } } currentTotalPriceSet { shopMoney { amount } } totalRefundedSet { shopMoney { amount } } customer { id numberOfOrders } customerJourneySummary { customerOrderIndex firstVisit { source } } discountCodes lineItems(first: 50) { nodes { quantity title product { id title } variant { id } originalUnitPriceSet { shopMoney { amount } } } } } } }`;
-const ABANDONED_Q = `query DeskAbandoned($q: String!, $after: String) { abandonedCheckouts(first: 100, after: $after, query: $q) { pageInfo { hasNextPage endCursor } nodes { id createdAt completedAt } } }`;
-const PRODUCTS_Q = `query DeskProducts($ids: [ID!]!) { nodes(ids: $ids) { ... on Product { id title totalInventory featuredMedia { preview { image { url } } } variants(first: 1) { nodes { price } } } } }`;
-const SHOP_Q = `query DeskShop { shop { name myshopifyDomain currencyCode ianaTimezone plan { publicDisplayName } primaryDomain { url } } }`;
+const SCOPES = 'read_orders,read_products,read_inventory,read_customers,read_reports';
+const REDIRECT = process.env.DESK_SHOPIFY_REDIRECT || 'https://desk-api-si2w.onrender.com/shopify/callback';
 
-async function gql(client, query, variables) {
-  const token = shopifyTokenFor(client);
-  if (!token) throw new Error('no shopify token');
-  const shop = client.accounts.shopify.shop;
-  const body = await fetchJson(`https://${shop}/admin/api/${config.shopify.apiVersion}/graphql.json`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': token }, body: JSON.stringify({ query, variables }),
-  }, { label: 'shopify' });
-  if (body.errors?.length) throw new Error('shopify: ' + body.errors.map((e) => e.message).join('; '));
-  return body.data;
+const [, , cmd, ...rest] = process.argv;
+const die = (m) => { console.error(m); process.exit(1); };
+
+if (cmd === 'link') {
+  const [clientId, shopRaw] = rest;
+  if (!clientId || !shopRaw) die('Usage: node shopify-install.js link CLIENT_ID store.myshopify.com');
+  const shop = shopRaw.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const state = crypto.randomBytes(8).toString('hex');
+  const url = `https://${shop}/admin/oauth/authorize?client_id=${encodeURIComponent(clientId)}`
+    + `&scope=${encodeURIComponent(SCOPES)}&redirect_uri=${encodeURIComponent(REDIRECT)}&state=${state}`;
+  console.log(`\nIn the Dev Dashboard this app must have, on the RELEASED version:`);
+  console.log(`  Redirect URL           ${REDIRECT}`);
+  console.log(`  Custom distribution    ${shop}     (permanent, cannot be changed later)`);
+  console.log(`  Use legacy install flow  ticked    (without it Shopify returns no code)`);
+  console.log(`  Embed in Shopify admin   off\n`);
+  console.log('Open this while logged in to THAT store, then copy the whole URL you land on:\n');
+  console.log(url + '\n');
+  process.exit(0);
 }
 
-async function allPages(client, query, q, key) {
-  const out = []; let after = null;
-  do {
-    const data = await gql(client, query, { q, after });
-    const conn = data[key]; out.push(...conn.nodes);
-    after = conn.pageInfo.hasNextPage ? conn.pageInfo.endCursor : null;
-  } while (after);
-  return out;
-}
+if (cmd === 'token') {
+  const [clientId, clientSecret, callbackUrl] = rest;
+  if (!clientId || !clientSecret || !callbackUrl) die('Usage: node shopify-install.js token CLIENT_ID CLIENT_SECRET "<callback URL>"');
+  let u;
+  try { u = new URL(callbackUrl); } catch { die('That does not look like a URL. Paste the whole thing in quotes.'); }
+  const code = u.searchParams.get('code');
+  const shop = u.searchParams.get('shop');
+  if (!code) die('No ?code= in that URL. Shopify only sends a code when "Use legacy install flow" is ticked\non the released version of the app. An hmac and host with no code means managed install.');
+  if (!shop) die('No ?shop= in that URL.');
 
-// Dates in the desk timezone. Shopify query dates are interpreted in the shop timezone; we pass ISO with offset.
-function dayOf(iso) { return new Date(iso).toLocaleDateString('en-CA', { timeZone: config.tz }); }
+  // Shopify signs the callback, so check it before spending the code. A mismatch almost always
+  // means the client secret belongs to a different app than the one that produced this URL.
+  const params = [...u.searchParams.entries()].filter(([k]) => k !== 'hmac' && k !== 'signature')
+    .sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${k}=${v}`).join('&');
+  const digest = crypto.createHmac('sha256', clientSecret).update(params).digest('hex');
+  const given = u.searchParams.get('hmac') || '';
+  const ok = given.length === digest.length
+    && crypto.timingSafeEqual(Buffer.from(digest, 'utf8'), Buffer.from(given, 'utf8'));
+  if (!ok) die('HMAC check failed. The client secret does not match the app that made this link.');
 
-export async function fetchDaily(client, since, until) {
-  const off = tzOffset();
-  const q = `created_at:>='${since}T00:00:00${off}' created_at:<='${until}T23:59:59${off}'`;
-  const [orders, abandoned] = await Promise.all([
-    allPages(client, ORDERS_Q, q, 'orders'),
-    allPages(client, ABANDONED_Q, q, 'abandonedCheckouts'),
-  ]);
-  const byDay = {};
-  const row = (d) => (byDay[d] = byDay[d] || emptyDaily(client.id, d, 'shopify'));
-  for (let d = since; d <= until; d = addDays(d, 1)) row(d);
-  const products = {};
-  for (const o of orders) {
-    const d = dayOf(o.createdAt); const r = row(d);
-    r.checkoutsStarted += 1;
-    if (o.cancelledAt || o.displayFinancialStatus === 'VOIDED') continue;
-    const gross = num(o.currentTotalPriceSet?.shopMoney?.amount), subtotal = num(o.currentSubtotalPriceSet?.shopMoney?.amount), refunded = num(o.totalRefundedSet?.shopMoney?.amount);
-    // Net sales is after returns, the way Shopify's own reports define it. Leaving refunds out
-    // inflated net sales, and with them AOV, MER and ROAS, which is the one direction a
-    // performance dashboard must never be wrong in. Refunds stay on the row as well so the
-    // return rate can be read on its own.
-    const net = Math.max(0, subtotal - refunded);
-    r.orders += 1; r.grossSales += gross; r.netSales += net; r.refunds += refunded;
-    if (o.customerJourneySummary?.customerOrderIndex === 1 || (!o.customerJourneySummary && o.customer?.numberOfOrders === 1)) r.newCustomerOrders += 1;
-    for (const li of o.lineItems?.nodes || []) {
-      r.units += li.quantity;
-      const pid = li.product?.id || li.title;
-      const p = (products[pid] = products[pid] || { id: pid, title: li.product?.title || li.title, units: 0, units7: 0, revenue: 0, orders: 0 });
-      p.units += li.quantity; p.revenue += li.quantity * num(li.originalUnitPriceSet?.shopMoney?.amount); p.orders += 1;
-      if (d > addDays(until, -7)) p.units7 += li.quantity;
-    }
-  }
-  for (const a of abandoned) { if (!a.completedAt) row(dayOf(a.createdAt)).checkoutsStarted += 1; }
-  const rows = Object.values(byDay).map((r) => ({ ...r, grossSales: round(r.grossSales), netSales: round(r.netSales), refunds: round(r.refunds) }));
-  // Recent orders feed: the last two days, newest first, for the dashboard's Orders tab.
-  const cutoff = addDays(until, -1);
-  const recentOrders = orders.filter((o) => dayOf(o.createdAt) >= cutoff).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, 60).map((o) => ({
-    id: o.id, name: o.name, at: o.createdAt, total: round(num(o.currentTotalPriceSet?.shopMoney?.amount)),
-    items: (o.lineItems?.nodes || []).map((li) => `${li.quantity} x ${li.product?.title || li.title}`).join(', '),
-    units: (o.lineItems?.nodes || []).reduce((s, li) => s + li.quantity, 0),
-    newCustomer: o.customerJourneySummary?.customerOrderIndex === 1 || (!o.customerJourneySummary && o.customer?.numberOfOrders === 1),
-    status: o.cancelledAt ? 'cancelled' : (o.displayFinancialStatus || '').toLowerCase().replace(/_/g, ' '),
-    source: o.customerJourneySummary?.firstVisit?.source || '',
-    discount: (o.discountCodes || []).join(', '),
-  }));
-  return { rows, products: Object.values(products), recentOrders };
-}
-
-// Top products for the last 30 days with live inventory, so ads on an out-of-stock SKU show up.
-export async function fetchProducts(client, until) {
-  const since = addDays(until, -29);
-  const { products } = await fetchDaily(client, since, until);
-  const top = products.sort((a, b) => b.revenue - a.revenue).slice(0, 25);
-  const ids = top.map((p) => p.id).filter((id) => id.startsWith('gid://'));
-  let info = {};
-  if (ids.length) {
-    const data = await gql(client, PRODUCTS_Q, { ids });
-    info = Object.fromEntries((data.nodes || []).filter(Boolean).map((n) => [n.id, n]));
-  }
-  return top.map((p) => ({ ...p, revenue: round(p.revenue), inventory: info[p.id]?.totalInventory ?? null, image: info[p.id]?.featuredMedia?.preview?.image?.url || '', price: num(info[p.id]?.variants?.nodes?.[0]?.price) }));
-}
-
-export async function testToken(client) {
-  const data = await gql(client, SHOP_Q, {});
-  log(`shopify ok: ${data.shop.name} (${data.shop.currencyCode}, ${data.shop.plan?.publicDisplayName}, ${data.shop.primaryDomain?.url})`);
-  return data.shop;
+  fetch(`https://${shop}/admin/oauth/access_token`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, code }),
+  })
+    .then((r) => r.json())
+    .then((j) => {
+      if (!j.access_token) die('No token returned:\n' + JSON.stringify(j, null, 2)
+        + '\n\nA code can only be spent once. If this says invalid_request, open the authorize link again for a fresh one.');
+      const granted = String(j.scope || '');
+      console.log(`\nADMIN API ACCESS TOKEN for ${shop}\n`);
+      console.log(j.access_token + '\n');
+      console.log('Granted scopes:', granted || '(none reported)');
+      if (!granted.includes('read_reports')) {
+        console.log('\nWARNING: read_reports was NOT granted. Sales figures from this store will be');
+        console.log('computed from raw orders instead of Shopify’s own reports, which reads about 10%');
+        console.log('too high. Add read_reports to the app’s scopes, release a new version, and redo this.');
+      }
+      console.log(`\nAdd it on Render as:  SHOPIFY_TOKEN_<CLIENTID>`);
+    })
+    .catch((e) => die(String(e)));
+} else {
+  console.log('Usage:');
+  console.log('  node shopify-install.js link  CLIENT_ID store.myshopify.com');
+  console.log('  node shopify-install.js token CLIENT_ID CLIENT_SECRET "<callback URL>"');
+  process.exit(1);
 }

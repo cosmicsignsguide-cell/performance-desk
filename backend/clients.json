@@ -338,7 +338,7 @@
       "productPath": "",
       "expectText": ""
     },
-    "active": true,
+    "active": false,
     "contact": ""
   },
   {
@@ -362,7 +362,7 @@
       "productPath": "",
       "expectText": ""
     },
-    "active": true,
+    "active": false,
     "contact": ""
   },
   {
@@ -386,7 +386,7 @@
       "productPath": "",
       "expectText": ""
     },
-    "active": true,
+    "active": false,
     "contact": ""
   },
   {
@@ -698,7 +698,7 @@
       "productPath": "",
       "expectText": ""
     },
-    "active": true,
+    "active": false,
     "contact": ""
   },
   {
@@ -722,7 +722,7 @@
       "productPath": "",
       "expectText": ""
     },
-    "active": true,
+    "active": false,
     "contact": ""
   },
   {
@@ -890,7 +890,7 @@
       "productPath": "",
       "expectText": ""
     },
-    "active": true,
+    "active": false,
     "contact": ""
   },
   {
@@ -914,7 +914,7 @@
       "productPath": "",
       "expectText": ""
     },
-    "active": true,
+    "active": false,
     "contact": ""
   },
   {
