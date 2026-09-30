@@ -1,0 +1,992 @@
+[
+  {
+    "id": "firvt",
+    "name": "Firvt",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 500000,
+    "target": {
+      "roas": 3.0
+    },
+    "am": "",
+    "accounts": {
+      "meta": "250386897119465",
+      "google": "1978979443",
+      "shopify": {
+        "shop": "firvt.myshopify.com",
+        "tokenEnv": "SHOPIFY_TOKEN_FIRVT"
+      },
+      "ga4": ""
+    },
+    "site": {
+      "url": "https://firvt.com",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": "Swapnil"
+  },
+  {
+    "id": "hokipo",
+    "name": "HOKIPO",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 500000,
+    "target": {
+      "roas": 3.0
+    },
+    "am": "",
+    "accounts": {
+      "meta": "1151572416206749",
+      "google": "2805031001",
+      "shopify": {
+        "shop": "40c2f1-2.myshopify.com",
+        "tokenEnv": "SHOPIFY_TOKEN_HOKIPO"
+      },
+      "ga4": ""
+    },
+    "site": {
+      "url": "https://hokipo.in",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "frankly",
+    "name": "Frankly Wearing",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "222862346",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "earthgarden",
+    "name": "Earth Garden",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "208553959760117",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "https://earthgarden.in",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "mackly",
+    "name": "Mackly Store",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "2999205000182683",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "https://mackly.com",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "mackly-active",
+    "name": "Mackly India Activewear",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "439345888148374",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "tresnova",
+    "name": "Tresnova",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "601991935812895",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "https://tresnova.com",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "marblelotus",
+    "name": "Marble Lotus",
+    "type": "ecom",
+    "currency": "USD",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "1297856987484951",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "https://marble-lotus.com",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "zayma",
+    "name": "Zayma",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "2863832864008584",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "freshyzo",
+    "name": "FreshyZo",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "1288933835731779",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "https://freshyzo.com",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "hideleather",
+    "name": "Hide and Leather",
+    "type": "ecom",
+    "currency": "AED",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "198147135387697",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "whimsy",
+    "name": "Whimsy Beauty",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "1022095032103885",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "whimsy-2",
+    "name": "Whimsy Beauty 2",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "562278962526172",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "iluumi",
+    "name": "iluumi IN",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "1106536060469279",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "aura",
+    "name": "Aura IN",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "1094849525405251",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "clipdit",
+    "name": "Clipd it",
+    "type": "ecom",
+    "currency": "USD",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "1504529834307822",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "fashioncolour-2",
+    "name": "Fashion Colour 2",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "377815284635106",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "fashioncolour-n",
+    "name": "Fashion Colour New",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "1083946373181574",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "assembly-fbig",
+    "name": "Assembly FB/IG",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "212687559794998",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "assembly-pre",
+    "name": "Assembly Prepaid",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "579621903084743",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "assembly-post2",
+    "name": "Assembly Postpaid 2",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "451855546547190",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "assembly-post3",
+    "name": "Assembly Postpaid 3 CL",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "651454507449839",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "hnl-dubai",
+    "name": "HnL Dubai",
+    "type": "ecom",
+    "currency": "AED",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "431283433341975",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "dhanuka",
+    "name": "Dhanuka Agritech",
+    "type": "lead",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "cpl": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "1719326149204121",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "honestenergy",
+    "name": "Honest Energy+",
+    "type": "lead",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "cpl": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "855510214019759",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "brahmaverse",
+    "name": "Brahmaverse",
+    "type": "lead",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "cpl": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "3597911907031753",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "brahmaa",
+    "name": "Brahmaa",
+    "type": "lead",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "cpl": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "925023716870543",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "oneverse",
+    "name": "OneVerse",
+    "type": "lead",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "cpl": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "1599852424863966",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "fitness-sans",
+    "name": "Fitness by Sanskriti",
+    "type": "lead",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "cpl": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "444362061893276",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "fitness-sans-2",
+    "name": "Fitness by Sanskriti 2",
+    "type": "lead",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "cpl": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "897469651180667",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "fashioncolour",
+    "name": "Fashion Colour",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "2736386966431137",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": false,
+    "contact": ""
+  },
+  {
+    "id": "hnl-2",
+    "name": "HnL 2",
+    "type": "ecom",
+    "currency": "AED",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "1462276507781219",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": false,
+    "contact": ""
+  },
+  {
+    "id": "dismantle-1",
+    "name": "Dismantle Digital (unnamed)",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "10152045041525014",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "postpaid-bkp",
+    "name": "Postpaid backup",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "678006301370620",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "smb-postpaid",
+    "name": "Social Media Boosting Postpaid",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "956633589670583",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "kreative-bp",
+    "name": "Postpaid BP Kreative Digital",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "762163303076326",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "rahulads",
+    "name": "RahulAds (test)",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "1131292765703755",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "rahul-digiside",
+    "name": "Rahul ads digiside",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "951882417354851",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "rudolph-bkp",
+    "name": "Rudolph backup",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "4392494347681644",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "pg-social-6",
+    "name": "PG Social Ad 6",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "1585257289978308",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "rahul-sharma",
+    "name": "Rahul Sharma",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "253567003981318",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": false,
+    "contact": ""
+  }
+]
