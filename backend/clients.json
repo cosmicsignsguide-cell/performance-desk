@@ -186,7 +186,10 @@
     "accounts": {
       "meta": "1297856987484951",
       "google": "",
-      "shopify": null,
+      "shopify": {
+        "shop": "marble-lotus-llc.myshopify.com",
+        "tokenEnv": "SHOPIFY_TOKEN_MARBLELOTUS"
+      },
       "ga4": ""
     },
     "site": {
