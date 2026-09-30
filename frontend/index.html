@@ -868,10 +868,28 @@ async function loadLive(){
   // reports carries each client's report token. It is read here so a video creative can be
   // played on this page through the same server route the client's own report uses, which keeps
   // the Meta access token on the server instead of shipping it to a browser.
-  const [clients,daily,ents,sigs,sws,syncsArr,alerts,intra,meta,reports,weekly]=await Promise.all([col('clients'),col('daily',r=>r.where('date','>=',since)),col('entities'),col('signals'),col('sitewatch'),col('syncs'),col('alerts',r=>r.where('at','>=',new Date(Date.now()-48*3600000).toISOString())),col('intraday',r=>r.where('date','>=',addDays(today,-8))),fb.db.collection(PFX+'meta').doc('lastRun').get().then(d=>d.exists?d.data():{}),col('reports').catch(()=>[]),col('weekly').catch(()=>[])]);
+  // Daily rows come from the rollup collection: one document per client instead of one per
+  // client-day-platform. The old read was about 3,300 documents every time anyone opened the
+  // page, against a 50,000 a day free tier, so the team shared roughly thirteen loads before the
+  // dashboard stopped working. This is 31.
+  //
+  // The rollup is written by the sync from the stored rows themselves, so it holds the same
+  // numbers, not a summary of them. If it is missing, or covers fewer clients than we have, the
+  // page falls back to reading daily directly and is merely slower. Correct and slow beats fast
+  // and wrong, and this way a deploy that lands before the first sync still works.
+  const [clients,rollups,ents,sigs,sws,syncsArr,alerts,intra,meta,reports,weekly]=await Promise.all([col('clients'),col('rollup').catch(()=>[]),col('entities'),col('signals'),col('sitewatch'),col('syncs'),col('alerts',r=>r.where('at','>=',new Date(Date.now()-48*3600000).toISOString())),col('intraday',r=>r.where('date','>=',addDays(today,-8))),fb.db.collection(PFX+'meta').doc('lastRun').get().then(d=>d.exists?d.data():{}),col('reports').catch(()=>[]),col('weekly').catch(()=>[])]);
+  const live=clients.filter(c=>c.active!==false);
+  const covered=new Set(rollups.filter(r=>Array.isArray(r.rows)).map(r=>r.clientId||r.id));
+  let daily=[];
+  if(live.length && live.every(c=>covered.has(c.id))){
+    rollups.forEach(r=>{ if(Array.isArray(r.rows)) daily.push(...r.rows.filter(x=>x.date>=since)); });
+  } else {
+    if(covered.size) console.warn('rollup covers '+covered.size+' of '+live.length+' clients, reading daily directly');
+    daily=await col('daily',r=>r.where('date','>=',since));
+  }
   const byId=(arr)=>Object.fromEntries(arr.map(x=>[x.clientId||x.id,x]));
   const tokens={}; (reports||[]).forEach(r=>{ if(r.clientId&&r.enabled!==false) tokens[r.clientId]=r.id; });
-  return {today,clients:clients.filter(c=>c.active!==false),daily,entities:byId(ents),signals:byId(sigs),sitewatch:byId(sws),syncs:byId(syncsArr),alerts,intraday:Object.fromEntries(intra.map(x=>[x.id,x])),lastRun:meta,reportTokens:tokens,weekly:weekly||[]};
+  return {today,clients:live,daily,entities:byId(ents),signals:byId(sigs),sitewatch:byId(sws),syncs:byId(syncsArr),alerts,intraday:Object.fromEntries(intra.map(x=>[x.id,x])),lastRun:meta,reportTokens:tokens,weekly:weekly||[]};
 }
 
 /* ============================== RANGES / METRICS ========================= */

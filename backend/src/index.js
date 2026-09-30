@@ -153,7 +153,38 @@ async function syncClient(store, client, { mode, days }) {
   ent.updatedAt = nowIso();
   await store.set('entities', client.id, ent);
   if (mode === 'hourly') await intradaySnapshot(store, client, today);
+  await writeRollup(store, client, today);
   return { entities: ent };
+}
+
+// One document per client holding the daily rows the dashboard needs, so opening the page costs
+// one read per client instead of one per row.
+//
+// The numbers here are not recomputed. The rows are read back from the store exactly as they were
+// written and packed as they are, so the rollup cannot disagree with the source: it is the source,
+// in a different shape. Anything else would be a second version of the truth, which is the one
+// thing this desk is not allowed to have.
+//
+// Why it matters: the dashboard was reading 31 clients x 35 days x 3 platforms, about 3,300
+// documents, every single time anyone opened it. Firestore's free tier allows 50,000 reads a day,
+// so the whole team shared roughly thirteen page loads before the dashboard simply stopped
+// loading. This makes the same page cost 31.
+export const ROLLUP_DAYS = 40;   // a little past the dashboard's 35 so a range change needs no resync
+async function writeRollup(store, client, today) {
+  try {
+    const since = addDays(today, -(ROLLUP_DAYS - 1));
+    const rows = (await store.list('daily', [['clientId', '==', client.id]]))
+      .filter((r) => r.date >= since)
+      .sort((a, b) => (a.date === b.date ? String(a.platform).localeCompare(b.platform) : a.date < b.date ? -1 : 1));
+    await store.set('rollup', client.id, {
+      clientId: client.id, from: since, to: today, days: ROLLUP_DAYS,
+      rows, count: rows.length, updatedAt: nowIso(),
+    });
+  } catch (e) {
+    // A rollup that fails is a slower dashboard, not a wrong one: the page falls back to reading
+    // the daily rows. So it must never take the sync down with it.
+    log(`rollup ${client.id}: FAILED (${String(e.message || e).slice(0, 120)})`);
+  }
 }
 
 // Hourly snapshot of today's cumulative numbers, so the dashboard can draw "today so far" against the same weekday last week.
