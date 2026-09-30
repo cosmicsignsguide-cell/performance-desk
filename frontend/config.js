@@ -9,6 +9,5 @@ window.DESK_CONFIG = {
   allowedEmails: ["zyloxhelp@gmail.com"],
   timezone: "Asia/Kolkata",
   collectionPrefix: "",
-  syncUrl: "https://desk-api-si2w.onrender.com/sync",
-  syncKey: "G3utZGb+3ZTSayKDuD+0V5skPJOhQ2TZSYmK5UYyn+M="
+  syncUrl: "https://desk-api-si2w.onrender.com/sync"
 };

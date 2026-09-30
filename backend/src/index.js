@@ -319,8 +319,39 @@ async function main() {
 
       if (!['/sync', '/run', '/links', '/rotate'].includes(url.pathname)) { res.writeHead(404); res.end('not found'); return; }
 
-      const key = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || url.searchParams.get('key') || '';
-      if (!process.env.DESK_SYNC_KEY || key !== process.env.DESK_SYNC_KEY) { res.writeHead(401); res.end('unauthorized'); return; }
+      // Two ways in, and only one of them may ever reach a browser.
+      //
+      // DESK_SYNC_KEY is for server to server: a scheduler, or someone running curl. It is a
+      // shared secret, so it belongs in an environment variable and nowhere else. It used to be
+      // shipped in the dashboard's config.js, which a static host serves to anyone who asks for
+      // it, logged in or not. That handed every visitor the ability to start a weekly run and
+      // spend the workspace's Gamma credits, or to loop a 365 day backfill until Meta rate
+      // limited every account.
+      //
+      // The dashboard now sends the signed-in user's Firebase ID token instead. It is short
+      // lived, it is issued per person, and it cannot be used for anything the person could not
+      // already do. The email must be verified and on the team domain, checked here and not in
+      // the browser, because a check the browser performs is a check an attacker can skip.
+      const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+      const key = bearer || url.searchParams.get('key') || '';
+      const keyOk = !!process.env.DESK_SYNC_KEY && key === process.env.DESK_SYNC_KEY;
+      let who = keyOk ? 'sync key' : '';
+
+      if (!keyOk && bearer.includes('.')) {           // a JWT has dots; a shared key does not
+        try {
+          const admin = (await import('firebase-admin')).default;
+          const t = await admin.auth().verifyIdToken(bearer);
+          const email = String(t.email || '').toLowerCase();
+          const domains = (process.env.DESK_ALLOWED_DOMAINS || 'per4mance.guru')
+            .split(',').map((d) => d.trim().toLowerCase()).filter(Boolean);
+          if (t.email_verified && domains.some((d) => email.endsWith('@' + d))) who = email;
+        } catch (e) {
+          log(`auth: token rejected (${String(e.message || e).slice(0, 80)})`);
+        }
+      }
+
+      if (!who) { res.writeHead(401); res.end('unauthorized'); return; }
+      if (who !== 'sync key') log(`auth: ${url.pathname} requested by ${who}`);
 
       // GET /links — every client's report URL, for pasting into an email. Behind the sync key.
       if (url.pathname === '/links') {

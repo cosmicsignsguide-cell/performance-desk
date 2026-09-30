@@ -1921,7 +1921,23 @@ document.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&e.key.toLowe
 document.addEventListener('change',e=>{ if(e.target.id==='mobilePick') go(e.target.value||null) });
 document.addEventListener('input',e=>{ if(e.target.id==='q'){ state.q=e.target.value; const nav=root.querySelector('.sidebar'); if(nav){ const pos=e.target.selectionStart; nav.innerHTML=sidebar(); const q=root.querySelector('#q'); q.value=state.q; q.focus(); q.setSelectionRange(pos,pos); } } });
 
-async function syncNow(){ if(!CFG.syncUrl) return; toast('Sync started, this takes a minute…','warn'); try{ const r=await fetch(CFG.syncUrl+(CFG.syncUrl.includes('?')?'&':'?')+'mode=hourly',{method:'POST',headers:{'Authorization':'Bearer '+(CFG.syncKey||'')}}); if(!r.ok) throw new Error('HTTP '+r.status); toast('Sync finished, reloading data'); boot(true); }catch(e){ toast('Sync failed: '+e.message,'warn'); } }
+// Sync is authorised with the signed-in user's own Firebase ID token, not with a shared secret.
+// The token is short lived and issued per person, so nothing that reaches the browser here is
+// worth stealing. A static host serves config.js to anyone who asks, logged in or not, which is
+// why the sync key must never live in it.
+async function syncNow(){
+  if(!CFG.syncUrl) return;
+  const u=fb&&fb.auth&&fb.auth.currentUser;
+  if(!u){ toast('Sign in first to run a sync','warn'); return; }
+  toast('Sync started, this takes a minute…','warn');
+  try{
+    const tok=await u.getIdToken();
+    const r=await fetch(CFG.syncUrl+(CFG.syncUrl.includes('?')?'&':'?')+'mode=hourly',{method:'POST',headers:{'Authorization':'Bearer '+tok}});
+    if(r.status===401) throw new Error('not allowed, your account is not on the team domain');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    toast('Sync finished, reloading data'); boot(true);
+  }catch(e){ toast('Sync failed: '+e.message,'warn'); }
+}
 function gate(msg,err){ root.innerHTML='<div class="gate"><div class="glass card"><div class="brand" style="padding:0 0 14px"><div class="mark disp">PERFORMANCE</div><div class="sub">Desk · Per4mance Guru</div></div><h1 class="disp">Team sign-in</h1><p>'+msg+'</p><button class="btn btn-primary" style="width:100%;justify-content:center" data-act="signin">Sign in with Google</button>'+(err?'<div class="err">'+esc(err)+'</div>':'')+'</div></div>'; }
 // The hd hint tells Google to show only one workspace domain's accounts. Useful when the team is
 // entirely on that domain, wrong the moment a single outside address is allowed too, so it only
