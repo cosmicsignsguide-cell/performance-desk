@@ -82,9 +82,9 @@
     "name": "Earth Garden",
     "type": "ecom",
     "currency": "INR",
-    "budget": 0,
+    "budget": 500000,
     "target": {
-      "roas": null
+      "roas": 3.0
     },
     "am": "",
     "accounts": {
@@ -106,9 +106,9 @@
     "name": "Mackly Store",
     "type": "ecom",
     "currency": "INR",
-    "budget": 0,
+    "budget": 500000,
     "target": {
-      "roas": null
+      "roas": 3.0
     },
     "am": "",
     "accounts": {
@@ -202,9 +202,9 @@
     "name": "Zayma",
     "type": "ecom",
     "currency": "INR",
-    "budget": 0,
+    "budget": 500000,
     "target": {
-      "roas": null
+      "roas": 3.0
     },
     "am": "",
     "accounts": {
@@ -274,9 +274,9 @@
     "name": "Whimsy Beauty",
     "type": "ecom",
     "currency": "INR",
-    "budget": 0,
+    "budget": 500000,
     "target": {
-      "roas": null
+      "roas": 3.0
     },
     "am": "",
     "accounts": {
