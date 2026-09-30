@@ -721,10 +721,10 @@ async function loadLive(){
   // reports carries each client's report token. It is read here so a video creative can be
   // played on this page through the same server route the client's own report uses, which keeps
   // the Meta access token on the server instead of shipping it to a browser.
-  const [clients,daily,ents,sigs,sws,syncsArr,alerts,intra,meta,reports]=await Promise.all([col('clients'),col('daily',r=>r.where('date','>=',since)),col('entities'),col('signals'),col('sitewatch'),col('syncs'),col('alerts',r=>r.where('at','>=',new Date(Date.now()-48*3600000).toISOString())),col('intraday',r=>r.where('date','>=',addDays(today,-8))),fb.db.collection(PFX+'meta').doc('lastRun').get().then(d=>d.exists?d.data():{}),col('reports').catch(()=>[])]);
+  const [clients,daily,ents,sigs,sws,syncsArr,alerts,intra,meta,reports,weekly]=await Promise.all([col('clients'),col('daily',r=>r.where('date','>=',since)),col('entities'),col('signals'),col('sitewatch'),col('syncs'),col('alerts',r=>r.where('at','>=',new Date(Date.now()-48*3600000).toISOString())),col('intraday',r=>r.where('date','>=',addDays(today,-8))),fb.db.collection(PFX+'meta').doc('lastRun').get().then(d=>d.exists?d.data():{}),col('reports').catch(()=>[]),col('weekly').catch(()=>[])]);
   const byId=(arr)=>Object.fromEntries(arr.map(x=>[x.clientId||x.id,x]));
   const tokens={}; (reports||[]).forEach(r=>{ if(r.clientId&&r.enabled!==false) tokens[r.clientId]=r.id; });
-  return {today,clients:clients.filter(c=>c.active!==false),daily,entities:byId(ents),signals:byId(sigs),sitewatch:byId(sws),syncs:byId(syncsArr),alerts,intraday:Object.fromEntries(intra.map(x=>[x.id,x])),lastRun:meta,reportTokens:tokens};
+  return {today,clients:clients.filter(c=>c.active!==false),daily,entities:byId(ents),signals:byId(sigs),sitewatch:byId(sws),syncs:byId(syncsArr),alerts,intraday:Object.fromEntries(intra.map(x=>[x.id,x])),lastRun:meta,reportTokens:tokens,weekly:weekly||[]};
 }
 
 /* ============================== RANGES / METRICS ========================= */
@@ -1185,13 +1185,24 @@ function attnItem(sev,meta,text,clientId){
 }
 
 function overviewView(){
-  const all=Object.values(S); const spec=rangeSpec(state.range,D.today); const c0=D.clients[0]||{};
-  const totSpend=all.reduce((s,x)=>s+x.cur.spend,0), prevSpend=all.reduce((s,x)=>s+x.prev.spend,0);
-  const ecom=all.filter(x=>x.c.type==='ecom'), lead=all.filter(x=>x.c.type==='lead');
+  const all=Object.values(S); const spec=rangeSpec(state.range,D.today);
+  // Dirhams and dollars cannot be added to rupees, and this page used to do exactly that, then
+  // label the total with whichever currency the FIRST client in the list happened to use. With
+  // non-INR accounts on the roster the portfolio figures were simply wrong, and wrong by the size
+  // of an exchange rate rather than by a rounding error. Rather than bake in a rate that goes
+  // stale, every blended figure below is computed over the one currency most of the roster is in,
+  // and the page says plainly how many accounts sit outside it.
+  const curCount={}; all.forEach(x=>{ const k=x.c.currency||'INR'; curCount[k]=(curCount[k]||0)+1; });
+  const mainCur=Object.keys(curCount).sort((a,b)=>curCount[b]-curCount[a])[0]||'INR';
+  const inCur=all.filter(x=>(x.c.currency||'INR')===mainCur);
+  const outCur=all.length-inCur.length;
+  const c0={currency:mainCur};
+  const totSpend=inCur.reduce((s,x)=>s+x.cur.spend,0), prevSpend=inCur.reduce((s,x)=>s+x.prev.spend,0);
+  const ecom=inCur.filter(x=>x.c.type==='ecom'), lead=inCur.filter(x=>x.c.type==='lead');
   const eSpend=ecom.reduce((s,x)=>s+x.cur.spend,0), eRev=ecom.reduce((s,x)=>s+x.cur.revenue,0), eNet=ecom.reduce((s,x)=>s+x.cur.netSales,0), eShopSpend=ecom.filter(x=>x.cur.hasShop).reduce((s,x)=>s+x.cur.spend,0), eOrders=ecom.reduce((s,x)=>s+x.cur.salesCount,0), ePrevOrders=ecom.reduce((s,x)=>s+x.prev.salesCount,0);
   const lSpend=lead.reduce((s,x)=>s+x.cur.spend,0), lLeads=lead.reduce((s,x)=>s+x.cur.leads,0), lPrev=lead.reduce((s,x)=>s+x.prev.leads,0);
   const onTarget=all.filter(x=>x.status==='good'||x.status==='neutral').length, off=all.filter(x=>x.health!=='good').length;
-  const totalBudget=D.clients.reduce((s,c)=>s+(c.budget||0),0);
+  const totalBudget=D.clients.filter(c=>(c.currency||'INR')===mainCur).reduce((s,c)=>s+(c.budget||0),0);
   const siteOk=all.filter(x=>x.sw&&x.sw.ok).length, siteAll=all.filter(x=>x.sw).length;
   // hero: on-target share + 14 day spend bars
   const bars=[]; for(let d=14;d>=1;d--){ bars.push(D.daily.filter(r=>ADS.includes(r.platform)&&r.date===addDays(D.today,-d)).reduce((s,r)=>s+r.spend,0)); }
@@ -1240,7 +1251,7 @@ function overviewView(){
       +'<p class="brief-lead">'+verdict+'</p>'
       +'<p class="brief-sub">'+subs.join(' ')+'</p></div>'
     +'<dl class="brief-figs">'
-      +'<div><dt>Ad spend</dt><dd class="disp">'+fmtMoney(totSpend,c0)+'</dd><dd class="d">'+vs(totSpend,prevSpend)+' vs prev</dd></div>'
+      +'<div><dt>Ad spend</dt><dd class="disp">'+fmtMoney(totSpend,c0)+'</dd><dd class="d">'+vs(totSpend,prevSpend)+' vs prev'+(outCur?' &middot; '+outCur+' account'+(outCur>1?'s':'')+' in another currency not counted':'')+'</dd></div>'
       +'<div><dt>Blended ROAS</dt><dd class="disp">'+fmtX(eSpend?eRev/eSpend:0)+'</dd><dd class="d">'+fmtMoney(eRev,c0)+' back</dd></div>'
       +'<div><dt>Orders</dt><dd class="disp">'+fmtNum(eOrders)+'</dd><dd class="d">'+vs(eOrders,ePrevOrders)+' vs prev</dd></div>'
       +'<div><dt>On target</dt><dd class="disp">'+onTarget+'<span style="color:var(--faint);font-size:13px;font-weight:500"> / '+all.length+'</span></dd><dd class="d">'+pctOn+'% of the book</dd></div>'
@@ -1352,9 +1363,9 @@ function clientView(x){
   h+='<div class="two">'+intradayPanel(x)+pacePanel(x)+'</div>';
   h+='<div class="section"><div class="glass-panel"><h2>Spend and '+(isE?'ROAS':'CPL')+' by day</h2><div class="legend"><span><i class="bar"></i>Spend</span><span><i class="line"></i>'+(isE?'ROAS':'CPL')+'</span><span><i class="tgt"></i>Target</span></div>'+trendChart(x)+'</div></div>';
   if(isE) h+=funnelPanel(x);
-  const tabs=isE?[['campaigns','Campaigns'],['ads','Creatives'],['orders','Orders'],['products','Products'],['site','Site Watch']]:[['campaigns','Campaigns'],['ads','Creatives'],['site','Site Watch']];
+  const tabs=isE?[['campaigns','Campaigns'],['ads','Creatives'],['orders','Orders'],['products','Products'],['site','Site Watch'],['weekly','Reports']]:[['campaigns','Campaigns'],['ads','Creatives'],['site','Site Watch'],['weekly','Reports']];
   if(!tabs.some(t=>t[0]===state.tab)) state.tab='campaigns';
-  const body=state.tab==='site'?sitePanel(x):state.tab==='campaigns'?campaignTree(x):state.tab==='orders'?ordersPanel(x):entityTable(x);
+  const body=state.tab==='site'?sitePanel(x):state.tab==='weekly'?weeklyPanel(x):state.tab==='campaigns'?campaignTree(x):state.tab==='orders'?ordersPanel(x):entityTable(x);
   h+='<div class="section"><div class="tab-row" style="margin-bottom:12px">'+tabs.map(t=>'<button class="tab-btn '+(state.tab===t[0]?'active':'')+'" data-act="tab" data-tab="'+t[0]+'">'+t[1]+'</button>').join('')+'</div>'+body+'</div>';
   return h;
 }
@@ -1517,6 +1528,27 @@ function crThumb(e,c){
   if(!(e.isVideo&&e.videoId&&tok)) return img;
   return '<span class="crplay" data-act="play" data-ad="'+esc(e.id)+'" data-tok="'+esc(tok)+'" title="Play this video" role="button" tabindex="0">'+img+'<i></i></span>';
 }
+/* --- weekly client reports -------------------------------------------------
+   Built by the backend off the same stored rows this page reads, so the deck a client opens
+   and the screen an AM is looking at cannot disagree. Listed newest first, with the headline
+   figures next to each link so nobody has to open one to remember which week it was. */
+function weeklyPanel(x){
+  const c=x.c, list=(D.weekly||[]).filter(w=>w.clientId===c.id)
+    .sort((a,b)=>(a.weekEnd<b.weekEnd?1:-1)).slice(0,8);
+  if(!list.length) return '<div class="glass-panel"><h2>Weekly reports</h2><div class="note">No weekly report yet. The backend builds one a week from this client\u2019s stored figures and the link lands here.</div></div>';
+  let h='<div class="glass-panel"><h2>Weekly reports <span class="sub">built from the same figures on this page</span></h2><div class="data-table-wrap"><table class="dtable"><thead><tr><th>Week</th><th class="num">Spend</th><th class="num">'+(c.type==='ecom'?'Sales':'Enquiries')+'</th><th class="num">'+(c.type==='ecom'?'MER':'')+'</th><th>Report</th></tr></thead><tbody>';
+  list.forEach(w=>{
+    h+='<tr><td class="row-title">'+esc(shortRange(w.weekStart,w.weekEnd))+'<span class="sub">made '+ago(w.generatedAt)+'</span></td>'
+      +'<td class="num">'+fmtMoney(w.spend,c)+'</td>'
+      +'<td class="num">'+fmtNum(w.sales)+'</td>'
+      +'<td class="num">'+(c.type==='ecom'?fmtX(w.mer):'')+'</td>'
+      +'<td><a class="btn small" href="'+esc(w.gammaUrl)+'" target="_blank" rel="noopener">Open deck</a></td></tr>';
+  });
+  return h+'</tbody></table></div></div>';
+}
+function shortRange(a,b){ const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const f=s=>parseInt(s.slice(8),10)+' '+M[+s.slice(5,7)-1];
+  return f(a)+' to '+f(b); }
 function stockChip(r){ if(r.inventory==null) return '<span class="faint">n/a</span>'; const pd=(r.units7||0)/7; if(!pd) return '<span class="chip neutral">no recent sales</span>'; const d=r.inventory/pd; return '<span class="chip '+(d<5?'bad':d<14?'warn':'good')+'">'+Math.round(d)+' days</span>'; }
 function ordersPanel(x){
   const c=x.c, list=x.ent.recentOrders||[], t=x.todayA, y=x.yest;
