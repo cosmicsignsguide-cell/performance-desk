@@ -1960,10 +1960,41 @@ function gate(msg,err){ root.innerHTML='<div class="gate"><div class="glass card
 // The hd hint tells Google to show only one workspace domain's accounts. Useful when the team is
 // entirely on that domain, wrong the moment a single outside address is allowed too, so it only
 // applies when allowedEmails is empty.
-async function signIn(){ try{ const p=new firebase.auth.GoogleAuthProvider(); if((CFG.allowedDomains||[]).length===1&&!(CFG.allowedEmails||[]).length) p.setCustomParameters({hd:CFG.allowedDomains[0]}); await fb.auth.signInWithPopup(p); }catch(e){ gate('That account does not have access to this dashboard.',e.message); } }
+// Sign-in failures are not all the same failure, and the page used to call every one of them
+// "that account does not have access". Someone whose browser blocked the popup was told they were
+// not allowed in, which sends them to an admin for a permission they already have. Each cause now
+// gets its own sentence.
+const AUTH_SAYS={
+  'auth/popup-blocked':        ['Your browser blocked the sign-in window.','Allow pop-ups for this site, or press the button again to sign in on this page instead.'],
+  'auth/popup-closed-by-user': ['The sign-in window was closed before it finished.',''],
+  'auth/cancelled-popup-request':['Sign-in was interrupted. Try once more.',''],
+  'auth/network-request-failed':['Could not reach Google to sign you in.','Check the connection and try again.'],
+  'auth/unauthorized-domain':  ['This address is not on the Firebase authorised domain list.','An admin adds it under Authentication, Settings, Authorised domains.'],
+  'auth/operation-not-allowed':['Google sign-in is switched off for this Firebase project.','An admin turns it on under Authentication, Sign-in method.'],
+};
+async function signIn(){
+  const p=new firebase.auth.GoogleAuthProvider();
+  // The hd hint shows only one workspace domain's accounts. Right when the whole team is on that
+  // domain, wrong the moment one outside address is allowed, so it waits on allowedEmails.
+  if((CFG.allowedDomains||[]).length===1&&!(CFG.allowedEmails||[]).length) p.setCustomParameters({hd:CFG.allowedDomains[0]});
+  try{ await fb.auth.signInWithPopup(p); }
+  catch(e){
+    const code=e&&e.code||'';
+    // A blocked popup is the browser's decision, not a reason to give up. Redirect signs in on
+    // this page instead, which no pop-up blocker can stop.
+    if(code==='auth/popup-blocked'||code==='auth/cancelled-popup-request'){
+      try{ await fb.auth.signInWithRedirect(p); return; }catch(e2){ /* fall through to the message */ }
+    }
+    const said=AUTH_SAYS[code];
+    gate(said?said[0]:'Could not sign you in.', said&&said[1]?said[1]:(e&&e.message||String(e)));
+  }
+}
 async function boot(refresh){
   if(!LIVE){ root.innerHTML='<div class="loading">Loading sample data…</div>'; D=await loadDemo(); readHash(); render(); return; }
   if(!fb){ root.innerHTML='<div class="loading">Loading…</div>'; try{ await initFirebase(); }catch(e){ root.innerHTML='<div class="loading">Could not load Firebase: '+esc(e.message)+'</div>'; return; }
+    // A redirect sign-in lands back here. Its result is checked so a failure on the way back is
+    // reported rather than showing a blank gate the user cannot explain.
+    fb.auth.getRedirectResult().catch((e)=>{ const said=AUTH_SAYS[e&&e.code||'']; if(said||e) gate(said?said[0]:'Could not sign you in.', said&&said[1]?said[1]:(e&&e.message||'')); });
     fb.auth.onAuthStateChanged(async(u)=>{ if(!u){ gate('Use your Per4mance Guru Google account.'); return; } if(!allowedEmail(u.email)){ await fb.auth.signOut(); gate('Use your Per4mance Guru Google account.','That Google account is not on the allowed list ('+u.email+').'); return; } boot(true); }); return; }
   root.innerHTML='<div class="loading">Loading data…</div>';
   try{ D=await loadLive(); }catch(e){ root.innerHTML='<div class="loading">Could not read data: '+esc(e.message)+'. Check Firestore rules and that the backend has run at least once.</div>'; return; }
