@@ -54,6 +54,8 @@ export function emptyDaily(clientId, date, platform) {
     lpv: 0, atc: 0, ic: 0,
     // Shopify
     orders: 0, grossSales: 0, netSales: 0, discounts: 0, refunds: 0, newCustomerOrders: 0, units: 0, checkoutsStarted: 0,
+    // Orders by the source the STORE recorded, not by what a platform claims it caused.
+    srcMeta: 0, srcGoogle: 0, srcDirect: 0, srcOther: 0, srcUnknown: 0, srcNone: 0,
     // GA4 (whole site)
     sessions: 0, ga4Atc: 0, ga4Checkouts: 0, ga4Purchases: 0,
     updatedAt: nowIso(),

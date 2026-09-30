@@ -18,6 +18,7 @@ import * as ga4 from './fetchers/ga4.js';
 import { runSitewatch } from './sitewatch.js';
 import { computeSignals } from './signals.js';
 import { ensureReportTokens, listLinks, reportPayload, reportUrl, resolveToken, rotateReportToken, videoUrlFor } from './report.js';
+import { weeklyReports } from './gamma.js';
 import { raise } from './alerts.js';
 import Sample from './sample.cjs';
 
@@ -235,7 +236,7 @@ async function main() {
     // before DESK_REPORT_BASE is set.
     const reportBase = (req) => (process.env.DESK_REPORT_BASE || '').replace(/\/$/, '') || `https://${req.headers.host}`;
 
-    async function runMode(mode, days) {
+    async function runMode(mode, days, url = new URL('http://x/')) {
       await syncClientsFromFile();
       const clients = await loadClients();
       // A new client gets its report link the first time it syncs. Existing links are never
@@ -246,6 +247,13 @@ async function main() {
         await runSitewatch(clients);
         await store.merge('meta', 'lastRun', { sitewatch: nowIso() });
         return { mode, clients: clients.length };
+      }
+      if (mode === 'weekly') {
+        // Built from the rows already in the store, not from a fresh pull, so the deck and the
+        // dashboard are looking at exactly the same numbers.
+        const r = await weeklyReports(store, clients, { force: url.searchParams.get('force') === '1' });
+        await store.merge('meta', 'lastRun', { weekly: nowIso() });
+        return { mode, clients: clients.length, ...r };
       }
       for (const c of clients) { const { entities } = await syncClient(store, c, { mode, days }); await computeSignals(c, entities, { mode }); }
       await store.merge('meta', 'lastRun', { [mode]: nowIso() });
@@ -315,7 +323,7 @@ async function main() {
       }
 
       const asked = url.searchParams.get('mode');
-      const mode = ['daily', 'hourly', 'sitewatch'].includes(asked) ? asked : 'hourly';
+      const mode = ['daily', 'hourly', 'sitewatch', 'weekly'].includes(asked) ? asked : 'hourly';
       // ?days=N restates N days of history instead of the usual 7. Ignored for hourly and
       // sitewatch, which have nothing to restate.
       const days = mode === 'daily' ? parseInt(url.searchParams.get('days') || '', 10) : NaN;
@@ -324,14 +332,14 @@ async function main() {
       if (url.pathname === '/run') {          // fire and forget, answer immediately
         running.add(mode);
         res.writeHead(202); res.end(JSON.stringify({ ok: true, started: mode, days: Number.isFinite(days) ? days : undefined }));
-        runMode(mode, days).then((r) => log(`run ${mode} done (${r.clients} clients)`))
+        runMode(mode, days, url).then((r) => log(`run ${mode} done (${r.clients} clients)`))
           .catch((e) => log(`run ${mode} FAILED ${e.message || e}`))
           .finally(() => running.delete(mode));
         return;
       }
 
       running.add(mode);                       // /sync: the button waits for the answer
-      try { const r = await runMode(mode, days); res.end(JSON.stringify({ ok: true, ...r })); }
+      try { const r = await runMode(mode, days, url); res.end(JSON.stringify({ ok: true, ...r })); }
       catch (e) { res.writeHead(500); res.end(String(e.message || e)); }
       finally { running.delete(mode); }
     }).listen(port, () => log(`desk api listening on ${port} (/sync, /run, /health)`));
