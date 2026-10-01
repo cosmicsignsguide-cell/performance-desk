@@ -1119,7 +1119,10 @@
     "accounts": {
       "meta": "915106375841231",
       "google": "",
-      "shopify": null,
+      "shopify": {
+        "shop": "three-sixty-leather.myshopify.com",
+        "tokenEnv": "SHOPIFY_TOKEN_THREE_SIXTY"
+      },
       "ga4": ""
     },
     "site": {
