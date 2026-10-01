@@ -101,10 +101,15 @@ async function syncClient(store, client, { mode, days }) {
   }
 
   const platforms = { meta: ['meta'], google: ['google'], shopify: ['shopify'], ga4: ['ga4'] };
+  // A client whose every source is skipped used to produce no output at all. A run of 44 such
+  // clients finished in under a minute and wrote nothing to the log, which reads exactly like a
+  // run that never happened. Say what was skipped and why, once per client.
+  const skipped = [];
   for (const source of ['meta', 'google', 'shopify', 'ga4']) {
     const state = sourceState(client, source);
-    if (state === 'not-configured') continue;
+    if (state === 'not-configured') { skipped.push(`${source}: no account id on the client`); continue; }
     if (state === 'no-token') {
+      skipped.push(`${source}: account id present, token missing`);
       await markSync(store, client, source, { ok: false, mode: 'waiting', error: 'no token configured yet' });
       if (SAMPLE_FALLBACK && mode === 'daily') await seedSampleFor(store, client, today, platforms[source]);
       continue;
@@ -150,6 +155,8 @@ async function syncClient(store, client, { mode, days }) {
       if (mode === 'daily') await raise(client, `sync-${source}`, 'warning', `${source} sync failed: ${msg}`);
     }
   }
+  if (skipped.length === 4) log(`${client.id}: nothing to sync (${skipped.join('; ')})`);
+  else if (skipped.length) log(`${client.id}: skipped ${skipped.join('; ')}`);
   ent.updatedAt = nowIso();
   await store.set('entities', client.id, ent);
   if (mode === 'hourly') await intradaySnapshot(store, client, today);
@@ -295,8 +302,19 @@ async function main() {
       if (only && !list.length) return { mode, clients: 0, error: `no client with id "${only}"` };
 
       const failures = [];
+      log(`run ${mode}: ${list.length} client${list.length === 1 ? '' : 's'} to sync${only ? ` (only ${only})` : ''}`);
+      if (!list.length) log(`run ${mode}: the store returned no clients, so nothing was synced`);
       for (const c of list) {
-        const { entities } = await syncClient(store, c, { mode, days });
+        // One client throwing used to end the whole run where it stood, so clients later in the
+        // file silently never synced and the log gave no hint that the rest had been dropped.
+        let entities;
+        try { ({ entities } = await syncClient(store, c, { mode, days })); }
+        catch (e) {
+          const msg = String(e.message || e).slice(0, 300);
+          log(`${c.id}: run aborted for this client, continuing with the rest (${msg})`);
+          failures.push(`${c.id}: ${msg}`);
+          continue;
+        }
         await computeSignals(c, entities, { mode });
         // The per source errors are already stored for the dashboard; surfacing them in the
         // response too means a one client run answers "why is this broken" without a log dive.
