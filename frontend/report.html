@@ -341,6 +341,32 @@ footer a:hover{text-decoration:underline}
   .tabs,.demo{display:none} .panel{break-inside:avoid;box-shadow:none}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* your progress */
+.prog .pline{margin:2px 0 14px;font-size:clamp(15px,1.3vw,18px);line-height:1.5;color:var(--ink-2);max-width:78ch}
+.prog .pline b{color:var(--ink);font-weight:600} .prog .pline .upc{color:var(--good)} .prog .pline .downc{color:var(--accent)}
+.pgrid{display:grid;grid-template-columns:5fr 7fr;gap:26px;align-items:start}
+.pk{font-size:10px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin-bottom:10px}
+.pms{display:flex;gap:14px;align-items:flex-start}
+.pm{flex:1;min-width:0;text-align:left}
+.pm-bar{height:132px;display:flex;flex-direction:column-reverse;justify-content:flex-start;border-bottom:1.5px solid var(--ink)}
+.pm-col{background:var(--bar);border-radius:5px 5px 0 0;width:100%}
+.pm-col.now{background:var(--accent)}
+.pm-proj{background:repeating-linear-gradient(135deg,var(--accent-soft) 0 5px,transparent 5px 10px);border:1px dashed var(--accent);border-bottom:0;border-radius:5px 5px 0 0;width:100%}
+.pm-v{font-weight:800;font-size:clamp(15px,1.5vw,20px);letter-spacing:-.025em;margin-top:8px;font-variant-numeric:tabular-nums}
+.pm-l{font-size:11.5px;font-weight:600;color:var(--ink-2)} .pm-l em{font-style:normal;color:var(--ink-3);font-weight:500}
+.pm-e{font-size:11px;color:var(--ink-3);margin-top:1px}
+.pchg{display:inline-block;margin-top:5px;font-size:10.5px;font-weight:700;letter-spacing:.02em}
+.pchg.up{color:var(--good)} .pchg.down{color:var(--accent)}
+.pws{display:flex;gap:7px;align-items:flex-end;height:132px;border-bottom:1.5px solid var(--ink)}
+.pw{flex:1;height:100%;display:flex;align-items:flex-end;position:relative}
+.pw i{display:block;width:100%;background:var(--bar);border-radius:4px 4px 0 0;opacity:.78}
+.pw.best i{background:var(--accent);opacity:1}
+.pw span{position:absolute;left:0;right:0;bottom:-19px;text-align:center;font-size:9.5px;color:var(--ink-3);white-space:nowrap}
+.phl{list-style:none;margin:30px 0 0;padding:0;display:grid;gap:7px;font-size:12.5px;color:var(--ink-2)}
+.phl li{display:flex;gap:10px;align-items:baseline;border-top:1px solid var(--rule);padding-top:7px}
+.phl li b{flex:none;min-width:150px;font-weight:700;color:var(--ink);font-size:11.5px}
+@media (max-width:860px){ .pgrid{grid-template-columns:1fr;gap:34px} .phl li{flex-direction:column;gap:1px} .phl li b{min-width:0} }
 </style>
 </head>
 <body>
@@ -500,6 +526,7 @@ function render(){
   h+='<div class="grid">';
   h+=pactPanels(A,c,isE,p,D);
   h+=kpiCards(A,P,c,isE,rows,p);
+  h+=progressPanel(D,c,isE,rows);
   h+=chartPanel(rows,p,c,isE);
   h+=factsPanel(A,P,c,isE,p);
   // These two share a row when both are there. When only one applies (a client on a single
@@ -636,6 +663,91 @@ function pactPanels(A,c,isE,p,D){
 }
 
 /* --- kpi cards -------------------------------------------------------------- */
+
+/* --- your progress ---------------------------------------------------------
+   The statement above answers "how is this month going". This answers the other question a client
+   asks, which is "are we getting better". Three months side by side, eight weeks of the same
+   figure, and one plain sentence comparing the last four weeks with the four before. Everything is
+   summed from the same rows as the rest of the page, so it cannot disagree with it, and a window
+   the feed does not fully cover is labelled partial instead of being shown as a bad month. */
+function progressPanel(D,c,isE,rows){
+  var cur=c.currency, today=D.today, dr=dataRange(rows), lo=dr[0]||today;
+  var res=function(A){ return isE? A.trueSales : A.leads; };
+  var eff=function(A){ return isE? (A.hasShop? A.mer : A.roas) : A.cpl; };
+  var effTxt=function(v){ return v==null||!isFinite(v)||v===0? '--' : (isE? xx(v) : exact(v,cur)); };
+  var resTxt=function(v){ return isE? money(v,cur) : num(v); };
+  var resName=isE? (rows.some(function(r){return r.platform==='shopify'})? 'Store sales' : 'Sales reported') : 'Enquiries';
+  var effName=isE? 'Return on ad spend' : 'Cost per enquiry';
+  var pad=function(n){ return (n<10?'0':'')+n; };
+  var y=+today.slice(0,4), m=+today.slice(5,7), dom=+today.slice(8,10);
+  function monthWin(back){ var mm=m-back, yy=y; while(mm<1){ mm+=12; yy--; }
+    var st=yy+'-'+pad(mm)+'-01', nx=mm===12? (yy+1)+'-01-01' : yy+'-'+pad(mm+1)+'-01';
+    var en=addDays(nx,-1); return {st:st,en:back===0?today:en,label:MONTHS[mm-1],days:+en.slice(8,10),full:en}; }
+  var months=[2,1,0].map(function(b){
+    var w=monthWin(b), A=sum(rows,function(r){ return inRange(r,w.st,w.en); });
+    var partial = w.st<lo && b>0;
+    var proj=null;
+    if(b===0 && dom>=4){ var Y=sum(rows,function(r){ return inRange(r,w.st,addDays(today,-1)); }); proj=res(Y)/(dom-1)*w.days; }
+    return {w:w,A:A,partial:partial,proj:proj,has:A.rows>0};
+  }).filter(function(x){ return x.has; });
+  var maxV=Math.max.apply(null,months.map(function(x){ return Math.max(res(x.A),x.proj||0); }).concat([1]));
+
+  var mh='';
+  months.forEach(function(x,i){
+    var v=res(x.A), hPct=Math.max(2,v/maxV*100), pPct=x.proj? Math.max(0,(x.proj-v)/maxV*100):0;
+    var prev=i>0? months[i-1]:null, chg='';
+    if(prev && !prev.partial && res(prev.A)>0 && x.w.full!==today && i>0 && !(i===months.length-1 && months[i].w.en===today && dom<7)){
+      var d=(v-res(prev.A))/res(prev.A)*100; chg='<span class="pchg '+(d>=0?'up':'down')+'">'+(d>=0?'▲ ':'▼ ')+Math.abs(d).toFixed(0)+'% on '+esc(prev.w.label)+'</span>';
+    }
+    var now=x.w.en===today;
+    mh+='<div class="pm"><div class="pm-bar"><div class="pm-col'+(now?' now':'')+'" style="height:'+hPct.toFixed(1)+'%"></div>'
+      +(pPct>0?'<div class="pm-proj" style="height:'+pPct.toFixed(1)+'%" title="Where the month ends at the current pace"></div>':'')+'</div>'
+      +'<div class="pm-v">'+resTxt(v)+'</div>'
+      +'<div class="pm-l">'+esc(x.w.label)+(now?' so far':'')+(x.partial?' <em>partial</em>':'')+'</div>'
+      +'<div class="pm-e">'+effTxt(eff(x.A))+' '+(isE?'back':'each')+'</div>'+chg+'</div>';
+  });
+
+  // eight weeks, ending yesterday so no bar is a half-finished day
+  var weeks=[]; for(var w=7;w>=0;w--){ var en=addDays(today,-1-7*w), st=addDays(en,-6);
+    var A=sum(rows,function(r){ return inRange(r,st,en); }); weeks.push({st:st,en:en,A:A,has:A.rows>0&&st>=lo}); }
+  var wk=weeks.filter(function(x){ return x.has; });
+  var wMax=Math.max.apply(null,wk.map(function(x){ return res(x.A); }).concat([1]));
+  var best=null; wk.forEach(function(x){ if(res(x.A)>0 && (!best||res(x.A)>res(best.A))) best=x; });
+  var wh=''; weeks.forEach(function(x){
+    var v=res(x.A), hp=x.has? Math.max(2,v/wMax*100):0;
+    wh+='<div class="pw'+(x===best?' best':'')+'" title="'+esc(dmy(x.st)+' to '+dmy(x.en)+': '+resTxt(v)+', '+effTxt(eff(x.A)))+'"><i style="height:'+hp.toFixed(1)+'%"></i><span>'+esc(dmy(x.en))+'</span></div>'; });
+
+  // the sentence: last 28 days against the 28 before it
+  var e1=addDays(today,-1), s1=addDays(e1,-27), e0=addDays(s1,-1), s0=addDays(e0,-27);
+  var L=sum(rows,function(r){ return inRange(r,s1,e1); }), Q=sum(rows,function(r){ return inRange(r,s0,e0); });
+  var line='';
+  if(L.rows && res(L)>0){
+    line='In the last four weeks '+(isE?'your '+(L.hasShop?'store brought in ':'ads reported ')+'<b>'+money(res(L),cur)+'</b>':'your ads brought <b>'+num(res(L))+'</b> enquiries');
+    if(Q.rows && s0>=lo && res(Q)>0){
+      var d=(res(L)-res(Q))/res(Q)*100;
+      line+=', '+(Math.abs(d)<1?'level with':'<b class="'+(d>=0?'upc':'downc')+'">'+(d>=0?'up ':'down ')+Math.abs(d).toFixed(0)+'%</b> on')+' the four weeks before';
+      var e1v=eff(L), e0v=eff(Q);
+      if(e1v&&e0v){ var better=isE? e1v>=e0v : e1v<=e0v;
+        line+=', and '+(isE?'return on spend ':'cost per enquiry ')+(Math.abs(e1v-e0v)/e0v<0.02?'held at <b>'+effTxt(e1v)+'</b>':(better?'improved':'moved')+' from <b>'+effTxt(e0v)+'</b> to <b>'+effTxt(e1v)+'</b>'); }
+      line+='.';
+    } else line+='. A comparison with the four weeks before appears once we hold eight weeks of figures.';
+  } else line='Your progress fills in as the first weeks of figures arrive.';
+
+  // highlights, only the ones the data can actually back
+  var hl='';
+  if(best) hl+='<li><b>Best week so far</b>'+esc(dmy(best.st)+' to '+dmy(best.en))+', '+resTxt(res(best.A))+'</li>';
+  var byDay={}; rows.forEach(function(r){ if(r.date>=lo&&r.date<=e1){ var o=byDay[r.date]||(byDay[r.date]={a:0,b:0,s:0,n:0}); o.a+=(r.platform==='shopify'?(r.netSales||0):0); o.b+=(r.leads||0)+(r.platform==='shopify'?0:(r.revenue||0)); o.s+=r.spend||0; } });
+  var bd=null, bv=0; Object.keys(byDay).forEach(function(d){ var o=byDay[d]; var v=isE?(o.a||o.b):(function(){var t=0;rows.forEach(function(r){ if(r.date===d) t+=r.leads||0; });return t;})(); if(v>bv){ bv=v; bd=d; } });
+  if(bd) hl+='<li><b>Strongest day</b>'+esc(dmy(bd,true))+', '+resTxt(bv)+'</li>';
+  var tot=sum(rows,function(r){ return inRange(r,lo,e1); });
+  if(tot.rows && res(tot)>0) hl+='<li><b>Since we started reporting</b>'+esc(dmy(lo,true))+': '+resTxt(res(tot))+' on '+money(tot.spend,cur)+' of spend</li>';
+
+  return '<div class="panel c12 prog"><h2>Your progress <em>same figures as above, over time</em></h2>'
+    +'<p class="pline serif">'+line+'</p>'
+    +'<div class="pgrid"><div><div class="pk">'+esc(resName)+' by month</div><div class="pms">'+mh+'</div></div>'
+    +'<div><div class="pk">'+esc(resName)+' by week, labelled by the day each week ends</div><div class="pws">'+wh+'</div>'
+    +(hl?'<ul class="phl">'+hl+'</ul>':'')+'</div></div></div>';
+}
 function card(k,value,sub,tone,opts){
   var o=opts||{};
   return '<div class="panel kpi c3'+(o.flip?' flip':'')+(o.hero?' hero':'')+'"'
