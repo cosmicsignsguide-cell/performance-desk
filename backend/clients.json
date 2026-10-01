@@ -1188,7 +1188,10 @@
     "accounts": {
       "meta": "2003383080602280",
       "google": "",
-      "shopify": null,
+      "shopify": {
+        "shop": "maayam-india.myshopify.com",
+        "tokenEnv": "SHOPIFY_TOKEN_MAAYAM"
+      },
       "ga4": ""
     },
     "site": {
