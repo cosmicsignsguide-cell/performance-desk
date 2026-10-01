@@ -756,7 +756,10 @@
     "accounts": {
       "meta": "2736386966431137",
       "google": "",
-      "shopify": null,
+      "shopify": {
+        "shop": "fashioncolourindia.myshopify.com",
+        "tokenEnv": "SHOPIFY_TOKEN_FASHIONCOLOUR"
+      },
       "ga4": ""
     },
     "site": {
