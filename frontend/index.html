@@ -783,6 +783,25 @@ textarea.upd{width:100%;min-height:240px;border:1px solid var(--border);border-r
 .ptile.sm .pt-in{padding:7px 8px 6px 12px} .ptile.sm .pt-name{font-size:11.5px;-webkit-line-clamp:3} .ptile.sm .pt-kpi,.ptile.sm .pt-sub{display:none}
 .ptile.md .pt-sub{display:none}
 @media (max-width:760px){ .ptiles{aspect-ratio:1/1.15} }
+
+.ptiles{aspect-ratio:1000/430;min-height:360px}
+.ptile.tight .pt-sub{display:none} .ptile.tight .pt-kpi i{display:none}
+.ptile.tiny .pt-kpi{display:none} .ptile.tiny .pt-name{-webkit-line-clamp:2;font-size:11.5px}
+.ptile.sm .pt-kpi{display:block}
+.ptile.sm .pt-sub,.ptile.md .pt-sub{display:block}
+.pt-in{min-width:0}
+.pt-kpi{white-space:nowrap}
+@media (max-width:760px){ .ptiles{aspect-ratio:1/1.5} }
+
+@media (max-width:760px){
+  .ptiles{aspect-ratio:auto;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:3px;background:none;border-radius:0;overflow:visible}
+  .ptile{position:relative;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-height:84px;border-radius:10px}
+  .pt-in{position:static;padding:11px 12px 10px 16px;gap:3px}
+  .ptile .pt-name{font-size:13px!important;-webkit-line-clamp:2!important}
+  .ptile .pt-kpi{display:block!important;font-size:19px!important;margin-top:4px}
+  .ptile .pt-sub{display:block!important}
+  .ptile .pt-kpi i{display:inline!important}
+}
 </style>
 </head>
 <body>
@@ -1067,7 +1086,7 @@ let animateNext=true;   // first paint, and every render the user asked for. Nev
 function render(){
   computeAll();
   const anim=animateNext; animateNext=true; METRICS={}; METRIC_N=0;
-  root.innerHTML='<div class="app-shell'+(anim?' intro':'')+'">'+topRail()+'<main class="main'+(state.view==='client'?' main-client':' main-wall')+'">'+(state.view==='client'?clientView(S[state.clientId]):overviewView())+'</main></div>';
+  root.innerHTML='<div class="app-shell'+(anim?' intro':'')+'">'+topRail()+'<main class="main'+(state.view==='client'?' main-client':' main-wall')+'">'+(state.view==='client'?clientView(S[state.clientId]):overviewView())+'</main></div>'; fitTiles();
   const sel=root.querySelector('#mobilePick'); if(sel) sel.value=state.clientId||'';
   const q=root.querySelector('#q'); if(q) q.value=state.q;
   if(anim){ countUp(); drawSparks(); }
@@ -1317,6 +1336,18 @@ function perfRatio(x){
 /* Portfolio tiles: every client as one tile, area = spend in the chosen range, colour = health.
    A wall screen is read from across a room, and a tile you can see is a client you can find. The
    layout is a squarified treemap, so the tiles stay close to square and the labels stay legible. */
+
+// A tile that is too small for its text drops detail instead of letting lines pile on top of each
+// other: first the spend line, then the target, and last of all the tile keeps just its name.
+function fitTiles(){
+  document.querySelectorAll('.ptile').forEach(t=>{
+    t.classList.remove('tight','tiny'); const box=t.querySelector('.pt-in'); if(!box) return;
+    const over=()=>box.scrollHeight>box.clientHeight+1||box.scrollWidth>box.clientWidth+1;
+    if(over()) t.classList.add('tight');
+    if(over()) t.classList.add('tiny');
+  });
+}
+window.addEventListener('resize',()=>{ clearTimeout(window.__ft); window.__ft=setTimeout(fitTiles,120); });
 function squarify(items,x,y,w,h){
   const out=[]; let rest=items.slice(); const total=rest.reduce((s,i)=>s+i.v,0)||1;
   rest.forEach(i=>i.a=i.v/total*w*h);
@@ -1336,7 +1367,7 @@ function portfolioTiles(all,spec){
   const inr=all.filter(x=>(x.c.currency||'INR')==='INR');
   const base=inr.length>=2?inr:all;
   const sum=base.reduce((s,x)=>s+x.cur.spend,0);
-  const floor=sum?sum*0.035:1;
+  const floor=sum?sum*0.05:1;
   const items=base.map(x=>({x:x,v:Math.max(x.cur.spend,floor)})).sort((a,b)=>b.v-a.v);
   const rects=squarify(items,0,0,100,100);
   const tone=x=>x.health==='good'?'good':x.health==='bad'?'bad':'warn';
