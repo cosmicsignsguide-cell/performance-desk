@@ -165,7 +165,10 @@
     "accounts": {
       "meta": "601991935812895",
       "google": "",
-      "shopify": null,
+      "shopify": {
+        "shop": "kfa3n7-yc.myshopify.com",
+        "tokenEnv": "SHOPIFY_TOKEN_TRESNOVA"
+      },
       "ga4": ""
     },
     "site": {
