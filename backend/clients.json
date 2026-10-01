@@ -31,9 +31,9 @@
     "name": "HOKIPO",
     "type": "ecom",
     "currency": "INR",
-    "budget": 500000,
+    "budget": 1500000,
     "target": {
-      "roas": 3.0
+      "roas": 3.5
     },
     "am": "",
     "accounts": {
@@ -58,9 +58,9 @@
     "name": "Frankly Wearing",
     "type": "ecom",
     "currency": "INR",
-    "budget": 0,
+    "budget": 3000000,
     "target": {
-      "roas": null
+      "roas": 2.5
     },
     "am": "",
     "accounts": {
@@ -178,9 +178,9 @@
     "name": "Marble Lotus",
     "type": "ecom",
     "currency": "USD",
-    "budget": 0,
+    "budget": 4500,
     "target": {
-      "roas": null
+      "roas": 4.0
     },
     "am": "",
     "accounts": {
@@ -205,9 +205,9 @@
     "name": "Zayma",
     "type": "ecom",
     "currency": "INR",
-    "budget": 500000,
+    "budget": 150000,
     "target": {
-      "roas": 3.0
+      "roas": 1.5
     },
     "am": "",
     "accounts": {
@@ -304,9 +304,9 @@
     "name": "Whimsy Beauty 2",
     "type": "ecom",
     "currency": "INR",
-    "budget": 0,
+    "budget": 2000000,
     "target": {
-      "roas": null
+      "roas": 3.5
     },
     "am": "",
     "accounts": {
@@ -752,7 +752,7 @@
       "productPath": "",
       "expectText": ""
     },
-    "active": false,
+    "active": true,
     "contact": ""
   },
   {
@@ -1048,9 +1048,9 @@
     "name": "H&L IND",
     "type": "ecom",
     "currency": "INR",
-    "budget": 500000,
+    "budget": 50000,
     "target": {
-      "roas": 3.0
+      "roas": 3.5
     },
     "am": "",
     "accounts": {
@@ -1061,6 +1061,126 @@
     },
     "site": {
       "url": "https://hideandleather.com",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "hues-studio",
+    "name": "Hues Studio",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "349581285788045",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "three-sixty",
+    "name": "Three Sixty Life",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "915106375841231",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "singh-legacy",
+    "name": "Singh Legacy",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "3192522910906523",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "mackly-sl",
+    "name": "Mackly SL",
+    "type": "ecom",
+    "currency": "LKR",
+    "budget": 600000,
+    "target": {
+      "roas": 4.0
+    },
+    "am": "",
+    "accounts": {
+      "meta": "473695534935031",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": ""
+  },
+  {
+    "id": "maayam",
+    "name": "Maayam",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 100000,
+    "target": {
+      "roas": 2.5
+    },
+    "am": "",
+    "accounts": {
+      "meta": "2003383080602280",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "https://maayam.com",
       "productPath": "",
       "expectText": ""
     },
