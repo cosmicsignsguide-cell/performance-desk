@@ -1124,6 +1124,7 @@ function topRail(){
       +(bad?'<span class="sep">/</span><span class="rail-bad">'+bad+' critical</span>':'')+'</div>'
     +'<div class="rail-mid">'+rangeBar()+'</div>'
     +'<button class="rail-search" data-act="cmdk"><span>'+ICONS.search+'Jump to client</span><kbd>Ctrl K</kbd></button>'
+    +'<button class="btn btn-ghost btn-small" data-act="alllinks" title="Secret report link for each client">Client dashboards</button>'
     +(LIVE&&CFG.syncUrl?'<button class="icon-btn" data-act="syncnow" title="Sync now">'+ICONS.refresh+'</button>':'')
     +'<button class="icon-btn" data-act="theme" title="Switch theme" aria-label="Switch theme">'+(currentTheme()==='dark'?ICONS.sun:ICONS.moon)+'</button>'
     +'<div class="rail-user" title="'+esc(email)+'"><span class="user-avatar sm">'+esc((name||'?')[0].toUpperCase())+'</span>'
@@ -1140,6 +1141,7 @@ function sidebar(){
   h+='<div class="status-row '+(LIVE?'on':'demo')+'"><span class="dot"></span>'+(LIVE?'<span>LIVE · updated </span><span data-ago="'+esc(lastAt)+'">'+ago(lastAt)+'</span>':'<span>DEMO · SAMPLE DATA</span>')+'</div>';
   h+='<div class="side-search">'+ICONS.search+'<input id="q" type="search" placeholder="Find a client" autocomplete="off" aria-label="Find a client"></div>';
   h+='<ul class="nav-list"><li><button class="nav-item'+(state.view==='overview'?' active':'')+'" data-act="nav" data-client="">'+ICONS.grid+'<span class="nm">Command Center</span>'+(bad?'<span class="nav-badge">'+bad+'</span>':'')+'</button></li>';
+  h+='<li><button class="nav-item" data-act="alllinks"><span class="nm">Client dashboards</span></button></li>';
   h+='<li class="nav-sep">Clients · '+D.clients.length+'</li>';
   if(!list.length) h+='<li class="empty-note" style="padding:12px">No client matches.</li>';
   const maxSpend=Math.max(...D.clients.map(k=>S[k.id].cur.spend),1);
@@ -1533,7 +1535,7 @@ function clientView(x){
   const c=x.c, a=x.cur, p=x.prev, isE=c.type==='ecom', spec=x.spec, acct=x.ent.account;
   let h='<button class="detail-back" data-act="nav" data-client="">'+ICONS.back+'Command Center</button>';
   h+='<div class="page-head"><div><h1 class="disp">'+esc(c.name)+'</h1><p class="subtitle">'+typeLabel(c)+' · '+esc(pfLabel(c))+(c.budget?' · '+fmtMoney(c.budget,c)+' per month':'')+(kpiTarget(c)?' · target '+kpiFmt(c,kpiTarget(c))+' '+kpiLabel(c):' · <span class="faint">no target set</span>')+(c.am?' · AM '+esc(c.am):'')+(acct&&acct.statusCode&&acct.statusCode!==1?' <span class="chip bad">Meta account: '+esc(acct.status)+'</span>':'')+'</p></div><div class="meta">'+niceDate(D.today)+'<br>'+syncChips(x)+'</div></div>';
-  h+='<div class="toolbar">'+rangeBar()+'<select class="mobile-pick" id="mobilePick"><option value="">All clients</option>'+D.clients.map(k=>'<option value="'+k.id+'">'+esc(k.name)+'</option>').join('')+'</select><div class="grow"></div>'+(LIVE&&CFG.syncUrl?'<button class="btn btn-ghost btn-small" data-act="syncnow">'+ICONS.refresh+' Sync now</button>':'')+'<button class="btn btn-primary btn-small" data-act="update">'+ICONS.copy+' Copy client update</button></div>';
+  h+='<div class="toolbar">'+rangeBar()+'<select class="mobile-pick" id="mobilePick"><option value="">All clients</option>'+D.clients.map(k=>'<option value="'+k.id+'">'+esc(k.name)+'</option>').join('')+'</select><div class="grow"></div>'+(LIVE&&CFG.syncUrl?'<button class="btn btn-ghost btn-small" data-act="syncnow">'+ICONS.refresh+' Sync now</button>':'')+'<button class="btn btn-ghost btn-small" data-act="clientlink">'+ICONS.copy+' Client dashboard link</button><button class="btn btn-primary btn-small" data-act="update">'+ICONS.copy+' Copy client update</button></div>';
   if(!x.hasData) return h+noDataPanel(x);
   const V=(cur,prev,inv)=>vs(cur,prev,inv)+' vs '+spec.prevLabel;
   h+='<div class="kpi-grid six">';
@@ -1866,11 +1868,26 @@ function clientUpdateText(x){
   lines.push('','Pacing: '+fmtMoney(x.mtd.spend,c)+' of '+fmtMoney(c.budget,c)+' this month ('+Math.round(x.paceRatio*100)+'% of plan)');
   const act=x.flags.filter(f=>f.sev!=='info').slice(0,3); if(act.length){ lines.push('','Working on:'); act.forEach(f=>lines.push('- '+f.text)); }
   return lines.join('\n'); }
+
+/* client dashboards: the secret report link per client, listed for the team to copy and send */
+function reportLink(id){ const t=(D.reportTokens||{})[id]; return t?new URL('report.html',location.href).href.split('#')[0]+'#'+t:''; }
+function linkReady(c){ const sy=(D.syncs||{})[c.id]||{}; return !!reportLink(c.id)&&!!sy.meta?.ok&&(c.type!=='ecom'||!!sy.shopify?.ok); }
+function showLinks(onlyId){
+  const list=D.clients.filter(c=>!onlyId||c.id===onlyId).slice().sort((a,b)=>(linkReady(b)-linkReady(a))||a.name.localeCompare(b.name));
+  const ready=list.filter(linkReady).length;
+  let h='<div class="box" style="max-width:760px"><h2 class="disp">Client dashboards</h2><div class="empty-note" style="padding:0 0 10px">'+(onlyId?'One secret link for this client. Anyone with it sees this client only, results without campaign detail.':ready+' of '+list.length+' clients are complete (Meta synced'+', and Shopify for ecom). Each link shows that client only and carries Per4mance Guru branding.')+'</div><div style="max-height:56vh;overflow:auto">';
+  list.forEach(c=>{ const u=reportLink(c.id), ok=linkReady(c);
+    h+='<div class="row" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line,#ddd)"><span class="hdot '+(ok?'good':'warn')+'"></span><span style="flex:1;min-width:0"><b>'+esc(c.name)+'</b><br><span class="faint" style="font-size:11px">'+(ok?'Complete':u?'Link exists, data incomplete':'No link yet, run a sync')+'</span></span>'
+      +(u?'<button class="btn btn-ghost btn-small" data-act="copylink" data-url="'+esc(u)+'">Copy link</button><a class="btn btn-primary btn-small" href="'+esc(u)+'" target="_blank" rel="noopener">Open</a>':'')+'</div>'; });
+  h+='</div><div class="row" style="margin-top:12px"><button class="btn btn-ghost btn-small" data-act="closemodal">Close</button>'+(onlyId?'':'<button class="btn btn-primary btn-small" data-act="copyalllinks">Copy all complete links</button>')+'</div></div>';
+  const m=document.createElement('div'); m.className='modal'; m.innerHTML=h; document.body.appendChild(m);
+  m._text=list.filter(linkReady).map(c=>c.name+': '+reportLink(c.id)).join('\n');
+}
 function showUpdate(x){ const text=clientUpdateText(x); const m=document.createElement('div'); m.className='modal'; m.innerHTML='<div class="box"><h2 class="disp">Client update, ready to paste</h2><textarea class="upd" id="updText"></textarea><div class="row"><button class="btn btn-ghost btn-small" data-act="closemodal">Close</button><button class="btn btn-primary btn-small" data-act="copytext">Copy</button></div></div>'; document.body.appendChild(m); m.querySelector('#updText').value=text; navigator.clipboard?.writeText(text).then(()=>toast('Update copied to clipboard')).catch(()=>{}); }
 
 /* command palette */
 const cmdk=document.getElementById('cmdk'), cmdkInput=document.getElementById('cmdkInput'), cmdkResults=document.getElementById('cmdkResults'); let cmdkSel=0;
-function cmdkItems(q){ q=(q||'').toLowerCase(); const items=[{label:'Command Center',hint:'overview',run:()=>go(null)}]; (D?D.clients:[]).forEach(c=>items.push({label:c.name,hint:c.type==='ecom'?'ecom':c.type==='app'?'app':'leads',run:()=>go(c.id),dot:S[c.id]?.health})); if(state.view==='client') items.push({label:'Copy client update',hint:'action',run:()=>showUpdate(S[state.clientId])}); ['today','yesterday','7d','14d','30d','MTD'].forEach(r=>items.push({label:'Range: '+r,hint:'action',run:()=>{state.range=r;render();}})); if(LIVE) items.push({label:'Refresh data',hint:'action',run:()=>boot(true)}); return items.filter(i=>!q||i.label.toLowerCase().includes(q)).slice(0,12); }
+function cmdkItems(q){ q=(q||'').toLowerCase(); const items=[{label:'Command Center',hint:'overview',run:()=>go(null)}]; (D?D.clients:[]).forEach(c=>items.push({label:c.name,hint:c.type==='ecom'?'ecom':c.type==='app'?'app':'leads',run:()=>go(c.id),dot:S[c.id]?.health})); items.push({label:'Client dashboards (links)',hint:'action',run:()=>showLinks()}); if(state.view==='client') items.push({label:'Copy client update',hint:'action',run:()=>showUpdate(S[state.clientId])}); ['today','yesterday','7d','14d','30d','MTD'].forEach(r=>items.push({label:'Range: '+r,hint:'action',run:()=>{state.range=r;render();}})); if(LIVE) items.push({label:'Refresh data',hint:'action',run:()=>boot(true)}); return items.filter(i=>!q||i.label.toLowerCase().includes(q)).slice(0,12); }
 function openCmdk(){ cmdk.classList.add('open'); cmdkInput.value=''; cmdkSel=0; renderCmdk(); setTimeout(()=>cmdkInput.focus(),10); }
 function closeCmdk(){ cmdk.classList.remove('open'); }
 function renderCmdk(){ const items=cmdkItems(cmdkInput.value); cmdkResults.innerHTML=items.map((it,i)=>'<button class="cmdk-result '+(i===cmdkSel?'sel':'')+'" data-i="'+i+'">'+(it.dot?'<span class="hdot '+it.dot+'"></span>':ICONS.grid)+'<span>'+esc(it.label)+'</span><span class="hint">'+esc(it.hint)+'</span></button>').join('')||'<div class="empty-note">Nothing matches.</div>'; cmdkResults._items=items; }
@@ -1905,6 +1922,10 @@ document.addEventListener('click',e=>{
   else if(act==='toggle'){ e.stopPropagation(); const id=el.dataset.id; if(state.expanded.has(id)) state.expanded.delete(id); else state.expanded.add(id); render(); }
   else if(act==='sort'){ const so=state.sort[el.dataset.table]; if(so.key===el.dataset.key) so.dir=so.dir==='asc'?'desc':'asc'; else {so.key=el.dataset.key;so.dir=['name','title','health','type','platform','learning','format','status','items','source','discount'].includes(el.dataset.key)?'asc':'desc'} render(); }
   else if(act==='update'){ showUpdate(S[state.clientId]); }
+  else if(act==='clientlink'){ showLinks(state.clientId); }
+  else if(act==='alllinks'){ showLinks(); }
+  else if(act==='copylink'){ navigator.clipboard?.writeText(el.dataset.url).then(()=>toast('Link copied')).catch(()=>toast('Copy failed')); }
+  else if(act==='copyalllinks'){ const m=el.closest('.modal'); navigator.clipboard?.writeText(m._text||'').then(()=>toast('Links copied')).catch(()=>toast('Copy failed')); }
   else if(act==='metric'){ metricModal(el.dataset.metric); }
   else if(act==='closemodal'){ el.closest('.modal').remove(); }
   else if(act==='copytext'){ const ta=document.getElementById('updText'); ta.select(); navigator.clipboard?.writeText(ta.value).catch(()=>{}); try{document.execCommand('copy')}catch(err){} toast('Update copied to clipboard'); }
