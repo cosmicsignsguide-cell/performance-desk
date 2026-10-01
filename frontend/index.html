@@ -1480,26 +1480,6 @@ function overviewView(){
     +'<div class="brief-sig"><span>We don’t run ads. <b>We drive results.</b></span><span>Per4mance Guru &middot; internal desk</span></div>'
   +'</section>';
 
-  // ---- Today's calls ---------------------------------------------------------------------------
-  // Numbered because the order is real: worst account first, critical before warning. An AM works
-  // down this list and stops when it runs out.
-  h+='<section class="strat s1"><div class="strat-head"><span>Today’s calls</span><span>'
-    +(acts.length?acts.length+' to act on':'nothing to act on')+(fyi.length?' &middot; '+fyi.length+' noted':'')+'</span></div>';
-  if(!items.length) h+='<div class="empty-note" style="padding:18px 0">Every account is on target, pacing and passing its site check.</div>';
-  else{
-    h+='<ol class="calls">';
-    const shown=acts.concat(state.showInfo?fyi:[]);
-    shown.forEach((f,i)=>{ h+='<li class="call '+(f.sev==='bad'?'bad':f.sev==='info'?'info':'warn')+'">'
-      +'<button class="call-hit" data-act="nav" data-client="'+f.id+'">'
-        +'<span class="call-n">'+String(i+1).padStart(2,'0')+'</span>'
-        +'<span><span class="call-t">'+esc(f.text)+'</span>'
-          +'<span class="call-m">'+esc(groupMeta(f,f.client))+'</span></span>'
-      +'</button></li>'; });
-    h+='</ol>';
-    if(fyi.length) h+='<button class="btn btn-ghost btn-small calls-more" data-act="toggleinfo">'+(state.showInfo?'Hide':'Show')+' '+fyi.length+' informational</button>';
-  }
-  h+='</section>';
-
   // ---- The book --------------------------------------------------------------------------------
   const wall=all.slice().sort((a,b)=>RANK[a.health]-RANK[b.health]||b.cur.spend-a.cur.spend);
   h+='<section class="strat s2"><div class="strat-head"><span>The book</span><span>'+all.length+' live &middot; worst first &middot; click to open</span></div>'
