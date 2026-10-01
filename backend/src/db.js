@@ -38,9 +38,17 @@ async function firestoreImpl() {
     async merge(col, id, data) { await fs_.collection(C(col)).doc(id).set(data, { merge: true }); },
     async get(col, id) { const s = await fs_.collection(C(col)).doc(id).get(); return s.exists ? s.data() : null; },
     async add(col, data) { const r = await fs_.collection(C(col)).add(data); return r.id; },
-    async list(col, filter) {
+    // A filter key of '__id__' means the document id. It matters because Firestore charges per
+    // document read, and an equality on one field plus a range on another needs a composite index
+    // that has to be created by hand before the query will run at all. A range on the id alone
+    // needs no index, so callers whose ids carry the thing they want to range over (daily rows are
+    // `${clientId}_${date}_${platform}`) can narrow server side instead of reading the whole
+    // history and throwing most of it away in JavaScript.
+    async list(col, filter, opts = {}) {
       let q = fs_.collection(C(col));
-      if (filter) for (const [k, op, v] of filter) q = q.where(k, op, v);
+      const ID = admin.firestore.FieldPath.documentId();
+      if (filter) for (const [k, op, v] of filter) q = q.where(k === '__id__' ? ID : k, op, v);
+      if (opts.limit) q = q.limit(opts.limit);
       const s = await q.get();
       return s.docs.map((d) => ({ id: d.id, ...d.data() }));
     },
@@ -60,7 +68,7 @@ function fileImpl() {
   const read = (col) => { try { return JSON.parse(fs.readFileSync(file(col), 'utf8')); } catch { return {}; } };
   const write = (col, obj) => { fs.mkdirSync(root, { recursive: true }); fs.writeFileSync(file(col), JSON.stringify(obj, null, 1)); };
   const matches = (row, filter) => !filter || filter.every(([k, op, v]) => {
-    const x = row[k];
+    const x = k === '__id__' ? row.id : row[k];
     switch (op) { case '==': return x === v; case '>=': return x >= v; case '<=': return x <= v; case '>': return x > v; case '<': return x < v; case 'in': return v.includes(x); default: return true; }
   });
   return {
@@ -70,7 +78,10 @@ function fileImpl() {
     async merge(col, id, data) { const o = read(col); o[id] = { ...(o[id] || {}), ...data }; write(col, o); },
     async get(col, id) { return read(col)[id] || null; },
     async add(col, data) { const o = read(col); const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`; o[id] = data; write(col, o); return id; },
-    async list(col, filter) { return Object.entries(read(col)).map(([id, d]) => ({ id, ...d })).filter((r) => matches(r, filter)); },
+    async list(col, filter, opts = {}) {
+      const rows = Object.entries(read(col)).map(([id, d]) => ({ id, ...d })).filter((r) => matches(r, filter)).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+      return opts.limit ? rows.slice(0, opts.limit) : rows;
+    },
     async batchSet(col, rows) { const o = read(col); rows.forEach(({ id, data }) => { o[id] = { ...(o[id] || {}), ...data }; }); write(col, o); },
   };
 }
@@ -82,3 +93,13 @@ export async function db() {
 }
 
 export const dailyId = (clientId, date, platform) => `${clientId}_${date}_${platform}`;
+
+// A document id filter covering one client's daily rows between two dates, inclusive. Safe because
+// the id is `${clientId}_${date}_${platform}`, the date is fixed width ISO so sorting it as text
+// sorts it as time, and the separator is '_'. Client ids that are prefixes of other client ids
+// (mackly and mackly-active, whimsy and whimsy-2) stay apart because the longer ones continue with
+// '-', which sorts below '_' and below every digit, so they fall outside the shorter one's range.
+export const dailyIdRange = (clientId, since, until) => [
+  ['__id__', '>=', `${clientId}_${since}`],
+  ['__id__', '<=', `${clientId}_${until}_`],
+];

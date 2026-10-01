@@ -8,7 +8,7 @@
 //   status       print sync status per client
 
 import { config, has, shopifyTokenFor } from './config.js';
-import { db, dailyId } from './db.js';
+import { db, dailyId, dailyIdRange } from './db.js';
 import { syncClientsFromFile, loadClients, normalizeClient } from './clients.js';
 import { todayStr, addDays, log, nowIso } from './util.js';
 import * as meta from './fetchers/meta.js';
@@ -37,8 +37,13 @@ async function writeDaily(store, rows) {
   await store.batchSet('daily', rows.map((r) => ({ id: dailyId(r.clientId, r.date, r.platform), data: { ...r, updatedAt: nowIso() } })));
 }
 
+// "Has this client ever had a real row for this source?" needs one row, not the whole history. It
+// used to read every row ever written (about 120 per source) on every sync of every client, which
+// made it one of the larger lines in the daily read bill for a question with a one word answer.
+// A handful is fetched rather than exactly one so a stray sample row sorting first cannot hide a
+// real one behind it.
 async function firstRun(store, client, platform) {
-  const rows = await store.list('daily', [['clientId', '==', client.id], ['platform', '==', platform]]);
+  const rows = await store.list('daily', [['clientId', '==', client.id], ['platform', '==', platform]], { limit: 10 });
   return rows.filter((r) => !r.sample).length === 0;
 }
 
@@ -180,8 +185,11 @@ export const ROLLUP_DAYS = 40;   // a little past the dashboard's 35 so a range 
 async function writeRollup(store, client, today) {
   try {
     const since = addDays(today, -(ROLLUP_DAYS - 1));
-    const rows = (await store.list('daily', [['clientId', '==', client.id]]))
-      .filter((r) => r.date >= since)
+    // Range on the document id, so Firestore returns only the 40 days wanted. This used to read
+    // the client's entire history and discard everything older than 40 days in JavaScript, and it
+    // ran for every client on every sync: the line that spent the day's read quota.
+    const rows = (await store.list('daily', dailyIdRange(client.id, since, today)))
+      .filter((r) => r.clientId === client.id && r.date >= since && r.date <= today)
       .sort((a, b) => (a.date === b.date ? String(a.platform).localeCompare(b.platform) : a.date < b.date ? -1 : 1));
     await store.set('rollup', client.id, {
       clientId: client.id, from: since, to: today, days: ROLLUP_DAYS,
