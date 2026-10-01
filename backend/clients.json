@@ -66,10 +66,7 @@
     "accounts": {
       "meta": "222862346",
       "google": "",
-      "shopify": {
-        "shop": "1643f7.myshopify.com",
-        "tokenEnv": "SHOPIFY_TOKEN_FRANKLY"
-      },
+      "shopify": null,
       "ga4": ""
     },
     "site": {
@@ -1083,7 +1080,10 @@
     "accounts": {
       "meta": "349581285788045",
       "google": "",
-      "shopify": null,
+      "shopify": {
+        "shop": "1643f7.myshopify.com",
+        "tokenEnv": "SHOPIFY_TOKEN_HUES_STUDIO"
+      },
       "ga4": ""
     },
     "site": {
