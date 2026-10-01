@@ -1951,7 +1951,7 @@ async function syncNow(){
   try{
     const tok=await u.getIdToken();
     const r=await fetch(CFG.syncUrl+(CFG.syncUrl.includes('?')?'&':'?')+'mode=hourly',{method:'POST',headers:{'Authorization':'Bearer '+tok}});
-    if(r.status===401) throw new Error('not allowed, your account is not on the team domain');
+    if(r.status===401) throw new Error('this account can open the dashboard but is not cleared to sync. Add it to DESK_ALLOWED_EMAILS on the API service.');
     if(!r.ok) throw new Error('HTTP '+r.status);
     toast('Sync finished, reloading data'); boot(true);
   }catch(e){ toast('Sync failed: '+e.message,'warn'); }

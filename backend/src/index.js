@@ -386,8 +386,13 @@ async function main() {
       //
       // The dashboard now sends the signed-in user's Firebase ID token instead. It is short
       // lived, it is issued per person, and it cannot be used for anything the person could not
-      // already do. The email must be verified and on the team domain, checked here and not in
+      // already do. The email must be verified and on the allow list, checked here and not in
       // the browser, because a check the browser performs is a check an attacker can skip.
+      //
+      // The allow list is a team domain OR a named address. Both are needed: the agency signs in
+      // on per4mance.guru, but the owner's account is a personal gmail, and a domain rule alone
+      // locked him out of his own dashboard. config.js carries the same list for the sign-in
+      // screen, but that copy is advisory only. This one decides.
       const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
       const key = bearer || url.searchParams.get('key') || '';
       const keyOk = !!process.env.DESK_SYNC_KEY && key === process.env.DESK_SYNC_KEY;
@@ -398,9 +403,12 @@ async function main() {
           const admin = (await import('firebase-admin')).default;
           const t = await admin.auth().verifyIdToken(bearer);
           const email = String(t.email || '').toLowerCase();
-          const domains = (process.env.DESK_ALLOWED_DOMAINS || 'per4mance.guru')
-            .split(',').map((d) => d.trim().toLowerCase()).filter(Boolean);
-          if (t.email_verified && domains.some((d) => email.endsWith('@' + d))) who = email;
+          const list = (v, d) => String(process.env[v] || d).split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+          const domains = list('DESK_ALLOWED_DOMAINS', 'per4mance.guru');
+          const emails = list('DESK_ALLOWED_EMAILS', '');
+          const allowed = domains.some((d) => email.endsWith('@' + d)) || emails.includes(email);
+          if (t.email_verified && allowed) who = email;
+          else log(`auth: ${email || 'no email'} rejected (verified ${!!t.email_verified}, allowed ${allowed})`);
         } catch (e) {
           log(`auth: token rejected (${String(e.message || e).slice(0, 80)})`);
         }

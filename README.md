@@ -92,6 +92,8 @@ Edit `backend/clients.json`. For the first client fill `name`, `type`, `budget`,
 | `GOOGLE_OAUTH_REFRESH_TOKEN` | `node backend/get-refresh-token.js CLIENT_ID CLIENT_SECRET`, open the URL, log in with the account that is on the MCC |
 | `SHOPIFY_TOKEN_CLIENT_ONE` | Since Jan 2026 Shopify no longer creates custom apps inside the store admin. Make the app once in the Dev Dashboard (dev.shopify.com): Create app, name `Per4mance Desk`, App URL `http://localhost:53683/`, Redirect URL `http://localhost:53683/callback`, Admin API scopes `read_orders read_products read_inventory read_customers`, request Protected customer data access (orders + customers), Release a version, Distribution: Custom, enter the store domain. Then `node backend/shopify-install.js CLIENT_ID CLIENT_SECRET store.myshopify.com`, open the URL, log in to the store, Install. The printed token is permanent. Same app, one install per store. Variable name must match `accounts.shopify.tokenEnv` in clients.json |
 | `SLACK_WEBHOOK_URL` | api.slack.com/apps, create app, Incoming Webhooks on, add to `#desk-alerts` |
+| `DESK_ALLOWED_DOMAINS` | Comma list of email domains allowed to press Sync. Defaults to `per4mance.guru` |
+| `DESK_ALLOWED_EMAILS` | Comma list of individual addresses allowed to press Sync, for anyone signing in from outside those domains. Checked on the server, so the copy in `frontend/config.js` only controls the sign-in screen |
 
 Check them before deploying: `cd backend && node --env-file=.env src/index.js test-tokens`
 
