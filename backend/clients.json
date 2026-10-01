@@ -114,7 +114,10 @@
     "accounts": {
       "meta": "2999205000182683",
       "google": "",
-      "shopify": null,
+      "shopify": {
+        "shop": "aavwri-g3.myshopify.com",
+        "tokenEnv": "SHOPIFY_TOKEN_MACKLY"
+      },
       "ga4": ""
     },
     "site": {
