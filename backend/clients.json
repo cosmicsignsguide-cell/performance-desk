@@ -191,7 +191,7 @@
     "am": "",
     "accounts": {
       "meta": "1297856987484951",
-      "google": "",
+      "google": "1060018968",
       "shopify": {
         "shop": "marble-lotus-llc.myshopify.com",
         "tokenEnv": "SHOPIFY_TOKEN_MARBLELOTUS"
@@ -218,7 +218,7 @@
     "am": "",
     "accounts": {
       "meta": "2863832864008584",
-      "google": "",
+      "google": "9417638829",
       "shopify": {
         "shop": "zaymadigital.myshopify.com",
         "tokenEnv": "SHOPIFY_TOKEN_ZAYMA"
@@ -245,7 +245,7 @@
     "am": "",
     "accounts": {
       "meta": "1288933835731779",
-      "google": "",
+      "google": "6488877235",
       "shopify": null,
       "ga4": ""
     },
@@ -269,7 +269,7 @@
     "am": "",
     "accounts": {
       "meta": "198147135387697",
-      "google": "",
+      "google": "4843280401",
       "shopify": {
         "shop": "hide-and-leather-online.myshopify.com",
         "tokenEnv": "SHOPIFY_TOKEN_HIDELEATHER"
@@ -755,7 +755,7 @@
     "am": "",
     "accounts": {
       "meta": "2736386966431137",
-      "google": "",
+      "google": "1189118549",
       "shopify": {
         "shop": "fashioncolourindia.myshopify.com",
         "tokenEnv": "SHOPIFY_TOKEN_FASHIONCOLOUR"
@@ -1070,7 +1070,7 @@
     "am": "",
     "accounts": {
       "meta": "675477810231935",
-      "google": "",
+      "google": "7696173658",
       "shopify": null,
       "ga4": ""
     },
@@ -1121,7 +1121,7 @@
     "am": "",
     "accounts": {
       "meta": "915106375841231",
-      "google": "",
+      "google": "6085841321",
       "shopify": {
         "shop": "three-sixty-leather.myshopify.com",
         "tokenEnv": "SHOPIFY_TOKEN_THREE_SIXTY"
@@ -1148,7 +1148,7 @@
     "am": "",
     "accounts": {
       "meta": "3192522910906523",
-      "google": "",
+      "google": "4787700268",
       "shopify": null,
       "ga4": ""
     },
