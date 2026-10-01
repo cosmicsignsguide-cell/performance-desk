@@ -76,6 +76,7 @@ async function seedSampleFor(store, client, until, sources) {
 // one ad account. Daily rows are cheap and always refresh. So if the entity tree was pulled within
 // the last hour, a second daily run in that hour reuses it instead of burning the platform's rate
 // limit budget again. DESK_ENTITY_MIN_MINUTES=0 turns this off.
+const MIN_HISTORY = 30;
 const ENTITY_MIN_MIN = Number(process.env.DESK_ENTITY_MIN_MINUTES ?? 60);
 function entitiesDue(ent, source) {
   if (!ENTITY_MIN_MIN) return true;
@@ -99,6 +100,12 @@ async function syncClient(store, client, { mode, days }) {
   const isE = client.type !== 'lead';
   const ent = (await store.get('entities', client.id)) || { clientId: client.id, campaigns: [], adsets: [], ads: [], products: [], sources: {} };
   ent.sources = ent.sources || {};
+  // Every source must have at least MIN_HISTORY days behind it. A client added today only has
+  // yesterday and today from an hourly run, so the first sync of each source after it is added
+  // (or after this check was introduced) pulls the full history window once and records where that
+  // reached in syncs/{client}.{source}.histSince. One read per client, and it is not repeated.
+  const syncDoc = (await store.get('syncs', client.id)) || {};
+  const histOk = (source) => { const h = syncDoc[source]?.histSince; return !!h && h <= addDays(today, -MIN_HISTORY); };
 
   if (client.sample) { // pure sample client: regenerate so dates keep rolling
     const s = await seedSampleFor(store, client, today, ['meta', 'google', 'shopify', 'ga4']);
@@ -120,7 +127,9 @@ async function syncClient(store, client, { mode, days }) {
       continue;
     }
     try {
+      const needHist = !backfill && !histOk(source);
       const since = backfill ? restateSince
+        : needHist ? addDays(today, -Math.max(config.historyDays, MIN_HISTORY + 1))
         : mode === 'hourly' ? addDays(today, -1)
         : (await firstRun(store, client, source)) ? addDays(today, -config.historyDays) : restateSince;
       if (source === 'meta') {
@@ -151,7 +160,7 @@ async function syncClient(store, client, { mode, days }) {
         await writeDaily(store, rows);
       }
       ent.sources[source] = 'live';
-      await markSync(store, client, source, { ok: true, mode: 'live', error: '', since, until: today });
+      await markSync(store, client, source, { ok: true, mode: 'live', error: '', since, until: today, ...(needHist ? { histSince: since } : {}) });
       log(`${client.id}/${source}: synced ${since} to ${today}`);
     } catch (e) {
       const msg = (e.message || String(e)).slice(0, 300);
