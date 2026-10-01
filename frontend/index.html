@@ -747,6 +747,42 @@ textarea.upd{width:100%;min-height:240px;border:1px solid var(--border);border-r
 }
 @media (prefers-reduced-motion:reduce){.toast,.toast.fadeout{animation:none}.project-card{transition:none}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+
+/* ---- v2 skin -------------------------------------------------------------------------------
+   Two changes to how the desk reads. First, the KPI cards stop being five separate rounded boxes
+   and become one ledger: a single bordered strip with hairline dividers, so a row of figures reads
+   as a row in one book and the screen has fewer competing edges. Second, the portfolio map: every
+   client is a tile sized by spend and tinted by health, which is the one picture an AM wants from
+   the doorway. */
+.brief-figs{gap:0;background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--lift-1)}
+.brief-figs>div{border:0;border-radius:0;box-shadow:none;background:transparent;border-left:1px solid var(--line);transform:none!important}
+.brief-figs>div:first-child{border-left:0}
+.brief-figs>div:hover{background:var(--panel-hover);box-shadow:none}
+.kpi-grid{gap:0;background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--lift-1)}
+.kpi-grid .kpi-card{border:0;border-radius:0;box-shadow:none;background:transparent;border-left:1px solid var(--line);transform:none!important}
+.kpi-grid .kpi-card:first-child{border-left:0}
+.kpi-grid .kpi-card:hover{background:var(--panel-hover);box-shadow:none}
+@media (max-width:900px){ .kpi-grid .kpi-card{border-left:0;border-top:1px solid var(--line)} .kpi-grid .kpi-card:first-child{border-top:0} }
+.ptiles{position:relative;width:100%;aspect-ratio:1000/330;min-height:240px;border-radius:14px;overflow:hidden;background:var(--bg-2)}
+.ptile{position:absolute;display:block;text-align:left;padding:0;border:0;background:var(--panel);cursor:pointer;
+  box-shadow:inset 0 0 0 2px var(--bg);transition:filter .16s ease}
+.ptile:hover{filter:brightness(.97)} :root[data-theme="dark"] .ptile:hover{filter:brightness(1.12)}
+.ptile:focus-visible{outline:2px solid var(--accent);outline-offset:-4px}
+.ptile.good{background:color-mix(in srgb,var(--green) 13%,var(--panel))}
+.ptile.warn{background:color-mix(in srgb,var(--amber) 16%,var(--panel))}
+.ptile.bad{background:color-mix(in srgb,var(--red) 18%,var(--panel))}
+.ptile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--idle)}
+.ptile.good::before{background:var(--green)} .ptile.warn::before{background:var(--amber)} .ptile.bad::before{background:var(--red)}
+.pt-in{position:absolute;inset:0;padding:11px 12px 10px 16px;display:flex;flex-direction:column;gap:2px;overflow:hidden}
+.pt-name{font-weight:600;font-size:13px;letter-spacing:-.01em;line-height:1.2;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.pt-kpi{font-weight:650;letter-spacing:-.03em;font-variant-numeric:tabular-nums;font-size:15px;margin-top:auto}
+.pt-kpi i{font-style:normal;font-weight:450;letter-spacing:0;font-size:11px;color:var(--faint);margin-left:6px}
+.pt-sub{font-size:11px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ptile.xl .pt-name{font-size:19px;letter-spacing:-.02em} .ptile.xl .pt-kpi{font-size:32px;letter-spacing:-.04em}
+.ptile.lg .pt-name{font-size:15px} .ptile.lg .pt-kpi{font-size:22px}
+.ptile.sm .pt-in{padding:7px 8px 6px 12px} .ptile.sm .pt-name{font-size:11.5px;-webkit-line-clamp:3} .ptile.sm .pt-kpi,.ptile.sm .pt-sub{display:none}
+.ptile.md .pt-sub{display:none}
+@media (max-width:760px){ .ptiles{aspect-ratio:1/1.15} }
 </style>
 </head>
 <body>
@@ -1277,6 +1313,43 @@ function perfRatio(x){
   const t=kpiTarget(x.c); if(!t||!isFinite(x.kpi)||!x.kpi) return 0;
   return x.c.type==='ecom' ? x.kpi/t : t/x.kpi;
 }
+
+/* Portfolio tiles: every client as one tile, area = spend in the chosen range, colour = health.
+   A wall screen is read from across a room, and a tile you can see is a client you can find. The
+   layout is a squarified treemap, so the tiles stay close to square and the labels stay legible. */
+function squarify(items,x,y,w,h){
+  const out=[]; let rest=items.slice(); const total=rest.reduce((s,i)=>s+i.v,0)||1;
+  rest.forEach(i=>i.a=i.v/total*w*h);
+  const worst=(row,side)=>{ const s=row.reduce((t,i)=>t+i.a,0); let mx=0,mn=1e18; row.forEach(i=>{mx=Math.max(mx,i.a);mn=Math.min(mn,i.a);}); return Math.max(side*side*mx/(s*s), s*s/(side*side*mn)); };
+  while(rest.length){
+    const side=Math.min(w,h); let row=[rest[0]], i=1;
+    while(i<rest.length && worst(row.concat(rest[i]),side)<=worst(row,side)){ row.push(rest[i]); i++; }
+    const s=row.reduce((t,r)=>t+r.a,0);
+    if(w>=h){ const rw=s/h; let cy=y; row.forEach(r=>{ const rh=r.a/rw; out.push({it:r,x:x,y:cy,w:rw,h:rh}); cy+=rh; }); x+=rw; w-=rw; }
+    else { const rh=s/w; let cx=x; row.forEach(r=>{ const rw=r.a/rh; out.push({it:r,x:cx,y:y,w:rw,h:rh}); cx+=rw; }); y+=rh; h-=rh; }
+    rest=rest.slice(row.length);
+  }
+  return out;
+}
+function portfolioTiles(all,spec){
+  if(all.length<2) return '';
+  const inr=all.filter(x=>(x.c.currency||'INR')==='INR');
+  const base=inr.length>=2?inr:all;
+  const sum=base.reduce((s,x)=>s+x.cur.spend,0);
+  const floor=sum?sum*0.035:1;
+  const items=base.map(x=>({x:x,v:Math.max(x.cur.spend,floor)})).sort((a,b)=>b.v-a.v);
+  const rects=squarify(items,0,0,100,100);
+  const tone=x=>x.health==='good'?'good':x.health==='bad'?'bad':'warn';
+  let h='<section class="strat s1b"><div class="strat-head"><span>Portfolio map</span><span>size is spend &middot; colour is health &middot; '+esc(spec.label)+'</span></div><div class="ptiles">';
+  rects.forEach(r=>{ const x=r.it.x, c=x.c, t=kpiTarget(c), area=r.w*r.h;
+    const size=area>=420?'xl':area>=160?'lg':area>=60?'md':'sm';
+    h+='<button class="ptile '+tone(x)+' '+size+'" data-act="nav" data-client="'+c.id+'" style="left:'+r.x.toFixed(2)+'%;top:'+r.y.toFixed(2)+'%;width:'+r.w.toFixed(2)+'%;height:'+r.h.toFixed(2)+'%" title="'+esc(c.name)+' · '+fmtMoney(x.cur.spend,c)+'">'
+      +'<span class="pt-in"><span class="pt-name">'+esc(c.name.replace(' (sample)',''))+'</span>'
+      +'<span class="pt-kpi">'+kpiFmt(c,x.kpi)+'<i>'+(t?'of '+kpiFmt(c,t):'no target')+'</i></span>'
+      +'<span class="pt-sub">'+fmtMoney(x.cur.spend,c)+(x.flags.length?' &middot; '+x.flags.length+' flag'+(x.flags.length>1?'s':''):'')+'</span></span></button>'; });
+  h+='</div></section>';
+  return h;
+}
 function portfolioMap(list,spec){
   const pts=list.filter(x=>kpiTarget(x.c));
   if(pts.length<2) return '<div class="section"><div class="glass-panel"><h2>Portfolio map</h2><div class="note">The map needs at least two accounts with a target set. Add budgets and targets in clients.json.</div></div></div>';
@@ -1482,6 +1555,8 @@ function overviewView(){
     +'</dl>'
     +'<div class="brief-sig"><span>We don’t run ads. <b>We drive results.</b></span><span>Per4mance Guru &middot; internal desk</span></div>'
   +'</section>';
+
+  h+=portfolioTiles(all,spec);
 
   // ---- The book --------------------------------------------------------------------------------
   const wall=all.slice().sort((a,b)=>RANK[a.health]-RANK[b.health]||b.cur.spend-a.cur.spend);
