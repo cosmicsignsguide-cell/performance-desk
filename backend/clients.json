@@ -318,7 +318,10 @@
     "accounts": {
       "meta": "562278962526172",
       "google": "",
-      "shopify": null,
+      "shopify": {
+        "shop": "whimsy-web.myshopify.com",
+        "tokenEnv": "SHOPIFY_TOKEN_WHIMSY"
+      },
       "ga4": ""
     },
     "site": {
