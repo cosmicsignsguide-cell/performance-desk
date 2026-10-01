@@ -213,7 +213,10 @@
     "accounts": {
       "meta": "2863832864008584",
       "google": "",
-      "shopify": null,
+      "shopify": {
+        "shop": "zaymadigital.myshopify.com",
+        "tokenEnv": "SHOPIFY_TOKEN_ZAYMA"
+      },
       "ga4": ""
     },
     "site": {
