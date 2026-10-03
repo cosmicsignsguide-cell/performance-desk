@@ -387,9 +387,76 @@ body{font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:14.5px}
 .verdict b{color:var(--ink)}
 .mast{border-bottom:0!important;padding-bottom:4px!important}
 [style*="Georgia"],.kpi .s,.kpi .was{font-family:"Hanken Grotesk",system-ui,sans-serif!important}
+
+/* ===== v4: dark mission control, same language as the internal Command Center ================== */
+:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --ground:#091015; --paper:#0E171D; --wash:#122029; --ink:#E7EDEF; --ink-2:#A9B8BE; --ink-3:#74878F;
+  --rule:#1B2A33; --rule-2:#2A3E4A; --accent:#FF5A1F; --accent-soft:rgba(255,90,31,.12);
+  --good:#34D3A1; --warn:#FFB93D; --bar:#2FA89C; --bar-hi:#5CD0C4;
+  --shadow:rgba(0,0,0,.35); --shadow-2:rgba(0,0,0,.5); --sig:linear-gradient(90deg,#FF5A1F,#FF3D6E);
+}
+:root:not([data-theme="light"]) body::before{
+  background:radial-gradient(900px 480px at 14% -10%,rgba(255,90,31,.10),transparent 70%),
+             radial-gradient(800px 500px at 100% 0,rgba(52,211,161,.05),transparent 70%)}
+:root:not([data-theme="light"]) body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(231,237,239,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(231,237,239,.028) 1px,transparent 1px);
+  background-size:44px 44px;-webkit-mask-image:linear-gradient(#000,transparent 70%);mask-image:linear-gradient(#000,transparent 70%)}
+.panel{position:relative;transition:border-color .2s}
+.panel:hover{border-color:var(--rule-2)}
+/* cursor-following light, same idea as the desk: the card under the pointer catches a little ember */
+.panel::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .25s;
+  background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%),rgba(255,90,31,.10),transparent 65%)}
+.panel:hover::after{opacity:1}
+.verdict .hi{background:var(--sig);-webkit-background-clip:text;background-clip:text;color:transparent}
+.verdict b{color:var(--ink)}
+.kpi.hero{background:linear-gradient(180deg,var(--wash),var(--paper) 70%)}
+.kpi.hero .n{background:var(--sig);-webkit-background-clip:text;background-clip:text;color:transparent}
+.kpi.hero::after{background:var(--sig)}
+.tabs button[aria-selected="true"],.chips button[aria-pressed="true"],.brand .tile,.fbrand .tile{background:var(--sig)}
+.demo{background:rgba(255,90,31,.08)}
+.mast{border-bottom:1px solid var(--rule)!important}
+.verdict .nm{display:flex!important;align-items:center;gap:8px;font-size:.5em;font-weight:800;color:var(--ink)!important;letter-spacing:-.01em}
+.verdict .nm .wave{display:inline-block;transform-origin:70% 78%;animation:rwave 2.4s ease-in-out 2.4s 2 both}
+@keyframes rwave{0%{transform:rotate(0)}10%{transform:rotate(16deg)}20%{transform:rotate(-10deg)}30%{transform:rotate(16deg)}40%{transform:rotate(-8deg)}50%{transform:rotate(12deg)}60%,100%{transform:rotate(0)}}
+.pm-col.now,.pw.best i{background:var(--sig)}
+/* panels rise in once, staggered, after the intro lifts */
+.board>*{animation:rrise .6s cubic-bezier(.2,.8,.2,1) both}
+.board>*:nth-child(2){animation-delay:.06s}.board>*:nth-child(3){animation-delay:.12s}.board>*:nth-child(4){animation-delay:.18s}
+.board>*:nth-child(5){animation-delay:.24s}.board>*:nth-child(n+6){animation-delay:.3s}
+@keyframes rrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* intro: skyline rises, reticle locks on, wordmark cuts in, iris opens onto the report */
+.rboot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:#091015;overflow:hidden;
+  clip-path:circle(150% at 50% 46%);transition:clip-path .7s cubic-bezier(.65,0,.2,1),opacity .5s ease .2s,visibility .7s}
+.rboot::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(620px 360px at 50% 44%,rgba(255,90,31,.11),transparent 70%)}
+.rboot.go{clip-path:circle(0% at 50% 46%);opacity:0;visibility:hidden;pointer-events:none}
+.rb-in{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;padding:0 24px}
+.rb-sky{position:relative;width:min(280px,72vw);height:100px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 6px}
+.rb-sky b{display:block;width:calc((100% - 12px)/9 - 6px);border-radius:3px 3px 0 0;transform-origin:50% 100%;transform:scaleY(0);height:var(--h);
+  background:linear-gradient(180deg,var(--c),color-mix(in srgb,var(--c) 30%,transparent));animation:rbRise .7s cubic-bezier(.2,.9,.25,1.12) calc(.3s + var(--i)*.06s) both}
+@keyframes rbRise{to{transform:scaleY(1)}}
+.rb-sky em{position:absolute;left:0;right:0;bottom:52px;border-top:1px dashed rgba(231,237,239,.45);transform-origin:0 50%;animation:rbLine .7s cubic-bezier(.3,.8,.3,1) .1s both}
+@keyframes rbLine{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.rb-ret{position:absolute;inset:-16px -20px -10px;pointer-events:none;animation:rbLock .8s cubic-bezier(.2,.9,.2,1) .8s both}
+.rb-ret i{position:absolute;width:15px;height:15px;border:2px solid #FF5A1F;filter:drop-shadow(0 0 6px rgba(255,90,31,.7))}
+.rb-ret i:nth-child(1){left:0;top:0;border-right:0;border-bottom:0}.rb-ret i:nth-child(2){right:0;top:0;border-left:0;border-bottom:0}
+.rb-ret i:nth-child(3){left:0;bottom:0;border-right:0;border-top:0}.rb-ret i:nth-child(4){right:0;bottom:0;border-left:0;border-top:0}
+@keyframes rbLock{0%{opacity:0;transform:scale(2.4)}55%{opacity:1;transform:scale(.96)}75%{transform:scale(1.03)}100%{opacity:1;transform:scale(1)}}
+.rb-word{margin-top:30px;font-family:"Bricolage Grotesque",sans-serif;font-size:clamp(26px,5vw,42px);font-weight:800;letter-spacing:.03em;line-height:1;color:#E7EDEF;white-space:nowrap;
+  clip-path:inset(0 100% 0 0);animation:rbWipe .7s cubic-bezier(.22,.9,.28,1) 1.2s both}
+.rb-word i{font-style:normal;background:linear-gradient(90deg,#FF5A1F,#FF3D6E);-webkit-background-clip:text;background-clip:text;color:transparent}
+@keyframes rbWipe{to{clip-path:inset(0 0 0 0)}}
+.rb-sub{margin-top:13px;font-size:9.5px;letter-spacing:.34em;color:#7E929B;white-space:nowrap;animation:rbFade .6s ease-out 1.5s both}
+@keyframes rbFade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.rboot{display:none}.board>*,.verdict .nm .wave{animation:none!important}}
 </style>
 </head>
 <body>
+<div id="rboot" class="rboot" role="presentation"><div class="rb-in"><div class="rb-sky"><b style="--i:0;--h:55%;--c:#34D3A1"></b><b style="--i:1;--h:80%;--c:#34D3A1"></b><b style="--i:2;--h:50%;--c:#FFB93D"></b><b style="--i:3;--h:100%;--c:#34D3A1"></b><b style="--i:4;--h:30%;--c:#FF6B73"></b><b style="--i:5;--h:90%;--c:#34D3A1"></b><b style="--i:6;--h:65%;--c:#34D3A1"></b><b style="--i:7;--h:42%;--c:#FFB93D"></b><b style="--i:8;--h:95%;--c:#34D3A1"></b><em></em><span class="rb-ret"><i></i><i></i><i></i><i></i></span></div><span class="rb-word">PER<i>4</i>MANCE</span><span class="rb-sub">GURU &nbsp;&middot;&nbsp; PERFORMANCE REPORT</span></div></div>
+<script>(function(){var el=document.getElementById('rboot');if(!el)return;var done=false;function go(){if(done)return;done=true;el.classList.add('go');setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el)},900)}
+var t0=Date.now()-((window.performance&&performance.now&&performance.now())||0);setTimeout(go,Math.max(0,2300-(Date.now()-t0)));el.addEventListener('click',go);window.addEventListener('keydown',go,{once:true});
+document.addEventListener('pointermove',function(e){var p=e.target&&e.target.closest&&e.target.closest('.panel');if(!p)return;var r=p.getBoundingClientRect();p.style.setProperty('--mx',(e.clientX-r.left)+'px');p.style.setProperty('--my',(e.clientY-r.top)+'px')},{passive:true});})();</script>
 <div class="board" id="board">
   <div class="state"><h2>Loading</h2><p>One moment.</p></div>
 </div>
@@ -612,7 +679,7 @@ function stamp(iso){
 // It carries the client's name so the page opens as something addressed to them.
 function verdict(A,P,c,isE,p){
   var cur=c.currency;
-  var hi = c.contact? '<span class="nm">Hi '+esc(c.contact)+'.</span> ' : '';
+  var hi = c.contact? '<span class="nm"><span>Hi '+esc(c.contact)+'</span><span class="wave" aria-hidden="true">\uD83D\uDC4B</span></span> ' : '';
   if(!A.spend) return '<p class="verdict serif">'+hi+'No ad spend recorded for '+esc(p.label)+' yet. The panels below fill in as the period runs.</p>';
   var s='';
   if(isE){
