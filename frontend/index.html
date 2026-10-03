@@ -407,7 +407,11 @@ a{color:var(--cyan)}
   color:var(--faint);margin-bottom:18px;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
 .brief-when i{font-style:normal;width:5px;height:5px;border-radius:50%;background:var(--green)}
 .brief-when i.warn{background:var(--amber)} .brief-when i.bad{background:var(--red)}
-.brief-hi{font-size:13.5px;font-weight:550;letter-spacing:-.005em;color:var(--dim);margin-bottom:12px}
+.brief-hi{font-size:17px;font-weight:800;letter-spacing:-.01em;color:var(--ink);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.brief-hi .wave{display:inline-block;transform-origin:70% 78%;font-size:20px;animation:waveHand 2.4s ease-in-out .9s 2 both}
+@keyframes waveHand{0%{transform:rotate(0)}10%{transform:rotate(16deg)}20%{transform:rotate(-10deg)}30%{transform:rotate(16deg)}40%{transform:rotate(-8deg)}50%{transform:rotate(12deg)}60%,100%{transform:rotate(0)}}
+.brief-hi:hover .wave{animation:waveHand 1.6s ease-in-out}
+@media (prefers-reduced-motion:reduce){.brief-hi .wave{animation:none}}
 .brief-lead{font-size:clamp(24px,2.6vw,38px);line-height:1.26;letter-spacing:-.028em;font-weight:400;
   color:#9A968E;max-width:22ch;text-wrap:balance}
 .brief-lead b{font-weight:650;color:var(--text)}
@@ -1448,15 +1452,9 @@ function dayPart(){
   return hr<5?'tonight':hr<12?'this morning':hr<17?'this afternoon':'this evening';
 }
 function greeting(){
-  let name='there';
-  try{
-    const raw=LIVE?(fb.auth.currentUser?.displayName||fb.auth.currentUser?.email||''):'Sid';
-    const first=String(raw).split(/[@\s.]+/)[0];
-    if(first) name=first.charAt(0).toUpperCase()+first.slice(1);
-  }catch(e){}
-  let hr=12; try{ hr=parseInt(new Date().toLocaleString('en-US',{timeZone:TZ,hour:'2-digit',hour12:false}),10); }catch(e){}
-  const part=hr<5?'Late one':hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
-  return part+', '+name;
+  let name='Sid';
+  try{ if(LIVE){ const n=fb.auth.currentUser?.displayName||''; if(/^zylox/i.test(n)) name='Sid'; else { const f=String(n||fb.auth.currentUser?.email||'').split(/[@\s.]+/)[0]; if(f) name=f.charAt(0).toUpperCase()+f.slice(1); } } }catch(e){}
+  return 'Hi '+name;
 }
 
 // Opening a card gives the same 14 days at a size you can actually read: a grid, a value axis,
@@ -1929,7 +1927,7 @@ function overviewView(){
 
   h+='<section class="brief">'
     +'<div><div class="brief-when"><i class="'+bookTone+'"></i>'+esc(spec.label)+' &middot; '+niceDate(D.today)+' &middot; '+all.length+' accounts</div>'
-      +'<p class="brief-hi">'+esc(greeting())+'</p>'
+      +'<p class="brief-hi"><span>'+esc(greeting())+'</span><span class="wave" aria-hidden="true">\uD83D\uDC4B</span></p>'
       +'<p class="brief-lead">'+verdict+'</p>'
       +'<p class="brief-sub">'+subs.join(' ')+'</p></div>'
     +'<dl class="brief-figs">'
