@@ -485,10 +485,6 @@ html.cx-text .cur-dot,html.cx-text .cur-ring,html.cx-text .cur-tag{opacity:0!imp
 @media print{.cur-dot,.cur-ring,.cur-tag{display:none!important}}
 @media (prefers-reduced-motion:reduce){.cur-ring{transition:none}}
 
-.pvx{position:fixed;inset:0;z-index:9998;background:rgba(5,9,12,.82);display:grid;place-items:center;padding:16px;backdrop-filter:blur(4px)}
-.pvx-box{position:relative;width:min(380px,100%);height:min(720px,92vh);background:var(--paper);border:1px solid var(--rule-2);border-radius:16px;overflow:hidden;box-shadow:0 30px 80px -20px rgba(0,0,0,.7)}
-.pvx-box iframe{width:100%;height:100%;border:0;background:#fff}
-.pvx-x{position:absolute;top:8px;right:8px;z-index:2;width:30px;height:30px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:20px;line-height:1;cursor:pointer}
 @media (prefers-reduced-motion:reduce){.rboot{display:none}.board>*,.verdict .nm .wave{animation:none!important}}
 </style>
 </head>
@@ -1263,7 +1259,6 @@ function creativePanel(D,c,isE){
     h+='<div class="cr"><div class="crmedia" data-media="'+esc(x.id||'')+'">'
      + media
      + '<span class="crtag'+(running?'':' off')+'">'+(running?'Running':'Off')+'</span>'
-     + (x.hasVideo? '<button class="play" data-play="'+esc(x.id)+'" aria-label="Play this video"><span></span></button>' : '')
      + '</div>'
      + '<div class="crbody"><div class="crname" title="'+esc(x.name)+'">'+esc(x.name)+'</div>'
      + '<div class="crmeta">'+esc(x.format||'')+(x.ctr?' &middot; '+pc(x.ctr)+' CTR':'')+'</div>'
@@ -1295,38 +1290,6 @@ document.addEventListener('click',function(e){
 // video belonging to this ad, and the server checks the ad is this client's before handing back
 // a playable file. A creative that will not play falls back to its still rather than to an
 // error, because a client pressing play on a broken tile learns nothing useful.
-
-function openPreview(src){
-  var o=document.createElement('div'); o.className='pvx';
-  o.innerHTML='<div class="pvx-box"><button type="button" class="pvx-x" aria-label="Close">&times;</button><iframe title="Ad preview" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe></div>';
-  o.querySelector('iframe').src=src;
-  function close(){ o.remove(); document.removeEventListener('keydown',key); }
-  function key(e){ if(e.key==='Escape') close(); }
-  o.addEventListener('click',function(e){ if(e.target===o||e.target.closest('.pvx-x')) close(); });
-  document.addEventListener('keydown',key); document.body.appendChild(o);
-}
-document.addEventListener('click',function(e){
-  var b=e.target.closest&&e.target.closest('[data-play]');
-  if(!b||!TOKEN) return;
-  var id=b.getAttribute('data-play'), box=b.parentNode;
-  b.remove();
-  var v=document.createElement('video');
-  v.controls=true; v.autoplay=true; v.playsInline=true;
-  // Meta may refuse the raw file for some videos. Then Meta's own preview player is opened in a
-  // window instead, which plays the same ad. Only if that also fails is the tile marked unavailable.
-  v.onerror=function(){
-    v.outerHTML='<div class="noimg">Opening preview&hellip;</div>';
-    fetch(API.replace(/\/$/,'')+'/r/'+encodeURIComponent(TOKEN)+'/p/'+encodeURIComponent(id),{cache:'no-store'})
-      .then(function(r){ if(!r.ok) throw 0; return r.json(); })
-      .then(function(j){ if(!j||!j.src) throw 0; var n=box.querySelector('.noimg'); if(n) n.textContent='Playing in preview window'; openPreview(j.src); })
-      .catch(function(){ var n=box.querySelector('.noimg'); if(n) n.textContent='Preview unavailable'; });
-  };
-  // Whatever was standing in for the video goes first, the still or the format placeholder,
-  // otherwise it stays behind the player and shows through while the video loads.
-  var old=box.querySelector('img,.noimg'); if(old) old.remove();
-  box.appendChild(v);
-  v.src=API.replace(/\/$/,'')+'/r/'+encodeURIComponent(TOKEN)+'/v/'+encodeURIComponent(id);
-});
 
 // Picking either date moves the page onto that window. The other input keeps whatever it is
 // showing, which is the active period's own edge, so choosing one date and leaving the other
@@ -1405,7 +1368,7 @@ function sampleData(){
   const root=document.documentElement, dot=document.createElement('div'), ring=document.createElement('div'), tag=document.createElement('div');
   dot.className='cur-dot'; ring.className='cur-ring'; ring.innerHTML='<i></i><i></i><i></i><i></i>'; tag.className='cur-tag'; document.body.append(ring,dot,tag);
   let x=-100,y=-100,rx=-100,ry=-100,live=false,lockEl=null;
-  const HOT='button,a,summary,[role=button],label,.chips button,.tabs button,.crt,.cr', TXT='input,textarea,select,[contenteditable]';
+  const HOT='button,a,summary,[role=button],label,.chips button,.tabs button', TXT='input,textarea,select,[contenteditable]';
   const say=el=>{ const t=(el.getAttribute&&el.getAttribute('aria-label'))||''; return t&&t.length<30?t:''; };
   document.addEventListener('mousemove',e=>{ x=e.clientX; y=e.clientY; if(!live){ live=true; rx=x; ry=y; root.classList.add('cx','cx-on'); } },{passive:true});
   document.addEventListener('mouseover',e=>{ const t=e.target; if(!t.closest) return; const h=t.closest(HOT);
