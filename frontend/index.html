@@ -1711,21 +1711,6 @@ function overviewView(){
     +'</button>'; });
   h+='</div></section>';
 
-  // ---- Module 6: the detail bench, table or map --------------------------------------------------
-  const sorted=all.slice().sort((a,b)=>RANK[a.health]-RANK[b.health]||b.cur.spend-a.cur.spend);
-  h+='<section class="mod mod-detail strat s3" style="grid-column:span 12"><div class="mod-head"><span>Bench</span>'
-    +'<span class="seg tiny"><button data-act="ovview" data-v="table" class="'+(state.ovView!=='map'?'on':'')+'">Table</button><button data-act="ovview" data-v="map" class="'+(state.ovView==='map'?'on':'')+'">Map</button></span></div><div class="mod-body">';
-  if(state.ovView==='map'){ h+=portfolioMap(sorted,spec); }
-  else {
-    const cols=[{key:'name',label:'Client'},{key:'spend',label:'Spend',num:1},{key:'kpi',label:'ROAS or CPL vs target'},{key:'sales',label:'Sales or leads',num:1},{key:'pace',label:'Pacing (MTD)'},{key:'trend',label:'Last 14 days'},{key:'site',label:'Site'},{key:'health',label:'Flags'}];
-    const so=state.sort.overview;
-    const rows=all.slice().sort((a,b)=>{ let va,vb; switch(so.key){ case 'name':va=a.c.name;vb=b.c.name;break; case 'spend':va=a.cur.spend;vb=b.cur.spend;break; case 'pace':va=a.paceRatio;vb=b.paceRatio;break; case 'kpi':va=RANK[a.status]*10+(a.c.type==='ecom'?a.kpi/(kpiTarget(a.c)||1):(kpiTarget(a.c)||1)/(a.kpi||1));vb=RANK[b.status]*10+(b.c.type==='ecom'?b.kpi/(kpiTarget(b.c)||1):(kpiTarget(b.c)||1)/(b.kpi||1));break; case 'sales':va=a.c.type==='ecom'?a.cur.salesCount:a.cur.leads;vb=b.c.type==='ecom'?b.cur.salesCount:b.cur.leads;break; case 'trend':va=a.delta7;vb=b.delta7;break; case 'site':va=a.sw?(a.sw.ok?1:0):2;vb=b.sw?(b.sw.ok?1:0):2;break; default:va=RANK[a.health]*100-a.flags.length;vb=RANK[b.health]*100-b.flags.length; } if(va<vb) return so.dir==='asc'?-1:1; if(va>vb) return so.dir==='asc'?1:-1; return 0; });
-    h+='<div class="data-table-wrap"><table class="dtable"><thead><tr><th class="num">#</th>'+cols.map(cl=>'<th data-act="sort" data-table="overview" data-key="'+cl.key+'" class="'+(cl.num?'num ':'')+(so.key===cl.key?'sorted':'')+'">'+cl.label+(so.key===cl.key?(so.dir==='asc'?' \u2191':' \u2193'):'')+'</th>').join('')+'</tr></thead><tbody>';
-    rows.forEach((x,ix)=>{ const c=x.c, t=kpiTarget(c), isE=c.type==='ecom';
-      h+='<tr class="rowlink" tabindex="0" data-act="nav" data-client="'+c.id+'"><td class="num faint">'+(ix+1)+'</td><td class="row-title">'+esc(c.name)+'<span class="sub">'+typeLabel(c)+', '+esc(pfLabel(c))+(c.am?', '+esc(c.am):'')+'</span></td><td class="num">'+fmtMoney(x.cur.spend,c)+' '+vs(x.cur.spend,x.prev.spend)+'</td><td><span class="chip '+x.status+'">'+kpiFmt(c,x.kpi)+(t?' / '+kpiFmt(c,t):'')+'</span> '+vs(x.kpi,kpiOf(c,x.prev),!isE)+'</td><td class="num">'+fmtNum(isE?x.cur.salesCount:isApp(c)?x.cur.installs:x.cur.leads)+' '+vs(isE?x.cur.salesCount:isApp(c)?x.cur.installs:x.cur.leads,isE?x.prev.salesCount:isApp(c)?x.prev.installs:x.prev.leads)+'</td><td>'+paceBar(x)+'</td><td>'+spark(x.spark,x.delta7)+deltaHtml(x.delta7,'last 7 days vs the 7 before')+'</td><td>'+(!x.sw?'<span class="chip neutral">not set</span>':x.sw.ok?'<span class="chip good">OK</span>':'<span class="chip bad">Failing</span>')+'</td><td>'+(x.flags.length?'<span class="chip '+x.health+'">'+x.flags.length+' flag'+(x.flags.length>1?'s':'')+'</span>':'<span class="chip good">Clean</span>')+'</td></tr>'; });
-    h+='</tbody></table></div>';
-  }
-  h+='</div></section>';
   return h;
 }
 function paceCell(x){ const c=x.c;
