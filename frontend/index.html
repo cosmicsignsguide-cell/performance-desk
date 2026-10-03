@@ -720,7 +720,7 @@ svg.chart{width:100%;height:auto;display:block}
 
 /* toasts, palette, modal */
 .toast-stack{position:fixed;bottom:22px;right:22px;z-index:300;display:flex;flex-direction:column;gap:10px;pointer-events:none}
-.toast{pointer-events:auto;background:rgba(255,255,255,0.96);border:1px solid var(--border);backdrop-filter:blur(20px);border-radius:12px;padding:11px 15px;font-size:12.5px;box-shadow:0 10px 30px -8px rgba(0,0,0,0.55);min-width:220px;max-width:340px;animation:toastIn .3s cubic-bezier(.2,.8,.2,1)}
+.toast{pointer-events:auto;background:var(--panel);color:var(--ink);border:1px solid var(--border-strong,var(--border));backdrop-filter:blur(20px);border-radius:12px;padding:11px 15px;font-size:12.5px;box-shadow:0 10px 30px -8px rgba(0,0,0,0.55);min-width:220px;max-width:340px;animation:toastIn .3s cubic-bezier(.2,.8,.2,1)}
 .toast.ok{border-left:3px solid var(--green)} .toast.warn{border-left:3px solid var(--amber)} .toast.fadeout{animation:toastOut .3s ease forwards}
 @keyframes toastIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}} @keyframes toastOut{to{opacity:0;transform:translateX(30px)}}
 .cmdk-overlay{position:fixed;inset:0;background:rgba(20,20,20,0.35);backdrop-filter:blur(4px);z-index:250;display:none;align-items:flex-start;justify-content:center;padding:12vh 16px 0}
