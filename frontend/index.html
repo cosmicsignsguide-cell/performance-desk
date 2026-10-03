@@ -764,18 +764,18 @@ textarea.upd{width:100%;min-height:240px;border:1px solid var(--border);border-r
 .kpi-grid .kpi-card:hover{background:var(--panel-hover);box-shadow:none}
 @media (max-width:900px){ .kpi-grid .kpi-card{border-left:0;border-top:1px solid var(--line)} .kpi-grid .kpi-card:first-child{border-top:0} }
 .plsplit{display:flex;gap:3px;height:8px;margin:0 0 12px}
-.plsplit i{display:block;border-radius:99px;background:var(--idle)} .plsplit i.good{background:var(--green)} .plsplit i.warn{background:#E8A317} .plsplit i.bad{background:#D93025}
+.plsplit i{display:block;border-radius:99px;background:var(--idle)} .plsplit i.good{background:var(--st-good)} .plsplit i.warn{background:var(--st-warn)} .plsplit i.bad{background:var(--st-bad)}
 .plist-key .pl-note{margin-left:auto;color:var(--faint)}
 .plist-h span[data-act]{cursor:pointer;user-select:none} .plist-h span[data-act]:hover,.plist-h span.sorted{color:var(--ink)}
 .plseg{margin-left:auto}
 .plist-key{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 0 10px;font-size:12px;color:var(--dim)}
 .plist-key .k{display:inline-flex;align-items:center;gap:7px}
 .plist-key .k i{width:9px;height:9px;border-radius:50%;background:var(--idle)}
-.plist-key .k.good i{background:var(--green)} .plist-key .k.warn i{background:#E8A317} .plist-key .k.bad i{background:#D93025}
+.plist-key .k.good i{background:var(--st-good)} .plist-key .k.warn i{background:var(--st-warn)} .plist-key .k.bad i{background:var(--st-bad)}
 .plist{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--lift-1)}
 .plist-h,.prow{display:grid;grid-template-columns:34px minmax(0,1fr) 120px 150px 64px 96px;align-items:center;gap:14px;padding:0 18px}
 .plist-h{height:36px;border-bottom:1px solid var(--line);font-size:11.5px;font-weight:500;color:var(--faint);background:var(--bg-2)}
-.plist-h span:nth-child(n+5){text-align:right}
+.plist-h span:nth-child(n+5){text-align:right} .plist-h span{white-space:nowrap}
 .prow{width:100%;height:50px;border:0;border-top:1px solid var(--line);background:transparent;text-align:left;cursor:pointer;font:inherit;color:inherit;transition:background .12s ease}
 .plist-h+.prow{border-top:0}
 .prow:hover,.prow.on{background:var(--bg-2)}
@@ -784,17 +784,17 @@ textarea.upd{width:100%;min-height:240px;border:1px solid var(--border);border-r
 .mono{display:grid;place-items:center;width:30px;height:30px;border-radius:8px;font-family:"Bricolage Grotesque","Hanken Grotesk",sans-serif;font-weight:650;font-size:13px;
   background:var(--bg);color:var(--dim);border:1px solid var(--border)}
 .pr-st{position:absolute;right:-3px;bottom:-3px;width:10px;height:10px;border-radius:50%;background:var(--idle);border:2px solid var(--panel)}
-.prow.good .pr-st{background:var(--green)} .prow.warn .pr-st{background:#E8A317} .prow.bad .pr-st{background:#D93025}
+.prow.good .pr-st{background:var(--st-good)} .prow.warn .pr-st{background:var(--st-warn)} .prow.bad .pr-st{background:var(--st-bad)}
 .pr-name{font-weight:600;font-size:13.5px;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pr-name em{font-style:normal;font-weight:450;font-size:11.5px;color:var(--faint);margin-left:10px}
-.pr-gauge{position:relative;height:4px;border-radius:99px;background:linear-gradient(90deg,#D93025 0 25%,#E8A317 25% 37.5%,var(--green) 37.5% 100%);opacity:.55}
+.pr-gauge{position:relative;height:4px;border-radius:99px;background:linear-gradient(90deg,var(--st-bad) 0 25%,var(--st-warn) 25% 37.5%,var(--st-good) 37.5% 100%);opacity:.55}
 .pr-gauge:empty{background:var(--line);opacity:1}
 .pr-gauge i{position:absolute;top:-4px;width:2px;height:12px;border-radius:1px;background:var(--ink);transform:translateX(-1px);transition:left .5s cubic-bezier(.2,.8,.2,1);opacity:1}
 .pr-kpi{font-weight:600;font-size:14.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .pr-kpi i{font-style:normal;font-weight:450;font-size:11.5px;color:var(--faint);margin-left:8px}
 .pr-dev,.pr-spend{font-variant-numeric:tabular-nums;text-align:right;font-size:13px;font-weight:600;white-space:nowrap}
 .pr-spend{color:var(--dim);font-weight:450}
-.prow.good .pr-dev{color:var(--green)} .prow.warn .pr-dev{color:#B97A00} .prow.bad .pr-dev{color:#D93025} .prow.none .pr-dev{color:var(--faint)}
+.prow.good .pr-dev{color:var(--st-good-ink)} .prow.warn .pr-dev{color:var(--st-warn-ink)} .prow.bad .pr-dev{color:var(--st-bad-ink)} .prow.none .pr-dev{color:var(--faint)}
 @media (min-width:1000px){ .plist,.plist-key,.plsplit{max-width:calc(100vw - 460px)} }
 @media (max-width:1180px){ .plist-h,.prow{grid-template-columns:34px minmax(0,1fr) 90px 130px 56px} .pr-spend,.plist-h span:nth-child(6){display:none} }
 @media (max-width:760px){
@@ -824,15 +824,15 @@ textarea.upd{width:100%;min-height:240px;border:1px solid var(--border);border-r
 .pf-sub{font-size:12px;color:var(--faint);margin-top:5px}
 .pf-x{border:0;background:var(--bg);width:26px;height:26px;border-radius:8px;font-size:18px;line-height:1;cursor:pointer;color:var(--dim);flex:none}
 .pf-hero{margin:18px 0 14px;padding:16px 16px 14px;border-radius:10px;background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--idle)}
-.pf-hero.good{border-left-color:var(--green)}
-.pf-hero.warn{border-left-color:#E8A317}
-.pf-hero.bad{border-left-color:#D93025}
+.pf-hero.good{border-left-color:var(--st-good)}
+.pf-hero.warn{border-left-color:var(--st-warn)}
+.pf-hero.bad{border-left-color:var(--st-bad)}
 .pf-lab{font-size:12px;color:var(--faint)}
 .pf-big{font-family:"Bricolage Grotesque","Hanken Grotesk",sans-serif;font-weight:650;font-size:38px;letter-spacing:-.04em;line-height:1.05;margin-top:4px}
 .pf-roas{font-size:14px;color:var(--dim);margin-top:6px}.pf-roas b{font-family:"Bricolage Grotesque",sans-serif;font-size:17px;color:var(--ink)}
 .pf-word{font-size:13px;font-weight:600;margin-top:4px}
-.pf-hero.good .pf-word{color:var(--green)} .pf-hero.warn .pf-word{color:#B97A00} .pf-hero.bad .pf-word{color:#D93025}
-.pf-bar{position:relative;height:8px;border-radius:99px;background:linear-gradient(90deg,#D93025 0 25%,#E8A317 25% 37.5%,var(--green) 37.5% 100%);margin-top:14px}
+.pf-hero.good .pf-word{color:var(--st-good-ink)} .pf-hero.warn .pf-word{color:var(--st-warn-ink)} .pf-hero.bad .pf-word{color:var(--st-bad-ink)}
+.pf-bar{position:relative;height:8px;border-radius:99px;background:linear-gradient(90deg,var(--st-bad) 0 25%,var(--st-warn) 25% 37.5%,var(--st-good) 37.5% 100%);margin-top:14px}
 .pf-bar i{position:absolute;top:-4px;height:16px;width:3px;background:var(--ink);border-radius:2px;transform:translateX(-1.5px)}
 .pf-bar .pf-tick{position:absolute;left:50%;top:-3px;height:14px;width:1px;background:var(--ink);opacity:.35}
 .pf-scale{display:flex;justify-content:space-between;position:relative;font-size:10.5px;color:var(--faint);margin-top:6px}
@@ -843,12 +843,18 @@ textarea.upd{width:100%;min-height:240px;border:1px solid var(--border);border-r
 .pf-flags{margin-top:14px;font-size:12.5px} .pf-flags b{font-weight:650}
 .pf-flags.none{color:var(--faint)}
 .pf-flag{margin-top:6px;padding:7px 10px;border-radius:8px;background:var(--bg);color:var(--dim);line-height:1.35}
-.pf-flag.bad{background:color-mix(in srgb,#D93025 9%,var(--panel))} .pf-flag.warn{background:color-mix(in srgb,#E8A317 12%,var(--panel))}
+.pf-flag.bad{background:color-mix(in srgb,var(--st-bad) 9%,var(--panel))} .pf-flag.warn{background:color-mix(in srgb,var(--st-warn) 12%,var(--panel))}
 .pf-go{margin-top:16px;width:100%;height:40px;border:0;border-radius:10px;background:var(--ink);color:#fff;font:inherit;font-weight:600;cursor:pointer}
 .pf-go:hover{background:var(--accent)}
 :root[data-theme="dark"] .pf-go{background:var(--accent);color:#101418}
 @media (max-width:760px){ .pflyout{top:auto;left:14px;width:auto;max-width:none;bottom:14px;max-height:78vh;transform:translateY(calc(100% + 28px))} .pflyout.open{transform:none} }
 
+
+.prow.bad{background:color-mix(in srgb,var(--st-bad) 4%,transparent)} .prow.warn{background:color-mix(in srgb,var(--st-warn) 4%,transparent)}
+.prow.bad:hover,.prow.bad.on{background:color-mix(in srgb,var(--st-bad) 8%,var(--panel))} .prow.warn:hover,.prow.warn.on{background:color-mix(in srgb,var(--st-warn) 8%,var(--panel))} .prow.good:hover,.prow.none:hover,.prow.good.on,.prow.none.on{background:var(--bg-2)}
+.pf-hero.good{background:color-mix(in srgb,var(--st-good) 5%,var(--panel))} .pf-hero.warn{background:color-mix(in srgb,var(--st-warn) 6%,var(--panel))} .pf-hero.bad{background:color-mix(in srgb,var(--st-bad) 5%,var(--panel))}
+.pf-flag.bad{background:color-mix(in srgb,var(--st-bad) 8%,var(--panel))} .pf-flag.warn{background:color-mix(in srgb,var(--st-warn) 10%,var(--panel))}
+.pr-gauge{opacity:.9} .pf-bar{opacity:1}
 /* ===== v3 identity: shared with the client report ===========================================
    One system for both screens. Cool paper ground, ink text, Per4mance orange used for one job
    (what needs you / what is live), teal for spend. Bricolage Grotesque carries every figure so the
@@ -860,8 +866,9 @@ textarea.upd{width:100%;min-height:240px;border:1px solid var(--border);border-r
   --accent:#FF5A1F; --accent-2:#E24710; --accent-soft:rgba(255,90,31,.10); --accent-line:rgba(255,90,31,.34);
   --red:#E24710; --red-bg:rgba(226,71,16,.10); --green:#16794F; --green-bg:rgba(22,121,79,.11);
   --lattice:transparent;
+  --st-good:#1F8A5B; --st-warn:#E0900F; --st-bad:#D4412F; --st-good-ink:#16704A; --st-warn-ink:#946000; --st-bad-ink:#B4291A;
 }
-:root[data-theme="dark"]{ --bg:#0E1114; --bg-2:#14181C; --panel:#14181C; --border:#262C32; --border-strong:#38404A; --line:#1E2429; --accent:#FF6F3C; --lattice:transparent; }
+:root[data-theme="dark"]{ --st-good:#3DBB86; --st-warn:#F0A93A; --st-bad:#F0654F; --st-good-ink:#5FD3A0; --st-warn-ink:#F5BE62; --st-bad-ink:#F58A78; --bg:#0E1114; --bg-2:#14181C; --panel:#14181C; --border:#262C32; --border-strong:#38404A; --line:#1E2429; --accent:#FF6F3C; --lattice:transparent; }
 body{font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:14px}
 .disp,.kpi-value,.brief-figs dd,.pt-kpi,.brief-lead,.page-head h1,.rkpi,.pm-v{font-family:"Bricolage Grotesque","Hanken Grotesk",sans-serif!important;letter-spacing:-.03em}
 .brief-lead{font-weight:500} .brief-lead b{font-weight:700}
@@ -1463,12 +1470,12 @@ function portfolioTiles(all0,spec0){
   rows.sort((a,b)=>{ if(ps.key==='dev'){ const d=(sev[a.r.tone]-sev[b.r.tone])||((key(a)-key(b))); return d*dirm||0; } const ka=key(a),kb=key(b); return (ka<kb?-1:ka>kb?1:0)*dirm; });
   const n=t=>rows.filter(o=>o.r.tone===t).length, tot=rows.length;
   const seg=(t,l)=>n(t)?'<i class="'+t+'" style="flex:'+n(t)+'" title="'+n(t)+' '+l+'"></i>':'';
-  const th=(k,l,cls)=>'<span class="'+(cls||'')+(ps.key===k?' sorted':'')+'" data-act="plsort" data-k="'+k+'">'+l+(ps.key===k?(ps.dir==='asc'?' ↑':' ↓'):'')+'</span>';
+  const th=(k,l,cls,na)=>'<span class="'+(cls||'')+(ps.key===k?' sorted':'')+'" data-act="plsort" data-k="'+k+'">'+l+(ps.key===k&&!na?(ps.dir==='asc'?' ↑':' ↓'):'')+'</span>';
   let h='<section class="strat s1b"><div class="strat-head"><span>Portfolio</span><span class="seg tiny plseg">'
     +['7d','14d','30d','MTD'].map(r=>'<button data-act="plrange" data-r="'+r+'" class="'+(pr===r?'on':'')+'">'+r+'</button>').join('')+'</span></div>'
     +'<div class="plsplit">'+seg('good','on target')+seg('warn','10 to 20% behind')+seg('bad','over 20% behind')+seg('none','no target')+'</div>'
     +'<div class="plist-key"><span class="k good"><i></i>'+n('good')+' on target or within 10%</span><span class="k warn"><i></i>'+n('warn')+' 10 to 20% behind</span><span class="k bad"><i></i>'+n('bad')+' more than 20% behind</span><span class="k none"><i></i>'+n('none')+' no target</span><span class="k pl-note">'+esc(spec.label)+' &middot; hover a client for its card</span></div>'
-    +'<div class="plist"><div class="plist-h"><span></span>'+th('name','Client')+th('dev','Position against target')+th('kpi',rows.every(o=>o.x.c.type==='ecom')?'ROAS':'KPI')+th('dev','vs target','r')+th('spend','Spend','r')+'</div>';
+    +'<div class="plist"><div class="plist-h"><span></span>'+th('name','Client')+th('dev','Position','',1)+th('kpi',rows.every(o=>o.x.c.type==='ecom')?'ROAS':'KPI')+th('dev','vs target','r')+th('spend','Spend','r')+'</div>';
   rows.forEach(o=>{ const x=o.x, c=x.c, t=kpiTarget(c);
     h+='<button class="prow '+o.r.tone+'" data-pl="'+esc(c.id)+'" type="button">'
       +'<span class="pr-mono">'+monogram(c)+'<i class="pr-st"></i></span>'
