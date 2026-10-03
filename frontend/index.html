@@ -763,6 +763,11 @@ textarea.upd{width:100%;min-height:240px;border:1px solid var(--border);border-r
 .kpi-grid .kpi-card:first-child{border-left:0}
 .kpi-grid .kpi-card:hover{background:var(--panel-hover);box-shadow:none}
 @media (max-width:900px){ .kpi-grid .kpi-card{border-left:0;border-top:1px solid var(--line)} .kpi-grid .kpi-card:first-child{border-top:0} }
+.plsplit{display:flex;gap:3px;height:8px;margin:0 0 12px}
+.plsplit i{display:block;border-radius:99px;background:var(--idle)} .plsplit i.good{background:var(--green)} .plsplit i.warn{background:#E8A317} .plsplit i.bad{background:#D93025}
+.plist-key .pl-note{margin-left:auto;color:var(--faint)}
+.plist-h span[data-act]{cursor:pointer;user-select:none} .plist-h span[data-act]:hover,.plist-h span.sorted{color:var(--ink)}
+.plseg{margin-left:auto}
 .plist-key{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 0 10px;font-size:12px;color:var(--dim)}
 .plist-key .k{display:inline-flex;align-items:center;gap:7px}
 .plist-key .k i{width:9px;height:9px;border-radius:50%;background:var(--idle)}
@@ -790,7 +795,7 @@ textarea.upd{width:100%;min-height:240px;border:1px solid var(--border);border-r
 .pr-dev,.pr-spend{font-variant-numeric:tabular-nums;text-align:right;font-size:13px;font-weight:600;white-space:nowrap}
 .pr-spend{color:var(--dim);font-weight:450}
 .prow.good .pr-dev{color:var(--green)} .prow.warn .pr-dev{color:#B97A00} .prow.bad .pr-dev{color:#D93025} .prow.none .pr-dev{color:var(--faint)}
-@media (min-width:1000px){ .plist,.plist-key{max-width:calc(100vw - 460px)} }
+@media (min-width:1000px){ .plist,.plist-key,.plsplit{max-width:calc(100vw - 460px)} }
 @media (max-width:1180px){ .plist-h,.prow{grid-template-columns:34px minmax(0,1fr) 90px 130px 56px} .pr-spend,.plist-h span:nth-child(6){display:none} }
 @media (max-width:760px){
   .plist-h{display:none}
@@ -1135,7 +1140,7 @@ const ICONS={
 
 /* ============================== STATE / RENDER =========================== */
 let D=null, S={};
-const state={view:'overview',clientId:null,range:'today',tab:'campaigns',crf:'spending',q:'',ovView:'table',showInfo:false,expanded:new Set(),sort:{overview:{key:'health',dir:'asc'},campaigns:{key:'spend',dir:'desc'},ads:{key:'spend',dir:'desc'},products:{key:'revenue',dir:'desc'},orders:{key:'at',dir:'desc'}}};
+const state={plRange:'7d',plSort:{key:'dev',dir:'asc'},view:'overview',clientId:null,range:'today',tab:'campaigns',crf:'spending',q:'',ovView:'table',showInfo:false,expanded:new Set(),sort:{overview:{key:'health',dir:'asc'},campaigns:{key:'spend',dir:'desc'},ads:{key:'spend',dir:'desc'},products:{key:'revenue',dir:'desc'},orders:{key:'at',dir:'desc'}}};
 const root=document.getElementById('root');
 function readHash(){ const m=location.hash.match(/^#c\/([a-z0-9-]+)/); if(m&&D&&D.clients.some(c=>c.id===m[1])){state.view='client';state.clientId=m[1]} else {state.view='overview';state.clientId=null} }
 function go(id){ if(id){location.hash='#c/'+id} else { try{history.replaceState(null,'',location.href.split('#')[0])}catch(e){location.hash=''} readHash(); render(); window.scrollTo(0,0); } }
@@ -1447,16 +1452,23 @@ function plChart(x){ const c=x.c, isE=c.type==='ecom', g=isE?(m=>m.revenue):isAp
     +'<path class="pf-area" d="M0,'+H+' L'+pts.join(' L')+' L'+W+','+H+' Z" fill="url(#pfg)"/>'
     +'<polyline class="pf-line" pathLength="1" points="'+pts.join(' ')+'" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>'
     +'</svg></div>'; }
-function portfolioTiles(all,spec){
-  if(all.length<2) return '';
+function portfolioTiles(all0,spec0){
+  if(all0.length<2) return '';
+  const pr=state.plRange||'7d', spec=rangeSpec(pr,D.today);
+  const all=all0.map(x=>summarize(D,x.c,pr));
   const rows=all.map(x=>({x:x,r:targetRule(x)}));
   window.__pl={}; rows.forEach(o=>{ window.__pl[o.x.c.id]=o; });
-  const sev={bad:0,warn:1,good:2,none:3};
-  rows.sort((a,b)=>sev[a.r.tone]-sev[b.r.tone]||(a.r.dev==null?0:a.r.dev)-(b.r.dev==null?0:b.r.dev)||b.x.cur.spend-a.x.cur.spend);
-  const n=t=>rows.filter(o=>o.r.tone===t).length;
-  let h='<section class="strat s1b"><div class="strat-head"><span>Portfolio</span><span>'+esc(spec.label)+' &middot; hover a client for its card &middot; colour is distance from its own target</span></div>'
-    +'<div class="plist-key"><span class="k good"><i></i>'+n('good')+' on target or within 10%</span><span class="k warn"><i></i>'+n('warn')+' 10 to 20% behind</span><span class="k bad"><i></i>'+n('bad')+' more than 20% behind</span><span class="k none"><i></i>'+n('none')+' no target</span></div>'
-    +'<div class="plist"><div class="plist-h"><span></span><span>Client</span><span>Position against target</span><span>'+(rows.every(o=>o.x.c.type==='ecom')?'ROAS':'KPI')+'</span><span>vs target</span><span>Spend</span></div>';
+  const sev={bad:0,warn:1,good:2,none:3}, ps=state.plSort||{key:'dev',dir:'asc'}, dirm=ps.dir==='asc'?1:-1;
+  const key=o=>ps.key==='name'?o.x.c.name.toLowerCase():ps.key==='spend'?o.x.cur.spend:ps.key==='kpi'?(isFinite(o.x.kpi)?o.x.kpi:-1):(o.r.dev==null?9:o.r.dev);
+  rows.sort((a,b)=>{ if(ps.key==='dev'){ const d=(sev[a.r.tone]-sev[b.r.tone])||((key(a)-key(b))); return d*dirm||0; } const ka=key(a),kb=key(b); return (ka<kb?-1:ka>kb?1:0)*dirm; });
+  const n=t=>rows.filter(o=>o.r.tone===t).length, tot=rows.length;
+  const seg=(t,l)=>n(t)?'<i class="'+t+'" style="flex:'+n(t)+'" title="'+n(t)+' '+l+'"></i>':'';
+  const th=(k,l,cls)=>'<span class="'+(cls||'')+(ps.key===k?' sorted':'')+'" data-act="plsort" data-k="'+k+'">'+l+(ps.key===k?(ps.dir==='asc'?' ↑':' ↓'):'')+'</span>';
+  let h='<section class="strat s1b"><div class="strat-head"><span>Portfolio</span><span class="seg tiny plseg">'
+    +['7d','14d','30d','MTD'].map(r=>'<button data-act="plrange" data-r="'+r+'" class="'+(pr===r?'on':'')+'">'+r+'</button>').join('')+'</span></div>'
+    +'<div class="plsplit">'+seg('good','on target')+seg('warn','10 to 20% behind')+seg('bad','over 20% behind')+seg('none','no target')+'</div>'
+    +'<div class="plist-key"><span class="k good"><i></i>'+n('good')+' on target or within 10%</span><span class="k warn"><i></i>'+n('warn')+' 10 to 20% behind</span><span class="k bad"><i></i>'+n('bad')+' more than 20% behind</span><span class="k none"><i></i>'+n('none')+' no target</span><span class="k pl-note">'+esc(spec.label)+' &middot; hover a client for its card</span></div>'
+    +'<div class="plist"><div class="plist-h"><span></span>'+th('name','Client')+th('dev','Position against target')+th('kpi',rows.every(o=>o.x.c.type==='ecom')?'ROAS':'KPI')+th('dev','vs target','r')+th('spend','Spend','r')+'</div>';
   rows.forEach(o=>{ const x=o.x, c=x.c, t=kpiTarget(c);
     h+='<button class="prow '+o.r.tone+'" data-pl="'+esc(c.id)+'" type="button">'
       +'<span class="pr-mono">'+monogram(c)+'<i class="pr-st"></i></span>'
@@ -1478,7 +1490,7 @@ function plCardHTML(o){
   const pos=gaugePos(r.dev);
   const cell=(l,v)=>'<div><dt>'+l+'</dt><dd>'+v+'</dd></div>';
   return '<div class="pf-head"><div><div class="pf-name">'+esc(c.name.replace(' (sample)',''))+'</div><div class="pf-sub">'+typeLabel(c)+' &middot; '+esc(pfLabel(c))+(c.am?' &middot; '+esc(c.am):'')+'</div></div><button class="pf-x" type="button" data-pl-close aria-label="Close">&times;</button></div>'
-    +'<div class="pf-hero '+r.tone+'"><div class="pf-lab">'+(isE?'Revenue':kpiLabel(c))+' &middot; '+esc(D?rangeSpec(state.range,D.today).label:'')+'</div>'
+    +'<div class="pf-hero '+r.tone+'"><div class="pf-lab">'+(isE?'Revenue':kpiLabel(c))+' &middot; '+esc(D?rangeSpec(state.plRange||'7d',D.today).label:'')+'</div>'
       +'<div class="pf-big">'+(isE?fmtMoney(x.cur.revenue,c):kpiFmt(c,x.kpi))+'</div>'
       +(isE?'<div class="pf-roas">ROAS <b>'+kpiFmt(c,x.kpi)+'</b>'+(t?' &middot; target '+kpiFmt(c,t):'')+'</div>':'')
       +'<div class="pf-word">'+esc(r.word)+(!isE&&t?' &middot; target '+kpiFmt(c,t):'')+'</div>'
@@ -2131,6 +2143,8 @@ document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el) return; const act=el.dataset.act;
   if(act==='nav'){ e.preventDefault(); go(el.dataset.client||null); }
   else if(act==='range'){ state.range=el.dataset.range; render(); }
+  else if(act==='plrange'){ state.plRange=el.dataset.r; render(); }
+  else if(act==='plsort'){ const k=el.dataset.k, p=state.plSort; state.plSort=p.key===k?{key:k,dir:p.dir==='asc'?'desc':'asc'}:{key:k,dir:k==='name'?'asc':(k==='dev'?'asc':'desc')}; render(); }
   else if(act==='tab'){ state.tab=el.dataset.tab; render(); }
   else if(act==='crf'){ if(!el.disabled){ state.crf=el.dataset.crf; render(); } }
   else if(act==='play'){
