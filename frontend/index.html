@@ -763,45 +763,64 @@ textarea.upd{width:100%;min-height:240px;border:1px solid var(--border);border-r
 .kpi-grid .kpi-card:first-child{border-left:0}
 .kpi-grid .kpi-card:hover{background:var(--panel-hover);box-shadow:none}
 @media (max-width:900px){ .kpi-grid .kpi-card{border-left:0;border-top:1px solid var(--line)} .kpi-grid .kpi-card:first-child{border-top:0} }
-.ptiles{position:relative;width:100%;aspect-ratio:1000/330;min-height:240px;border-radius:14px;overflow:hidden;background:var(--bg-2)}
-.ptile{position:absolute;display:block;text-align:left;padding:0;border:0;background:var(--panel);cursor:pointer;
-  box-shadow:inset 0 0 0 2px var(--bg);transition:filter .16s ease}
-.ptile:hover{filter:brightness(.97)} :root[data-theme="dark"] .ptile:hover{filter:brightness(1.12)}
-.ptile:focus-visible{outline:2px solid var(--accent);outline-offset:-4px}
-.ptile.good{background:color-mix(in srgb,var(--green) 13%,var(--panel))}
-.ptile.warn{background:color-mix(in srgb,var(--amber) 16%,var(--panel))}
-.ptile.bad{background:color-mix(in srgb,var(--red) 18%,var(--panel))}
-.ptile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--idle)}
-.ptile.good::before{background:var(--green)} .ptile.warn::before{background:var(--amber)} .ptile.bad::before{background:var(--red)}
-.pt-in{position:absolute;inset:0;padding:11px 12px 10px 16px;display:flex;flex-direction:column;gap:2px;overflow:hidden}
-.pt-name{font-weight:600;font-size:13px;letter-spacing:-.01em;line-height:1.2;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.pt-kpi{font-weight:650;letter-spacing:-.03em;font-variant-numeric:tabular-nums;font-size:15px;margin-top:auto}
-.pt-kpi i{font-style:normal;font-weight:450;letter-spacing:0;font-size:11px;color:var(--faint);margin-left:6px}
-.pt-sub{font-size:11px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ptile.xl .pt-name{font-size:19px;letter-spacing:-.02em} .ptile.xl .pt-kpi{font-size:32px;letter-spacing:-.04em}
-.ptile.lg .pt-name{font-size:15px} .ptile.lg .pt-kpi{font-size:22px}
-.ptile.sm .pt-in{padding:7px 8px 6px 12px} .ptile.sm .pt-name{font-size:11.5px;-webkit-line-clamp:3} .ptile.sm .pt-kpi,.ptile.sm .pt-sub{display:none}
-.ptile.md .pt-sub{display:none}
-@media (max-width:760px){ .ptiles{aspect-ratio:1/1.15} }
-
-.ptiles{aspect-ratio:1000/430;min-height:360px}
-.ptile.tight .pt-sub{display:none} .ptile.tight .pt-kpi i{display:none}
-.ptile.tiny .pt-kpi{display:none} .ptile.tiny .pt-name{-webkit-line-clamp:2;font-size:11.5px}
-.ptile.sm .pt-kpi{display:block}
-.ptile.sm .pt-sub,.ptile.md .pt-sub{display:block}
-.pt-in{min-width:0}
-.pt-kpi{white-space:nowrap}
-@media (max-width:760px){ .ptiles{aspect-ratio:1/1.5} }
-
+.plist-key{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 0 10px;font-size:12px;color:var(--dim)}
+.plist-key .k{display:inline-flex;align-items:center;gap:7px}
+.plist-key .k i{width:9px;height:9px;border-radius:50%;background:var(--idle)}
+.plist-key .k.good i{background:var(--green)} .plist-key .k.warn i{background:#E8A317} .plist-key .k.bad i{background:#D93025}
+.plist{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--lift-1)}
+.prow{display:grid;grid-template-columns:14px minmax(0,1fr) 150px 64px 96px;align-items:center;gap:14px;width:100%;height:52px;padding:0 18px;
+  border:0;border-top:1px solid var(--line);background:transparent;text-align:left;cursor:pointer;font:inherit;color:inherit;transition:background .12s ease}
+.prow:first-child{border-top:0}
+.prow:hover,.prow.on{background:var(--panel-hover,rgba(0,0,0,.035))}
+.prow:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.pr-dot{width:10px;height:10px;border-radius:50%;background:var(--idle)}
+.prow.good .pr-dot{background:var(--green)} .prow.warn .pr-dot{background:#E8A317} .prow.bad .pr-dot{background:#D93025}
+.pr-name{font-weight:600;font-size:14px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pr-name em{font-style:normal;font-weight:450;font-size:12px;color:var(--faint);margin-left:10px}
+.pr-kpi{font-weight:650;font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pr-kpi i{font-style:normal;font-weight:450;font-size:11.5px;color:var(--faint);margin-left:8px}
+.pr-dev,.pr-spend{font-variant-numeric:tabular-nums;text-align:right;font-size:13px;font-weight:600;white-space:nowrap}
+.pr-spend{color:var(--dim);font-weight:500}
+.prow.good .pr-dev{color:var(--green)} .prow.warn .pr-dev{color:#B97A00} .prow.bad .pr-dev{color:#D93025} .prow.none .pr-dev{color:var(--faint)}
+@media (min-width:1000px){ .plist,.plist-key{max-width:calc(100vw - 460px)} }
 @media (max-width:760px){
-  .ptiles{aspect-ratio:auto;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:3px;background:none;border-radius:0;overflow:visible}
-  .ptile{position:relative;left:auto!important;top:auto!important;width:auto!important;height:auto!important;min-height:84px;border-radius:10px}
-  .pt-in{position:static;padding:11px 12px 10px 16px;gap:3px}
-  .ptile .pt-name{font-size:13px!important;-webkit-line-clamp:2!important}
-  .ptile .pt-kpi{display:block!important;font-size:19px!important;margin-top:4px}
-  .ptile .pt-sub{display:block!important}
-  .ptile .pt-kpi i{display:inline!important}
+  .prow{grid-template-columns:12px minmax(0,1fr) auto 52px;height:56px;padding:0 14px;gap:10px}
+  .pr-spend,.pr-name em,.pr-kpi i{display:none}
 }
+
+/* flyout card */
+.pflyout{position:fixed;top:14px;right:14px;bottom:14px;width:340px;max-width:calc(100vw - 28px);z-index:60;background:var(--panel);border:1px solid var(--border);
+  border-radius:18px;box-shadow:0 24px 60px rgba(16,20,24,.22),0 2px 6px rgba(16,20,24,.08);padding:20px 20px 18px;overflow:auto;
+  transform:translateX(calc(100% + 28px));opacity:0;pointer-events:none;transition:transform .26s cubic-bezier(.2,.8,.2,1),opacity .18s ease}
+.pflyout.open{transform:none;opacity:1;pointer-events:auto}
+.pf-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.pf-name{font-family:"Bricolage Grotesque","Hanken Grotesk",sans-serif;font-weight:700;font-size:22px;letter-spacing:-.03em;line-height:1.1}
+.pf-sub{font-size:12px;color:var(--faint);margin-top:5px}
+.pf-x{border:0;background:var(--bg);width:28px;height:28px;border-radius:50%;font-size:18px;line-height:1;cursor:pointer;color:var(--dim);flex:none}
+.pf-hero{margin:18px 0 14px;padding:16px 16px 14px;border-radius:14px;background:var(--bg);border-left:5px solid var(--idle)}
+.pf-hero.good{border-left-color:var(--green);background:color-mix(in srgb,var(--green) 9%,var(--panel))}
+.pf-hero.warn{border-left-color:#E8A317;background:color-mix(in srgb,#E8A317 11%,var(--panel))}
+.pf-hero.bad{border-left-color:#D93025;background:color-mix(in srgb,#D93025 9%,var(--panel))}
+.pf-lab{font-size:12px;color:var(--faint)}
+.pf-big{font-family:"Bricolage Grotesque","Hanken Grotesk",sans-serif;font-weight:700;font-size:44px;letter-spacing:-.045em;line-height:1.05;margin-top:4px}
+.pf-word{font-size:13px;font-weight:600;margin-top:4px}
+.pf-hero.good .pf-word{color:var(--green)} .pf-hero.warn .pf-word{color:#B97A00} .pf-hero.bad .pf-word{color:#D93025}
+.pf-bar{position:relative;height:8px;border-radius:99px;background:linear-gradient(90deg,#D93025 0 25%,#E8A317 25% 37.5%,var(--green) 37.5% 100%);margin-top:14px}
+.pf-bar i{position:absolute;top:-4px;height:16px;width:3px;background:var(--ink);border-radius:2px;transform:translateX(-1.5px)}
+.pf-bar .pf-tick{position:absolute;left:50%;top:-3px;height:14px;width:1px;background:var(--ink);opacity:.35}
+.pf-scale{display:flex;justify-content:space-between;position:relative;font-size:10.5px;color:var(--faint);margin-top:6px}
+.pf-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:0;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.pf-grid>div{padding:11px 13px;border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.pf-grid>div:nth-child(-n+2){border-top:0} .pf-grid>div:nth-child(odd){border-left:0}
+.pf-grid dt{font-size:11.5px;color:var(--faint)} .pf-grid dd{margin:3px 0 0;font-weight:650;font-size:16px;font-variant-numeric:tabular-nums}
+.pf-flags{margin-top:14px;font-size:12.5px} .pf-flags b{font-weight:650}
+.pf-flags.none{color:var(--faint)}
+.pf-flag{margin-top:6px;padding:7px 10px;border-radius:8px;background:var(--bg);color:var(--dim);line-height:1.35}
+.pf-flag.bad{background:color-mix(in srgb,#D93025 9%,var(--panel))} .pf-flag.warn{background:color-mix(in srgb,#E8A317 12%,var(--panel))}
+.pf-go{margin-top:16px;width:100%;height:42px;border:0;border-radius:12px;background:var(--ink);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+.pf-go:hover{background:var(--accent)}
+:root[data-theme="dark"] .pf-go{background:var(--accent);color:#101418}
+@media (max-width:760px){ .pflyout{top:auto;left:14px;width:auto;max-width:none;bottom:14px;max-height:78vh;transform:translateY(calc(100% + 28px))} .pflyout.open{transform:none} }
 
 /* ===== v3 identity: shared with the client report ===========================================
    One system for both screens. Cool paper ground, ink text, Per4mance orange used for one job
@@ -820,9 +839,6 @@ body{font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:14px}
 .disp,.kpi-value,.brief-figs dd,.pt-kpi,.brief-lead,.page-head h1,.rkpi,.pm-v{font-family:"Bricolage Grotesque","Hanken Grotesk",sans-serif!important;letter-spacing:-.03em}
 .brief-lead{font-weight:500} .brief-lead b{font-weight:700}
 .brief-figs dd.disp,.kpi-value{font-weight:700}
-.ptile.good{background:color-mix(in srgb,var(--green) 12%,var(--panel))}
-.ptile.warn{background:color-mix(in srgb,#C98A12 14%,var(--panel))}
-.ptile.bad{background:color-mix(in srgb,var(--accent) 16%,var(--panel))}
 </style>
 </head>
 <body>
@@ -1107,7 +1123,7 @@ let animateNext=true;   // first paint, and every render the user asked for. Nev
 function render(){
   computeAll();
   const anim=animateNext; animateNext=true; METRICS={}; METRIC_N=0;
-  root.innerHTML='<div class="app-shell'+(anim?' intro':'')+'">'+topRail()+'<main class="main'+(state.view==='client'?' main-client':' main-wall')+'">'+(state.view==='client'?clientView(S[state.clientId]):overviewView())+'</main></div>'; fitTiles();
+  root.innerHTML='<div class="app-shell'+(anim?' intro':'')+'">'+topRail()+'<main class="main'+(state.view==='client'?' main-client':' main-wall')+'">'+(state.view==='client'?clientView(S[state.clientId]):overviewView())+'</main></div>'; if(window.__plRefresh) window.__plRefresh();
   const sel=root.querySelector('#mobilePick'); if(sel) sel.value=state.clientId||'';
   const q=root.querySelector('#q'); if(q) q.value=state.q;
   if(anim){ countUp(); drawSparks(); }
@@ -1383,25 +1399,90 @@ function squarify(items,x,y,w,h){
   }
   return out;
 }
+/* Target rule, one definition for the list and the flyout. dev is how far the client is from its own
+   target, positive meaning better: ROAS above target is good, CPL or CPI below target is good.
+   Within 10% behind (or anywhere ahead) is green, 10 to 20% behind is orange, past 20% is red. A client
+   with no target, or no spend in the range, has nothing to be measured against and stays grey. */
+function targetRule(x){
+  const c=x.c, t=kpiTarget(c), v=x.kpi, isE=c.type==='ecom';
+  if(!t) return {tone:'none',dev:null,word:'No target set'};
+  if(!x.cur.spend) return {tone:'none',dev:null,word:'No spend in range'};
+  if(!isFinite(v)||!v) return {tone:'bad',dev:-1,word:isE?'No revenue recorded':'No results yet'};
+  const dev=isE?(v-t)/t:(t-v)/t, behind=-dev*100;
+  const tone=behind<=10?'good':behind<=20?'warn':'bad';
+  const pct=Math.abs(dev*100).toFixed(0);
+  return {tone,dev,word:dev>=0?pct+'% better than target':pct+'% behind target'};
+}
 function portfolioTiles(all,spec){
   if(all.length<2) return '';
-  const inr=all.filter(x=>(x.c.currency||'INR')==='INR');
-  const base=inr.length>=2?inr:all;
-  const sum=base.reduce((s,x)=>s+x.cur.spend,0);
-  const floor=sum?sum*0.05:1;
-  const items=base.map(x=>({x:x,v:Math.max(x.cur.spend,floor)})).sort((a,b)=>b.v-a.v);
-  const rects=squarify(items,0,0,100,100);
-  const tone=x=>x.health==='good'?'good':x.health==='bad'?'bad':'warn';
-  let h='<section class="strat s1b"><div class="strat-head"><span>Portfolio map</span><span>size is spend &middot; colour is health &middot; '+esc(spec.label)+'</span></div><div class="ptiles">';
-  rects.forEach(r=>{ const x=r.it.x, c=x.c, t=kpiTarget(c), area=r.w*r.h;
-    const size=area>=420?'xl':area>=160?'lg':area>=60?'md':'sm';
-    h+='<button class="ptile '+tone(x)+' '+size+'" data-act="nav" data-client="'+c.id+'" style="left:'+r.x.toFixed(2)+'%;top:'+r.y.toFixed(2)+'%;width:'+r.w.toFixed(2)+'%;height:'+r.h.toFixed(2)+'%" title="'+esc(c.name)+' · '+fmtMoney(x.cur.spend,c)+'">'
-      +'<span class="pt-in"><span class="pt-name">'+esc(c.name.replace(' (sample)',''))+'</span>'
-      +'<span class="pt-kpi">'+kpiFmt(c,x.kpi)+'<i>'+(t?'of '+kpiFmt(c,t):'no target')+'</i></span>'
-      +'<span class="pt-sub">'+fmtMoney(x.cur.spend,c)+(x.flags.length?' &middot; '+x.flags.length+' flag'+(x.flags.length>1?'s':''):'')+'</span></span></button>'; });
+  const rows=all.map(x=>({x:x,r:targetRule(x)}));
+  window.__pl={}; rows.forEach(o=>{ window.__pl[o.x.c.id]=o; });
+  const sev={bad:0,warn:1,good:2,none:3};
+  rows.sort((a,b)=>sev[a.r.tone]-sev[b.r.tone]||(a.r.dev==null?0:a.r.dev)-(b.r.dev==null?0:b.r.dev)||b.x.cur.spend-a.x.cur.spend);
+  const n=t=>rows.filter(o=>o.r.tone===t).length;
+  let h='<section class="strat s1b"><div class="strat-head"><span>Portfolio</span><span>'+esc(spec.label)+' &middot; hover a client for its card &middot; colour is distance from its own target</span></div>'
+    +'<div class="plist-key"><span class="k good"><i></i>'+n('good')+' on target or within 10%</span><span class="k warn"><i></i>'+n('warn')+' 10 to 20% behind</span><span class="k bad"><i></i>'+n('bad')+' more than 20% behind</span><span class="k none"><i></i>'+n('none')+' no target</span></div>'
+    +'<div class="plist">';
+  rows.forEach(o=>{ const x=o.x, c=x.c, t=kpiTarget(c);
+    h+='<button class="prow '+o.r.tone+'" data-pl="'+esc(c.id)+'" type="button">'
+      +'<span class="pr-dot"></span>'
+      +'<span class="pr-name">'+esc(c.name.replace(' (sample)',''))+'<em>'+typeLabel(c)+'</em></span>'
+      +'<span class="pr-kpi">'+kpiFmt(c,x.kpi)+'<i>'+(t?'target '+kpiFmt(c,t):'no target')+'</i></span>'
+      +'<span class="pr-dev">'+(o.r.dev==null?'&ndash;':(Math.round(Math.abs(o.r.dev*100))===0?'0%':(o.r.dev>=0?'+':'&minus;')+Math.round(Math.abs(o.r.dev*100))+'%'))+'</span>'
+      +'<span class="pr-spend">'+fmtMoney(x.cur.spend,c)+'</span>'
+    +'</button>'; });
   h+='</div></section>';
   return h;
 }
+
+/* Flyout: the card slides in from the right edge when the pointer rests on a client, and stays put
+   when it is clicked. It lives outside the app root, so a refresh of the data does not close it. */
+function plCardHTML(o){
+  const x=o.x, c=x.c, isE=c.type==='ecom', t=kpiTarget(c), r=o.r;
+  const res=isE?x.cur.salesCount:isApp(c)?x.cur.installs:x.cur.leads, resLab=isE?'Orders':isApp(c)?'Installs':'Leads';
+  const pos=r.dev==null?null:Math.max(2,Math.min(98,(0.5+Math.max(-0.4,Math.min(0.4,r.dev))*1.25)*100));
+  const cell=(l,v)=>'<div><dt>'+l+'</dt><dd>'+v+'</dd></div>';
+  return '<div class="pf-head"><div><div class="pf-name">'+esc(c.name.replace(' (sample)',''))+'</div><div class="pf-sub">'+typeLabel(c)+' &middot; '+esc(pfLabel(c))+(c.am?' &middot; '+esc(c.am):'')+'</div></div><button class="pf-x" type="button" data-pl-close aria-label="Close">&times;</button></div>'
+    +'<div class="pf-hero '+r.tone+'"><div class="pf-lab">'+kpiLabel(c)+' &middot; '+esc(D?rangeSpec(state.range,D.today).label:'')+'</div>'
+      +'<div class="pf-big">'+kpiFmt(c,x.kpi)+'</div>'
+      +'<div class="pf-word">'+esc(r.word)+(t?' &middot; target '+kpiFmt(c,t):'')+'</div>'
+      +(pos!=null?'<div class="pf-bar"><i style="left:'+pos.toFixed(1)+'%"></i><b class="pf-tick"></b></div><div class="pf-scale"><span>20% behind</span><span>target</span><span>ahead</span></div>':'')
+    +'</div>'
+    +'<dl class="pf-grid">'
+      +cell('Spend',fmtMoney(x.cur.spend,c))
+      +cell(resLab,fmtNum(res))
+      +(isE?cell('Revenue',fmtMoney(x.cur.revenue,c)):cell('Cost per '+(isApp(c)?'install':'lead'),kpiFmt(c,x.kpi)))
+      +cell('Budget pace',c.budget?Math.round(x.paceRatio*100)+'% of month':'no budget set')
+    +'</dl>'
+    +(x.flags.length?'<div class="pf-flags"><b>'+x.flags.length+' flag'+(x.flags.length>1?'s':'')+'</b>'+x.flags.slice(0,3).map(f=>'<div class="pf-flag '+f.sev+'">'+esc(String(f.text).slice(0,110))+'</div>').join('')+'</div>':'<div class="pf-flags none">No open flags</div>')
+    +'<button class="pf-go" type="button" data-act="nav" data-client="'+esc(c.id)+'">Open client &rarr;</button>';
+}
+(function(){
+  let panel=null, shown=null, pinned=false, tHide=null, tShow=null;
+  function ensure(){ if(panel) return panel; panel=document.createElement('aside'); panel.className='pflyout'; panel.setAttribute('aria-label','Client KPI card'); document.body.appendChild(panel);
+    panel.addEventListener('mouseenter',()=>clearTimeout(tHide));
+    panel.addEventListener('mouseleave',()=>{ if(!pinned) hideSoon(); });
+    panel.addEventListener('click',e=>{ if(e.target.closest('[data-pl-close]')) close(); });
+    return panel; }
+  function open(id,pin){ const o=window.__pl&&window.__pl[id]; if(!o) return; ensure(); clearTimeout(tHide);
+    if(shown!==id){ panel.innerHTML=plCardHTML(o); shown=id; }
+    panel.className='pflyout open '+o.r.tone;
+    document.querySelectorAll('.prow.on').forEach(r=>r.classList.remove('on'));
+    const row=document.querySelector('.prow[data-pl="'+(window.CSS&&CSS.escape?CSS.escape(id):id)+'"]'); if(row) row.classList.add('on');
+    if(pin) pinned=true; }
+  function close(){ pinned=false; shown=null; if(panel) panel.className='pflyout'; document.querySelectorAll('.prow.on').forEach(r=>r.classList.remove('on')); }
+  function hideSoon(){ clearTimeout(tHide); tHide=setTimeout(()=>{ if(!pinned) close(); },220); }
+  const canHover=window.matchMedia&&window.matchMedia('(hover:hover)').matches;
+  document.addEventListener('mouseover',e=>{ if(!canHover) return; const r=e.target.closest&&e.target.closest('.prow'); if(!r) return;
+    clearTimeout(tShow); clearTimeout(tHide); tShow=setTimeout(()=>{ if(!pinned||shown!==r.dataset.pl) open(r.dataset.pl,false); },70); });
+  document.addEventListener('mouseout',e=>{ const r=e.target.closest&&e.target.closest('.prow'); if(!r) return; clearTimeout(tShow);
+    if(!pinned && !(e.relatedTarget&&e.relatedTarget.closest&&(e.relatedTarget.closest('.prow')||e.relatedTarget.closest('.pflyout')))) hideSoon(); });
+  document.addEventListener('click',e=>{ const r=e.target.closest&&e.target.closest('.prow');
+    if(r){ open(r.dataset.pl,true); return; }
+    if(panel&&panel.classList.contains('open')&&!e.target.closest('.pflyout')) close(); });
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') close(); });
+  window.__plRefresh=function(){ if(!panel||!shown) return; const o=window.__pl&&window.__pl[shown]; if(o) panel.innerHTML=plCardHTML(o); else close(); };
+})();
 function portfolioMap(list,spec){
   const pts=list.filter(x=>kpiTarget(x.c));
   if(pts.length<2) return '<div class="section"><div class="glass-panel"><h2>Portfolio map</h2><div class="note">The map needs at least two accounts with a target set. Add budgets and targets in clients.json.</div></div></div>';
