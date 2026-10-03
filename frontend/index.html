@@ -65,43 +65,57 @@ a{color:var(--cyan)}
 .bg-blobs,.blob,.bg-grid{display:none}
 
 /* ---- Boot screen -----------------------------------------------------------------------------
-   Near-black rather than pure black, because #000 against a warm-white dashboard is a hard cut
-   that reads as a flash. The mark lands first, the wordmark wipes in behind it, and a hairline
-   fills while the data loads. Then the whole plate lifts and scales away, so the dashboard looks
-   like it was underneath the whole time instead of appearing from nowhere. */
-.boot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:#0B0A09;
-  transition:opacity .52s cubic-bezier(.4,0,.2,1),transform .52s cubic-bezier(.4,0,.2,1),visibility .52s;
-  will-change:opacity,transform}
+   Same language as the Command Center: petrol ground, a skyline of client columns, a dashed target
+   line, and the target-lock reticle. Sequence: grid fades in, the target line draws across, the
+   columns rise (most land near the line, two miss), the reticle zooms in and locks on, the wordmark
+   cuts in, and a hairline fills while data loads. Then the plate irises open onto the dashboard. */
+.boot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:#091015;overflow:hidden;
+  clip-path:circle(150% at 50% 46%);
+  transition:clip-path .7s cubic-bezier(.65,0,.2,1),opacity .5s ease .2s,visibility .7s}
+.boot::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(231,237,239,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(231,237,239,.045) 1px,transparent 1px);
+  background-size:44px 44px;-webkit-mask-image:radial-gradient(closest-side at 50% 46%,#000,transparent 92%);mask-image:radial-gradient(closest-side at 50% 46%,#000,transparent 92%);
+  animation:bootFade .9s ease-out both}
 .boot::after{content:"";position:absolute;inset:0;pointer-events:none;
-  background:radial-gradient(760px 420px at 50% 46%,rgba(240,100,69,.10),transparent 68%)}
+  background:radial-gradient(640px 380px at 50% 44%,rgba(255,90,31,.11),transparent 70%)}
 .boot-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;padding:0 24px}
-.boot-mark{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;
-  font-family:"Inter",sans-serif;font-size:25px;font-weight:800;letter-spacing:-.05em;color:#fff;background:#F06445;
-  box-shadow:0 0 0 0 rgba(240,100,69,.45);
-  animation:bootMark .62s cubic-bezier(.2,1.25,.35,1) both,bootHalo 2.1s ease-out .5s infinite}
-@keyframes bootMark{from{opacity:0;transform:scale(.55) translateY(8px)}to{opacity:1;transform:none}}
-@keyframes bootHalo{0%{box-shadow:0 0 0 0 rgba(240,100,69,.34)}70%{box-shadow:0 0 0 22px rgba(240,100,69,0)}100%{box-shadow:0 0 0 0 rgba(240,100,69,0)}}
-.boot-word{margin-top:26px;font-family:"Inter",sans-serif;font-size:clamp(26px,4.6vw,42px);font-weight:800;
-  letter-spacing:.02em;line-height:1;color:#F7F4F0;white-space:nowrap;
-  clip-path:inset(0 100% 0 0);animation:bootWipe .72s cubic-bezier(.22,.9,.28,1) .26s both}
-.boot-word i{font-style:normal;color:#F06445}
+.boot-sky{position:relative;width:min(300px,76vw);height:108px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 6px}
+.boot-sky b{display:block;width:calc((100% - 12px)/9 - 6px);border-radius:3px 3px 0 0;transform-origin:50% 100%;transform:scaleY(0);
+  height:var(--h);background:linear-gradient(180deg,var(--c),color-mix(in srgb,var(--c) 30%,transparent));
+  animation:bootRise .7s cubic-bezier(.2,.9,.25,1.12) calc(.35s + var(--i)*.07s) both}
+@keyframes bootRise{to{transform:scaleY(1)}}
+.boot-sky em{position:absolute;left:0;right:0;bottom:56px;height:0;border-top:1px dashed rgba(231,237,239,.45);
+  transform-origin:0 50%;animation:bootLine .8s cubic-bezier(.3,.8,.3,1) .15s both}
+@keyframes bootLine{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.boot-sky u{position:absolute;right:-2px;bottom:60px;font:600 8px/1 "Hanken Grotesk",sans-serif;letter-spacing:.2em;color:#8FA2AB;text-decoration:none;
+  animation:bootFade .5s ease-out 1s both}
+.boot-ret{position:absolute;inset:-18px -22px -12px;pointer-events:none;animation:bootLock .8s cubic-bezier(.2,.9,.2,1) .95s both}
+.boot-ret i{position:absolute;width:16px;height:16px;border:2px solid #FF5A1F;filter:drop-shadow(0 0 6px rgba(255,90,31,.7))}
+.boot-ret i:nth-child(1){left:0;top:0;border-right:0;border-bottom:0}
+.boot-ret i:nth-child(2){right:0;top:0;border-left:0;border-bottom:0}
+.boot-ret i:nth-child(3){left:0;bottom:0;border-right:0;border-top:0}
+.boot-ret i:nth-child(4){right:0;bottom:0;border-left:0;border-top:0}
+@keyframes bootLock{0%{opacity:0;transform:scale(2.4)}55%{opacity:1;transform:scale(.96)}75%{transform:scale(1.03)}100%{opacity:1;transform:scale(1)}}
+.boot-word{margin-top:34px;font-family:"Bricolage Grotesque","Inter",sans-serif;font-size:clamp(28px,5vw,46px);font-weight:800;
+  letter-spacing:.03em;line-height:1;color:#E7EDEF;white-space:nowrap;
+  clip-path:inset(0 100% 0 0);animation:bootWipe .7s cubic-bezier(.22,.9,.28,1) 1.45s both}
+.boot-word i{font-style:normal;background:linear-gradient(90deg,#FF5A1F,#FF3D6E);-webkit-background-clip:text;background-clip:text;color:transparent}
 @keyframes bootWipe{to{clip-path:inset(0 0 0 0)}}
 .boot-sub{margin-top:14px;font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:9.5px;
-  text-transform:none;letter-spacing:.34em;color:#8C8780;white-space:nowrap;
-  animation:bootFade .6s ease-out .62s both}
+  letter-spacing:.34em;color:#7E929B;white-space:nowrap;animation:bootFade .6s ease-out 1.8s both}
 @keyframes bootFade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
 /* The hairline is a real signal: it creeps to 88% on its own, then the app's own ready callback
    drives it home. A progress bar that lies about progress is worse than none. */
-.boot-rule{margin-top:30px;width:min(212px,52vw);height:1px;background:rgba(255,255,255,.10);overflow:hidden;display:block}
-.boot-rule i{display:block;height:100%;width:0;background:#F06445;
-  animation:bootFill 2.4s cubic-bezier(.16,.72,.24,1) .34s both}
+.boot-rule{margin-top:28px;width:min(212px,52vw);height:1px;background:rgba(231,237,239,.10);overflow:hidden;display:block}
+.boot-rule i{display:block;height:100%;width:0;background:linear-gradient(90deg,#FF5A1F,#FF3D6E);
+  animation:bootFill 2.8s cubic-bezier(.16,.72,.24,1) .3s both}
 @keyframes bootFill{to{width:88%}}
 .boot.done .boot-rule i{width:100%;transition:width .3s ease-out}
-.boot.leaving{opacity:0;transform:scale(1.035);visibility:hidden;pointer-events:none}
+.boot.leaving{clip-path:circle(0% at 50% 46%);opacity:0;visibility:hidden;pointer-events:none}
 /* Nothing here is load-bearing, so anyone who asked for less motion gets the dashboard directly. */
 @media (prefers-reduced-motion:reduce){
   .boot{display:none}
-  .boot-mark,.boot-word,.boot-sub,.boot-rule i{animation:none}
+  .boot *,.boot::before{animation:none}
 }
 
 /* Surfaces. No blur, no gradient, no inner sheen: a white card, a hairline, and one soft shadow. */
@@ -978,7 +992,7 @@ body{font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:14px}
      Leaves on click, on any key, or on a hard 3.2s failsafe, whichever comes first. -->
 <div id="boot" class="boot" role="presentation">
   <div class="boot-inner">
-    <span class="boot-mark">4</span>
+    <div class="boot-sky"><b style="--i:0;--h:55%;--c:#34D3A1"></b><b style="--i:1;--h:80%;--c:#34D3A1"></b><b style="--i:2;--h:50%;--c:#FFB93D"></b><b style="--i:3;--h:100%;--c:#34D3A1"></b><b style="--i:4;--h:30%;--c:#FF6B73"></b><b style="--i:5;--h:90%;--c:#34D3A1"></b><b style="--i:6;--h:65%;--c:#34D3A1"></b><b style="--i:7;--h:42%;--c:#FFB93D"></b><b style="--i:8;--h:95%;--c:#34D3A1"></b><em></em><u>TARGET</u><span class="boot-ret"><i></i><i></i><i></i><i></i></span></div>
     <span class="boot-word">PER<i>4</i>MANCE</span>
     <span class="boot-sub">GURU &nbsp;&middot;&nbsp; PERFORMANCE DESK</span>
     <span class="boot-rule"><i></i></span>
@@ -995,7 +1009,7 @@ body{font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:14px}
   // Measured from navigation start, not from when this script happens to run. The plate paints as
   // soon as the inline CSS parses, but a still-loading webfont blocks script execution, so timing
   // the hold from here would charge the user twice for the same wait.
-  var MIN=1600, MAX=3400, gone=false, reveal=null, armed=false;
+  var MIN=2500, MAX=4200, gone=false, reveal=null, armed=false;
   var t0=Date.now()-((window.performance&&performance.now&&performance.now())||0);
   var since=function(){ return Date.now()-t0; };
   function drop(){
@@ -1006,7 +1020,7 @@ body{font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:14px}
     setTimeout(function(){
       el.classList.add('leaving');
       try{ if(reveal) reveal(); }catch(e){}
-      setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); },700);
+      setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); },900);
     }, 160);
   }
   if(reduced){ el.parentNode.removeChild(el); window.__bootReady=function(cb){ if(cb) cb(); }; return; }
