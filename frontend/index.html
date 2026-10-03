@@ -763,11 +763,36 @@ textarea.upd{width:100%;min-height:240px;border:1px solid var(--border);border-r
 .kpi-grid .kpi-card:first-child{border-left:0}
 .kpi-grid .kpi-card:hover{background:var(--panel-hover);box-shadow:none}
 @media (max-width:900px){ .kpi-grid .kpi-card{border-left:0;border-top:1px solid var(--line)} .kpi-grid .kpi-card:first-child{border-top:0} }
+.plhead-r{display:flex;align-items:center;gap:10px;margin-left:auto}
+.plseg{margin-left:0}
+.wall{position:fixed;inset:0;z-index:200;background:#0E1114;color:#F2F3EF;display:flex;flex-direction:column;padding:34px 44px;overflow:hidden;font-family:"Hanken Grotesk",system-ui,sans-serif}
+.wall-top{display:flex;align-items:center;gap:24px}
+.wall-brand{font-size:15px;letter-spacing:.14em;color:#9AA0A6} .wall-brand b{color:#fff;letter-spacing:.1em}
+.wall-meta{color:#9AA0A6;font-size:15px;margin-left:auto}
+.wall-x{border:0;background:#1B2025;color:#c9ccc3;width:36px;height:36px;border-radius:10px;font-size:22px;cursor:pointer}
+.wall-count{display:flex;gap:34px;margin:26px 0 22px;font-size:17px;color:#9AA0A6}
+.wall-count b{font-family:"Bricolage Grotesque",sans-serif;font-size:44px;font-weight:650;color:#F2F3EF;margin-right:8px;letter-spacing:-.03em}
+.wall-count .bad b{color:#F0654F} .wall-count .warn b{color:#F0A93A} .wall-count .good b{color:#3DBB86}
+.wall-grid{flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:16px;min-height:0}
+.wall-card{background:#14181C;border:1px solid #262C32;border-left:5px solid #9AA0A6;border-radius:14px;padding:22px 26px;display:flex;flex-direction:column;min-height:0;animation:wcIn .5s cubic-bezier(.2,.8,.2,1) both}
+.wall-card.bad{border-left-color:#F0654F;background:linear-gradient(0deg,rgba(240,101,79,.06),rgba(240,101,79,.06)),#14181C}
+.wall-card.warn{border-left-color:#F0A93A;background:linear-gradient(0deg,rgba(240,169,58,.06),rgba(240,169,58,.06)),#14181C}
+@keyframes wcIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.wc-name{font-size:24px;font-weight:650;letter-spacing:-.01em} .wc-name em{font-style:normal;font-weight:450;font-size:14px;color:#8A9096;margin-left:12px}
+.wc-kpi{font-family:"Bricolage Grotesque",sans-serif;font-weight:650;font-size:clamp(48px,6.2vw,92px);letter-spacing:-.045em;line-height:1;margin-top:auto}
+.wc-sub{font-size:18px;margin-top:8px;color:#C9CCC3} .wall-card.bad .wc-sub{color:#F58A78} .wall-card.warn .wc-sub{color:#F5BE62}
+.wc-gauge{position:relative;height:6px;border-radius:99px;margin-top:18px;background:linear-gradient(90deg,#F0654F 0 25%,#F0A93A 25% 37.5%,#3DBB86 37.5% 100%)}
+.wc-gauge i{position:absolute;top:-5px;width:3px;height:16px;background:#fff;border-radius:2px;transform:translateX(-1.5px)}
+.wc-foot{display:flex;gap:22px;margin-top:16px;font-size:15px;color:#8A9096}
+.wall-ok{flex:1;display:grid;place-items:center;font-family:"Bricolage Grotesque",sans-serif;font-size:42px;color:#3DBB86;text-align:center}
+.wall-pg{display:flex;gap:8px;justify-content:center;margin-top:18px} .wall-pg i{width:26px;height:4px;border-radius:2px;background:#262C32} .wall-pg i.on{background:#FF6F3C}
+@media (max-width:900px){ .wall{padding:20px} .wall-grid{grid-template-columns:1fr 1fr} .wall-count{flex-wrap:wrap;gap:14px 24px} .wall-count b{font-size:30px} }
+@media (max-width:560px){ .wall-grid{grid-template-columns:1fr;overflow:auto} }
 .plsplit{display:flex;gap:3px;height:8px;margin:0 0 12px}
 .plsplit i{display:block;border-radius:99px;background:var(--idle)} .plsplit i.good{background:var(--st-good)} .plsplit i.warn{background:var(--st-warn)} .plsplit i.bad{background:var(--st-bad)}
 .plist-key .pl-note{margin-left:auto;color:var(--faint)}
 .plist-h span[data-act]{cursor:pointer;user-select:none} .plist-h span[data-act]:hover,.plist-h span.sorted{color:var(--ink)}
-.plseg{margin-left:auto}
+
 .plist-key{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 0 10px;font-size:12px;color:var(--dim)}
 .plist-key .k{display:inline-flex;align-items:center;gap:7px}
 .plist-key .k i{width:9px;height:9px;border-radius:50%;background:var(--idle)}
@@ -795,7 +820,7 @@ textarea.upd{width:100%;min-height:240px;border:1px solid var(--border);border-r
 .pr-dev,.pr-spend{font-variant-numeric:tabular-nums;text-align:right;font-size:13px;font-weight:600;white-space:nowrap}
 .pr-spend{color:var(--dim);font-weight:450}
 .prow.good .pr-dev{color:var(--st-good-ink)} .prow.warn .pr-dev{color:var(--st-warn-ink)} .prow.bad .pr-dev{color:var(--st-bad-ink)} .prow.none .pr-dev{color:var(--faint)}
-@media (min-width:1000px){ .plist,.plist-key,.plsplit{max-width:calc(100vw - 460px)} }
+@media (min-width:1000px){ .plist,.plist-key,.plsplit,.strat.s1b .strat-head{max-width:calc(100vw - 460px)} }
 @media (max-width:1180px){ .plist-h,.prow{grid-template-columns:34px minmax(0,1fr) 90px 130px 56px} .pr-spend,.plist-h span:nth-child(6){display:none} }
 @media (max-width:760px){
   .plist-h{display:none}
@@ -1471,8 +1496,8 @@ function portfolioTiles(all0,spec0){
   const n=t=>rows.filter(o=>o.r.tone===t).length, tot=rows.length;
   const seg=(t,l)=>n(t)?'<i class="'+t+'" style="flex:'+n(t)+'" title="'+n(t)+' '+l+'"></i>':'';
   const th=(k,l,cls,na)=>'<span class="'+(cls||'')+(ps.key===k?' sorted':'')+'" data-act="plsort" data-k="'+k+'">'+l+(ps.key===k&&!na?(ps.dir==='asc'?' ↑':' ↓'):'')+'</span>';
-  let h='<section class="strat s1b"><div class="strat-head"><span>Portfolio</span><span class="seg tiny plseg">'
-    +['7d','14d','30d','MTD'].map(r=>'<button data-act="plrange" data-r="'+r+'" class="'+(pr===r?'on':'')+'">'+r+'</button>').join('')+'</span></div>'
+  let h='<section class="strat s1b"><div class="strat-head"><span>Portfolio</span><span class="plhead-r"><button class="btn btn-ghost btn-small" data-act="wall" type="button">Wall mode</button><span class="seg tiny plseg">'
+    +['7d','14d','30d','MTD'].map(r=>'<button data-act="plrange" data-r="'+r+'" class="'+(pr===r?'on':'')+'">'+r+'</button>').join('')+'</span></span></div>'
     +'<div class="plsplit">'+seg('good','on target')+seg('warn','10 to 20% behind')+seg('bad','over 20% behind')+seg('none','no target')+'</div>'
     +'<div class="plist-key"><span class="k good"><i></i>'+n('good')+' on target or within 10%</span><span class="k warn"><i></i>'+n('warn')+' 10 to 20% behind</span><span class="k bad"><i></i>'+n('bad')+' more than 20% behind</span><span class="k none"><i></i>'+n('none')+' no target</span><span class="k pl-note">'+esc(spec.label)+' &middot; hover a client for its card</span></div>'
     +'<div class="plist"><div class="plist-h"><span></span>'+th('name','Client')+th('dev','Position','',1)+th('kpi',rows.every(o=>o.x.c.type==='ecom')?'ROAS':'KPI')+th('dev','vs target','r')+th('spend','Spend','r')+'</div>';
@@ -1537,6 +1562,34 @@ function plCardHTML(o){
     if(r){ open(r.dataset.pl,true); return; }
     if(panel&&panel.classList.contains('open')&&!e.target.closest('.pflyout')) close(); });
   document.addEventListener('keydown',e=>{ if(e.key==='Escape') close(); });
+  document.addEventListener('keydown',e=>{ if(e.key!=='ArrowDown'&&e.key!=='ArrowUp') return; const r=e.target.closest&&e.target.closest('.prow'); if(!r) return;
+    const all=[...document.querySelectorAll('.prow')], i=all.indexOf(r), n=all[i+(e.key==='ArrowDown'?1:-1)]; if(!n) return; e.preventDefault(); n.focus(); open(n.dataset.pl,true); });
+  // Wall mode: a screen for the office wall. Only the clients that need someone are shown, large enough
+  // to read from across the room, and the set pages through on its own when there are more than six.
+  window.__wallOpen=function(){
+    if(document.querySelector('.wall')) return;
+    const el=document.createElement('div'); el.className='wall'; document.body.appendChild(el); let page=0, timer=null;
+    const close=()=>{ clearInterval(timer); el.remove(); document.removeEventListener('keydown',onKey); };
+    const onKey=e=>{ if(e.key==='Escape') close(); }; document.addEventListener('keydown',onKey);
+    const sev={bad:0,warn:1,good:2,none:3};
+    const draw=()=>{
+      const rows=Object.values(window.__pl||{}).sort((a,b)=>sev[a.r.tone]-sev[b.r.tone]||(a.r.dev==null?9:a.r.dev)-(b.r.dev==null?9:b.r.dev));
+      const att=rows.filter(o=>o.r.tone==='bad'||o.r.tone==='warn'), good=rows.filter(o=>o.r.tone==='good').length, none=rows.filter(o=>o.r.tone==='none').length;
+      const per=6, pages=Math.max(1,Math.ceil(att.length/per)), pg=page%pages, slice=att.slice(pg*per,pg*per+per);
+      const spec=rangeSpec(state.plRange||'7d',D.today);
+      el.innerHTML='<div class="wall-top"><div class="wall-brand"><b>PER4MANCE</b> DESK</div><div class="wall-meta">'+esc(spec.label)+' &middot; '+niceDate(D.today)+'</div><button class="wall-x" type="button" aria-label="Close">&times;</button></div>'
+        +'<div class="wall-count"><span class="good"><b>'+good+'</b> on target</span><span class="warn"><b>'+rows.filter(o=>o.r.tone==='warn').length+'</b> 10 to 20% behind</span><span class="bad"><b>'+rows.filter(o=>o.r.tone==='bad').length+'</b> over 20% behind</span><span class="none"><b>'+none+'</b> no target</span></div>'
+        +(att.length?'<div class="wall-grid">'+slice.map(o=>{ const x=o.x,c=x.c,t=kpiTarget(c),p=gaugePos(o.r.dev);
+          return '<div class="wall-card '+o.r.tone+'"><div class="wc-name">'+esc(c.name.replace(' (sample)',''))+'<em>'+typeLabel(c)+'</em></div>'
+            +'<div class="wc-kpi">'+kpiFmt(c,x.kpi)+'</div><div class="wc-sub">'+(t?'target '+kpiFmt(c,t)+' &middot; ':'')+esc(o.r.word)+'</div>'
+            +(p==null?'':'<div class="wc-gauge"><i style="left:'+p.toFixed(1)+'%"></i></div>')
+            +'<div class="wc-foot"><span>Spend '+fmtMoney(x.cur.spend,c)+'</span>'+(c.type==='ecom'?'<span>Revenue '+fmtMoney(x.cur.revenue,c)+'</span>':'')+'</div></div>'; }).join('')+'</div>'
+          :'<div class="wall-ok">Every client with a target is within 10% of it.</div>')
+        +(pages>1?'<div class="wall-pg">'+Array.from({length:pages},(_,i)=>'<i class="'+(i===pg?'on':'')+'"></i>').join('')+'</div>':'');
+      el.querySelector('.wall-x').onclick=close; };
+    draw(); timer=setInterval(()=>{ page++; draw(); },10000);
+    if(el.requestFullscreen) el.requestFullscreen().catch(()=>{});
+  };
   window.__plRefresh=function(){ if(!panel||!shown) return; const o=window.__pl&&window.__pl[shown]; if(o) panel.innerHTML=plCardHTML(o); else close(); };
 })();
 function portfolioMap(list,spec){
@@ -2150,6 +2203,7 @@ document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el) return; const act=el.dataset.act;
   if(act==='nav'){ e.preventDefault(); go(el.dataset.client||null); }
   else if(act==='range'){ state.range=el.dataset.range; render(); }
+  else if(act==='wall'){ if(window.__wallOpen) window.__wallOpen(); }
   else if(act==='plrange'){ state.plRange=el.dataset.r; render(); }
   else if(act==='plsort'){ const k=el.dataset.k, p=state.plSort; state.plSort=p.key===k?{key:k,dir:p.dir==='asc'?'desc':'asc'}:{key:k,dir:k==='name'?'asc':(k==='dev'?'asc':'desc')}; render(); }
   else if(act==='tab'){ state.tab=el.dataset.tab; render(); }
