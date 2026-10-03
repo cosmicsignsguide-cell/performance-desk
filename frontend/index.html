@@ -803,6 +803,7 @@ textarea.upd{width:100%;min-height:240px;border:1px solid var(--border);border-r
 .pf-hero.bad{border-left-color:#D93025;background:color-mix(in srgb,#D93025 9%,var(--panel))}
 .pf-lab{font-size:12px;color:var(--faint)}
 .pf-big{font-family:"Bricolage Grotesque","Hanken Grotesk",sans-serif;font-weight:700;font-size:44px;letter-spacing:-.045em;line-height:1.05;margin-top:4px}
+.pf-roas{font-size:14px;color:var(--dim);margin-top:6px}.pf-roas b{font-family:"Bricolage Grotesque",sans-serif;font-size:17px;color:var(--ink)}
 .pf-word{font-size:13px;font-weight:600;margin-top:4px}
 .pf-hero.good .pf-word{color:var(--green)} .pf-hero.warn .pf-word{color:#B97A00} .pf-hero.bad .pf-word{color:#D93025}
 .pf-bar{position:relative;height:8px;border-radius:99px;background:linear-gradient(90deg,#D93025 0 25%,#E8A317 25% 37.5%,var(--green) 37.5% 100%);margin-top:14px}
@@ -1443,15 +1444,16 @@ function plCardHTML(o){
   const pos=r.dev==null?null:Math.max(2,Math.min(98,(0.5+Math.max(-0.4,Math.min(0.4,r.dev))*1.25)*100));
   const cell=(l,v)=>'<div><dt>'+l+'</dt><dd>'+v+'</dd></div>';
   return '<div class="pf-head"><div><div class="pf-name">'+esc(c.name.replace(' (sample)',''))+'</div><div class="pf-sub">'+typeLabel(c)+' &middot; '+esc(pfLabel(c))+(c.am?' &middot; '+esc(c.am):'')+'</div></div><button class="pf-x" type="button" data-pl-close aria-label="Close">&times;</button></div>'
-    +'<div class="pf-hero '+r.tone+'"><div class="pf-lab">'+kpiLabel(c)+' &middot; '+esc(D?rangeSpec(state.range,D.today).label:'')+'</div>'
-      +'<div class="pf-big">'+kpiFmt(c,x.kpi)+'</div>'
-      +'<div class="pf-word">'+esc(r.word)+(t?' &middot; target '+kpiFmt(c,t):'')+'</div>'
+    +'<div class="pf-hero '+r.tone+'"><div class="pf-lab">'+(isE?'Revenue':kpiLabel(c))+' &middot; '+esc(D?rangeSpec(state.range,D.today).label:'')+'</div>'
+      +'<div class="pf-big">'+(isE?fmtMoney(x.cur.revenue,c):kpiFmt(c,x.kpi))+'</div>'
+      +(isE?'<div class="pf-roas">ROAS <b>'+kpiFmt(c,x.kpi)+'</b>'+(t?' &middot; target '+kpiFmt(c,t):'')+'</div>':'')
+      +'<div class="pf-word">'+esc(r.word)+(!isE&&t?' &middot; target '+kpiFmt(c,t):'')+'</div>'
       +(pos!=null?'<div class="pf-bar"><i style="left:'+pos.toFixed(1)+'%"></i><b class="pf-tick"></b></div><div class="pf-scale"><span>20% behind</span><span>target</span><span>ahead</span></div>':'')
     +'</div>'
     +'<dl class="pf-grid">'
       +cell('Spend',fmtMoney(x.cur.spend,c))
-      +cell(resLab,fmtNum(res))
-      +(isE?cell('Revenue',fmtMoney(x.cur.revenue,c)):cell('Cost per '+(isApp(c)?'install':'lead'),kpiFmt(c,x.kpi)))
+      +(isE?cell('Avg order value',x.cur.salesCount?fmtMoney(x.cur.revenue/x.cur.salesCount,c):'n/a'):cell(resLab,fmtNum(res)))
+      +(isE?cell('Orders',fmtNum(res)):cell('Cost per '+(isApp(c)?'install':'lead'),kpiFmt(c,x.kpi)))
       +cell('Budget pace',c.budget?Math.round(x.paceRatio*100)+'% of month':'no budget set')
     +'</dl>'
     +(x.flags.length?'<div class="pf-flags"><b>'+x.flags.length+' flag'+(x.flags.length>1?'s':'')+'</b>'+x.flags.slice(0,3).map(f=>'<div class="pf-flag '+f.sev+'">'+esc(String(f.text).slice(0,110))+'</div>').join('')+'</div>':'<div class="pf-flags none">No open flags</div>')
