@@ -1428,7 +1428,8 @@ function sparkArea(vals,tone){
 // aggregate, so the same helper serves spend, orders, leads and net sales.
 function series14(pick,get){
   const out=[];
-  for(let d=13;d>=0;d--){ const day=addDays(D.today,-d); out.push(get(agg(D.daily.filter(r=>r.date===day&&pick(r))))||0); }
+  // Ends yesterday: today is still filling in, so including it draws a fake crash at the right edge.
+  for(let d=14;d>=1;d--){ const day=addDays(D.today,-d); out.push(get(agg(D.daily.filter(r=>r.date===day&&pick(r))))||0); }
   return out;
 }
 // The problem goes on the first line, the thing it happened to on the second. Ad names run long and
@@ -1482,7 +1483,7 @@ function metricModal(id){
   let dots='';
   // One small visible dot per day, plus a wide invisible target over it so hovering is forgiving.
   v.forEach((y,i)=>{ dots+='<circle r="2.6" cx="'+X(i).toFixed(1)+'" cy="'+Y(y).toFixed(1)+'" fill="'+st+'" opacity=".55"/>'
-    +'<circle r="11" cx="'+X(i).toFixed(1)+'" cy="'+Y(y).toFixed(1)+'" fill="transparent" stroke="none" style="cursor:crosshair"><title>'+addDays(D.today,-(n-1-i))+': '+fmtMetric(y,m.fmt)+'</title></circle>'; });
+    +'<circle r="11" cx="'+X(i).toFixed(1)+'" cy="'+Y(y).toFixed(1)+'" fill="transparent" stroke="none" style="cursor:crosshair"><title>'+addDays(D.today,-(n-i))+': '+fmtMetric(y,m.fmt)+'</title></circle>'; });
   [[hi,'high'],[lo,'low']].forEach(([i,k])=>{ if(v[i]===undefined) return;
     dots+='<circle r="3.4" cx="'+X(i).toFixed(1)+'" cy="'+Y(v[i]).toFixed(1)+'" fill="'+st+'"/>'
       +'<text class="mark" x="'+X(i).toFixed(1)+'" y="'+(Y(v[i])+(k==='high'?-11:17)).toFixed(1)+'" text-anchor="middle">'+fmtMetric(v[i],m.fmt)+'</text>'; });
@@ -1493,8 +1494,8 @@ function metricModal(id){
       +'<path d="M'+pl+','+(pt+ih)+' L'+pts.join(" L")+' L'+(W-pr)+','+(pt+ih)+' Z" fill="url(#'+g+')"/>'
       +'<polyline points="'+pts.join(" ")+'" fill="none" stroke="'+st+'" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>'
       +dots
-      +'<text x="'+pl+'" y="'+(H-12)+'">'+addDays(D.today,-(n-1)).slice(5)+'</text>'
-      +'<text x="'+(W-pr)+'" y="'+(H-12)+'" text-anchor="end">'+D.today.slice(5)+'</text>'
+      +'<text x="'+pl+'" y="'+(H-12)+'">'+addDays(D.today,-n).slice(5)+'</text>'
+      +'<text x="'+(W-pr)+'" y="'+(H-12)+'" text-anchor="end">'+addDays(D.today,-1).slice(5)+'</text>'
     +'</svg>'
     +'<div class="row"><button class="btn btn-ghost btn-small" data-act="closemodal">Close</button></div>'
   +'</div></div>';
