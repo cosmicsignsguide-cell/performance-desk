@@ -790,6 +790,23 @@ textarea.upd{width:100%;min-height:240px;border:1px solid var(--border);border-r
 @media (min-width:1000px){ .sky{max-width:calc(100vw - 460px)} }
 @media (max-width:760px){ .sky{padding:20px 10px 96px 38px} .sky-plot{height:220px} .sky-line{left:-38px;right:-10px} .sky-tick{left:-34px} .sky-cols{gap:3px} }
 @media (prefers-reduced-motion:reduce){ .sky-bar{animation:none} }
+/* Cursor: a dot that is the pointer, and a ring that trails it and opens up over anything clickable.
+   Only for a real mouse; touch and text fields keep the system cursor. */
+@media (hover:hover) and (pointer:fine){
+  html.cx, html.cx *{cursor:none!important}
+  html.cx input,html.cx textarea,html.cx select,html.cx [contenteditable]{cursor:text!important}
+  html.cx .wall,html.cx .wall *{cursor:default!important}
+}
+.cur-dot,.cur-ring{position:fixed;left:0;top:0;pointer-events:none;z-index:10000;opacity:0;transition:opacity .2s ease}
+.cur-dot{width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:var(--sig,#FF5A1F);box-shadow:0 0 12px rgba(255,90,31,.55)}
+.cur-ring{width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;border:1.5px solid rgba(255,90,31,.65);
+  transition:opacity .2s ease,width .22s cubic-bezier(.2,.8,.2,1),height .22s cubic-bezier(.2,.8,.2,1),margin .22s cubic-bezier(.2,.8,.2,1),background .2s ease,border-color .2s ease}
+html.cx-on .cur-dot,html.cx-on .cur-ring{opacity:1}
+.cur-ring.hot{width:58px;height:58px;margin:-29px 0 0 -29px;background:rgba(255,90,31,.10);border-color:rgba(255,61,110,.85)}
+.cur-ring.down{width:26px;height:26px;margin:-13px 0 0 -13px;background:rgba(255,61,110,.16)}
+.cur-ring.hot.down{width:46px;height:46px;margin:-23px 0 0 -23px}
+html.cx-text .cur-dot,html.cx-text .cur-ring{opacity:0}
+@media (hover:none),(pointer:coarse){ .cur-dot,.cur-ring{display:none} }
 .glow{position:relative}
 .glow::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;z-index:2;
   background:radial-gradient(280px circle at var(--mx,50%) var(--my,50%),rgba(255,90,31,.12),rgba(255,61,110,.06) 42%,transparent 70%);opacity:0;transition:opacity .25s ease}
@@ -1601,6 +1618,21 @@ function plCardHTML(o){
     +(x.flags.length?'<div class="pf-flags"><b>'+x.flags.length+' flag'+(x.flags.length>1?'s':'')+'</b>'+x.flags.slice(0,3).map(f=>'<div class="pf-flag '+f.sev+'">'+esc(String(f.text).slice(0,110))+'</div>').join('')+'</div>':'<div class="pf-flags none">No open flags</div>')
     +'<button class="pf-go mag" type="button" data-act="nav" data-client="'+esc(c.id)+'">Open client &rarr;</button>';
 }
+/* Custom cursor, see the CSS above. The system cursor is only hidden once this has started, so if the
+   script ever fails the page still has a pointer. */
+(function(){
+  if(!(window.matchMedia&&window.matchMedia('(hover:hover) and (pointer:fine)').matches)) return;
+  const root=document.documentElement, dot=document.createElement('div'), ring=document.createElement('div');
+  dot.className='cur-dot'; ring.className='cur-ring'; document.body.append(ring,dot);
+  let x=-100,y=-100,rx=-100,ry=-100,live=false;
+  const HOT='button,a,[data-act],.prow,.sky-col,select,summary,[role=button],label,.mag,[data-pl-close]', TXT='input,textarea,select,[contenteditable]';
+  document.addEventListener('mousemove',e=>{ x=e.clientX; y=e.clientY; if(!live){ live=true; rx=x; ry=y; root.classList.add('cx','cx-on'); } },{passive:true});
+  document.addEventListener('mouseover',e=>{ const t=e.target; if(!t.closest) return; ring.classList.toggle('hot',!!t.closest(HOT)); root.classList.toggle('cx-text',!!t.closest(TXT)); });
+  document.addEventListener('mousedown',()=>ring.classList.add('down')); document.addEventListener('mouseup',()=>ring.classList.remove('down'));
+  document.addEventListener('mouseleave',()=>root.classList.remove('cx-on')); document.addEventListener('mouseenter',()=>{ if(live) root.classList.add('cx-on'); });
+  (function loop(){ rx+=(x-rx)*.2; ry+=(y-ry)*.2;
+    dot.style.transform='translate3d('+x+'px,'+y+'px,0)'; ring.style.transform='translate3d('+rx.toFixed(1)+'px,'+ry.toFixed(1)+'px,0)'; requestAnimationFrame(loop); })();
+})();
 /* Pointer effects: a soft light that follows the cursor inside .glow surfaces, and buttons that lean
    toward the cursor. Both are decoration only, and both stay off for touch and for reduced motion. */
 (function(){
