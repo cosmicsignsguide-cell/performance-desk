@@ -4,9 +4,9 @@
     "name": "Firvt",
     "type": "ecom",
     "currency": "INR",
-    "budget": 500000,
+    "budget": 1000000,
     "target": {
-      "roas": 3.0
+      "roas": 2.5
     },
     "am": "",
     "accounts": {
@@ -106,9 +106,9 @@
     "name": "Mackly Store",
     "type": "ecom",
     "currency": "INR",
-    "budget": 500000,
+    "budget": 1200000,
     "target": {
-      "roas": 3.0
+      "roas": 4
     },
     "am": "",
     "accounts": {
@@ -238,7 +238,7 @@
     "name": "FreshyZo",
     "type": "app",
     "currency": "INR",
-    "budget": 0,
+    "budget": 150000,
     "target": {
       "cpi": null
     },
@@ -262,9 +262,9 @@
     "name": "Hide and Leather",
     "type": "ecom",
     "currency": "AED",
-    "budget": 0,
+    "budget": 6000,
     "target": {
-      "roas": null
+      "roas": 2.5
     },
     "am": "",
     "accounts": {
@@ -1087,9 +1087,9 @@
     "name": "Hues Studio",
     "type": "ecom",
     "currency": "INR",
-    "budget": 0,
+    "budget": 2000000,
     "target": {
-      "roas": null
+      "roas": 4
     },
     "am": "",
     "accounts": {
@@ -1114,9 +1114,9 @@
     "name": "Three Sixty Life",
     "type": "ecom",
     "currency": "INR",
-    "budget": 0,
+    "budget": 2340000,
     "target": {
-      "roas": null
+      "roas": 3
     },
     "am": "",
     "accounts": {
@@ -1141,9 +1141,9 @@
     "name": "Singh Legacy",
     "type": "ecom",
     "currency": "INR",
-    "budget": 0,
+    "budget": 130000,
     "target": {
-      "roas": null
+      "roas": 2.5
     },
     "am": "",
     "accounts": {
@@ -1167,7 +1167,7 @@
     "currency": "LKR",
     "budget": 600000,
     "target": {
-      "roas": 4.0
+      "roas": 4.5
     },
     "am": "",
     "accounts": {
