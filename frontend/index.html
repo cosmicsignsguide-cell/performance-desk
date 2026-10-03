@@ -790,23 +790,33 @@ textarea.upd{width:100%;min-height:240px;border:1px solid var(--border);border-r
 @media (min-width:1000px){ .sky{max-width:calc(100vw - 460px)} }
 @media (max-width:760px){ .sky{padding:20px 10px 96px 38px} .sky-plot{height:220px} .sky-line{left:-38px;right:-10px} .sky-tick{left:-34px} .sky-cols{gap:3px} }
 @media (prefers-reduced-motion:reduce){ .sky-bar{animation:none} }
-/* Cursor: a dot that is the pointer, and a ring that trails it and opens up over anything clickable.
-   Only for a real mouse; touch and text fields keep the system cursor. */
+/* Cursor: a targeting reticle, because the whole desk is about hitting a target. Idle it is a crosshair
+   that trails the mouse. Over a row, a column or a button it locks on: four brackets snap to that
+   element's edges and a small tag says what it is and how far it is from target. Real mouse only. */
 @media (hover:hover) and (pointer:fine){
   html.cx, html.cx *{cursor:none!important}
   html.cx input,html.cx textarea,html.cx select,html.cx [contenteditable]{cursor:text!important}
   html.cx .wall,html.cx .wall *{cursor:default!important}
 }
-.cur-dot,.cur-ring{position:fixed;left:0;top:0;pointer-events:none;z-index:10000;opacity:0;transition:opacity .2s ease}
-.cur-dot{width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:var(--sig,#FF5A1F);box-shadow:0 0 12px rgba(255,90,31,.55)}
-.cur-ring{width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;border:1.5px solid rgba(255,90,31,.65);
-  transition:opacity .2s ease,width .22s cubic-bezier(.2,.8,.2,1),height .22s cubic-bezier(.2,.8,.2,1),margin .22s cubic-bezier(.2,.8,.2,1),background .2s ease,border-color .2s ease}
-html.cx-on .cur-dot,html.cx-on .cur-ring{opacity:1}
-.cur-ring.hot{width:58px;height:58px;margin:-29px 0 0 -29px;background:rgba(255,90,31,.10);border-color:rgba(255,61,110,.85)}
-.cur-ring.down{width:26px;height:26px;margin:-13px 0 0 -13px;background:rgba(255,61,110,.16)}
-.cur-ring.hot.down{width:46px;height:46px;margin:-23px 0 0 -23px}
-html.cx-text .cur-dot,html.cx-text .cur-ring{opacity:0}
-@media (hover:none),(pointer:coarse){ .cur-dot,.cur-ring{display:none} }
+.cur-dot,.cur-ring,.cur-tag{position:fixed;left:0;top:0;pointer-events:none;z-index:10000;opacity:0;transition:opacity .2s ease}
+html.cx-on .cur-dot,html.cx-on .cur-ring,html.cx-on .cur-tag.show{opacity:1}
+html.cx-text .cur-dot,html.cx-text .cur-ring,html.cx-text .cur-tag{opacity:0!important}
+.cur-dot{width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#FF5A1F;box-shadow:0 0 0 2px rgba(255,90,31,.25),0 0 14px rgba(255,61,110,.6)}
+.cur-ring{width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;border:1.5px solid rgba(255,90,31,.55);
+  transition:opacity .2s ease,width .24s cubic-bezier(.2,.8,.2,1),height .24s cubic-bezier(.2,.8,.2,1),margin .24s cubic-bezier(.2,.8,.2,1),border-radius .24s ease,border-color .2s ease,background .2s ease}
+.cur-ring::before,.cur-ring::after{content:"";position:absolute;background:rgba(255,90,31,.8);transition:opacity .15s}
+.cur-ring::before{left:-9px;right:-9px;top:50%;height:1.5px;margin-top:-.75px;-webkit-mask:linear-gradient(90deg,#000 0 8px,transparent 8px calc(100% - 8px),#000 calc(100% - 8px));mask:linear-gradient(90deg,#000 0 8px,transparent 8px calc(100% - 8px),#000 calc(100% - 8px))}
+.cur-ring::after{top:-9px;bottom:-9px;left:50%;width:1.5px;margin-left:-.75px;-webkit-mask:linear-gradient(180deg,#000 0 8px,transparent 8px calc(100% - 8px),#000 calc(100% - 8px));mask:linear-gradient(180deg,#000 0 8px,transparent 8px calc(100% - 8px),#000 calc(100% - 8px))}
+.cur-ring i{position:absolute;width:14px;height:14px;border:2.5px solid #FF3D6E;opacity:0;transition:opacity .15s ease;border-radius:2px}
+.cur-ring i:nth-child(1){left:-2px;top:-2px;border-right:0;border-bottom:0} .cur-ring i:nth-child(2){right:-2px;top:-2px;border-left:0;border-bottom:0}
+.cur-ring i:nth-child(3){left:-2px;bottom:-2px;border-right:0;border-top:0} .cur-ring i:nth-child(4){right:-2px;bottom:-2px;border-left:0;border-top:0}
+.cur-ring.lock{border-color:transparent;border-radius:6px;background:rgba(255,90,31,.045)}
+.cur-ring.lock::before,.cur-ring.lock::after{opacity:0}
+.cur-ring.lock i{opacity:1}
+.cur-ring.down{background:rgba(255,61,110,.12)}
+.cur-ring:not(.lock).hot{border-color:rgba(255,61,110,.9)}
+.cur-tag{margin:18px 0 0 18px;padding:5px 10px;border-radius:7px;background:#FF5A1F;background:var(--sig,#FF5A1F);color:#fff;font:600 12px/1 "Hanken Grotesk",system-ui,sans-serif;white-space:nowrap;box-shadow:0 8px 20px -8px rgba(255,61,110,.6);transition:opacity .15s ease}
+@media (hover:none),(pointer:coarse){ .cur-dot,.cur-ring,.cur-tag{display:none} }
 .glow{position:relative}
 .glow::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;z-index:2;
   background:radial-gradient(280px circle at var(--mx,50%) var(--my,50%),rgba(255,90,31,.12),rgba(255,61,110,.06) 42%,transparent 70%);opacity:0;transition:opacity .25s ease}
@@ -1622,16 +1632,29 @@ function plCardHTML(o){
    script ever fails the page still has a pointer. */
 (function(){
   if(!(window.matchMedia&&window.matchMedia('(hover:hover) and (pointer:fine)').matches)) return;
-  const root=document.documentElement, dot=document.createElement('div'), ring=document.createElement('div');
-  dot.className='cur-dot'; ring.className='cur-ring'; document.body.append(ring,dot);
-  let x=-100,y=-100,rx=-100,ry=-100,live=false;
-  const HOT='button,a,[data-act],.prow,.sky-col,select,summary,[role=button],label,.mag,[data-pl-close]', TXT='input,textarea,select,[contenteditable]';
+  const root=document.documentElement, dot=document.createElement('div'), ring=document.createElement('div'), tag=document.createElement('div');
+  dot.className='cur-dot'; ring.className='cur-ring'; ring.innerHTML='<i></i><i></i><i></i><i></i>'; tag.className='cur-tag'; document.body.append(ring,dot,tag);
+  let x=-100,y=-100,rx=-100,ry=-100,live=false,lockEl=null;
+  const HOT='button,a,[data-act],.prow,.sky-col,summary,[role=button],label,.mag,[data-pl-close]', TXT='input,textarea,select,[contenteditable]';
+  const say=el=>{ const id=el&&el.dataset&&el.dataset.pl, o=id&&window.__pl&&window.__pl[id];
+    if(o) return o.x.c.name.replace(' (sample)','')+'  '+(o.r.dev==null?'no target':(Math.round(Math.abs(o.r.dev*100))===0?'on target':(o.r.dev>0?'+':'\u2212')+Math.round(Math.abs(o.r.dev*100))+'%'));
+    const t=(el.getAttribute&&el.getAttribute('aria-label'))||''; return t&&t.length<30?t:''; };
   document.addEventListener('mousemove',e=>{ x=e.clientX; y=e.clientY; if(!live){ live=true; rx=x; ry=y; root.classList.add('cx','cx-on'); } },{passive:true});
-  document.addEventListener('mouseover',e=>{ const t=e.target; if(!t.closest) return; ring.classList.toggle('hot',!!t.closest(HOT)); root.classList.toggle('cx-text',!!t.closest(TXT)); });
+  document.addEventListener('mouseover',e=>{ const t=e.target; if(!t.closest) return; const h=t.closest(HOT);
+    root.classList.toggle('cx-text',!!t.closest(TXT)); ring.classList.toggle('hot',!!h);
+    lockEl=null; if(h){ const r=h.getBoundingClientRect(); if(r.width<1250&&r.height<340&&r.width>10&&r.height>10) lockEl=h; }
+    ring.classList.toggle('lock',!!lockEl);
+    const txt=h?say(h):''; tag.textContent=txt; tag.classList.toggle('show',!!txt); });
   document.addEventListener('mousedown',()=>ring.classList.add('down')); document.addEventListener('mouseup',()=>ring.classList.remove('down'));
   document.addEventListener('mouseleave',()=>root.classList.remove('cx-on')); document.addEventListener('mouseenter',()=>{ if(live) root.classList.add('cx-on'); });
-  (function loop(){ rx+=(x-rx)*.2; ry+=(y-ry)*.2;
-    dot.style.transform='translate3d('+x+'px,'+y+'px,0)'; ring.style.transform='translate3d('+rx.toFixed(1)+'px,'+ry.toFixed(1)+'px,0)'; requestAnimationFrame(loop); })();
+  (function loop(){
+    let tx=x,ty=y;
+    if(lockEl&&lockEl.isConnected){ const r=lockEl.getBoundingClientRect(), p=4; tx=r.left+r.width/2; ty=r.top+r.height/2;
+      ring.style.width=(r.width+p*2)+'px'; ring.style.height=(r.height+p*2)+'px'; ring.style.margin=(-(r.height+p*2)/2)+'px 0 0 '+(-(r.width+p*2)/2)+'px'; }
+    else { if(lockEl){ lockEl=null; ring.classList.remove('lock'); } ring.style.width=ring.style.height=ring.style.margin=''; }
+    const k=lockEl?.34:.22; rx+=(tx-rx)*k; ry+=(ty-ry)*k;
+    dot.style.transform='translate3d('+x+'px,'+y+'px,0)'; ring.style.transform='translate3d('+rx.toFixed(1)+'px,'+ry.toFixed(1)+'px,0)'; tag.style.transform='translate3d('+x+'px,'+y+'px,0)';
+    requestAnimationFrame(loop); })();
 })();
 /* Pointer effects: a soft light that follows the cursor inside .glow surfaces, and buttons that lean
    toward the cursor. Both are decoration only, and both stay off for touch and for reduced motion. */
