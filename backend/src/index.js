@@ -17,7 +17,7 @@ import * as shopify from './fetchers/shopify.js';
 import * as ga4 from './fetchers/ga4.js';
 import { runSitewatch } from './sitewatch.js';
 import { computeSignals } from './signals.js';
-import { ensureReportTokens, listLinks, reportPayload, reportUrl, resolveToken, rotateReportToken, videoUrlFor } from './report.js';
+import { ensureReportTokens, listLinks, reportPayload, reportUrl, resolveToken, rotateReportToken, videoPreviewFor, videoUrlFor } from './report.js';
 import { weeklyReports } from './gamma.js';
 import { raise } from './alerts.js';
 import Sample from './sample.cjs';
@@ -397,6 +397,13 @@ async function main() {
           if (!src) { res.writeHead(404); res.end('not found'); return; }
           res.writeHead(302, { Location: src });
           res.end();
+          return;
+        }
+        if (kind === 'p') {
+          const src = await videoPreviewFor(store, clientId, id);
+          if (!src) { res.writeHead(404); res.end('not found'); return; }
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ src }));
           return;
         }
         if (kind) { res.writeHead(404); res.end('not found'); return; }

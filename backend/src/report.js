@@ -141,6 +141,15 @@ export async function videoUrlFor(store, clientId, adId) {
   return meta.videoSource(ad.videoId);
 }
 
+// Same two checks as videoUrlFor, then Meta's own preview player instead of the raw file.
+export async function videoPreviewFor(store, clientId, adId) {
+  if (!clientId || !/^\d{5,25}$/.test(String(adId || ''))) return '';
+  const ent = await store.get('entities', clientId);
+  const ad = (ent?.ads || []).find((a) => String(a.id) === String(adId));
+  if (!ad) return '';
+  return meta.adPreviewSrc(ad.id);
+}
+
 export async function reportPayload(store, clientId) {
   const c = await store.get('clients', clientId);
   if (!c || c.active === false) return null;

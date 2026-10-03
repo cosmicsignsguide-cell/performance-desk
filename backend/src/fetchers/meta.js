@@ -276,6 +276,26 @@ export async function videoSource(videoId) {
   }
 }
 
+// Fallback when Meta will not hand over the raw file (the `source` field needs a permission the app
+// may not hold for videos owned by a Page). Meta's own ad preview plays the video inside an iframe
+// and only needs ads_read. The iframe URL is signed by Meta and carries no access token, so it is
+// safe to pass to the browser. Read only.
+export async function adPreviewSrc(adId) {
+  if (!/^\d{5,25}$/.test(String(adId || ''))) return '';
+  const q = new URLSearchParams({ access_token: config.meta.token, ad_format: 'MOBILE_FEED_STANDARD' });
+  try {
+    const body = await metaGet(`${BASE()}/${adId}/previews?${q}`);
+    const html = String(body?.data?.[0]?.body || '');
+    const m = html.match(/src="([^"]+)"/);
+    if (!m) return '';
+    const src = m[1].replace(/&amp;/g, '&');
+    return /^https:\/\/([a-z0-9-]+\.)*facebook\.com\//i.test(src) ? src : '';
+  } catch (e) {
+    log(`meta: no preview for ad ${adId} (${String(e.message || e).slice(0, 100)})`);
+    return '';
+  }
+}
+
 export async function testToken(client) {
   const q = new URLSearchParams({ access_token: config.meta.token, fields: 'name,currency,account_status,timezone_name' });
   const body = await metaGet(`${BASE()}/act_${client.accounts.meta}?${q}`);
