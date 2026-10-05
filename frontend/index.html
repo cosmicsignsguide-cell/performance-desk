@@ -1407,7 +1407,7 @@ function topRail(){
     +'<div class="rail-mid">'+rangeBar()+'</div>'
     +'<button class="rail-search" data-act="cmdk"><span>'+ICONS.search+'Jump to client</span><kbd>Ctrl K</kbd></button>'
     +'<button class="btn btn-ghost btn-small" data-act="alllinks" title="Secret report link for each client">Client dashboards</button>'
-    +(LIVE&&CFG.syncUrl?'<button class="icon-btn" data-act="syncnow" title="Sync now">'+ICONS.refresh+'</button>':'')
+    +(LIVE&&CFG.syncUrl?'<button class="icon-btn" data-act="syncnow" title="Sync now">'+ICONS.refresh+'</button><button class="icon-btn" data-act="syncall" title="Full refresh of all clients, last 30 days. Slow, use sparingly." style="font-size:10px;font-weight:700">30d</button>':'')
     +'<button class="icon-btn" data-act="theme" title="Switch theme" aria-label="Switch theme">'+(currentTheme()==='dark'?ICONS.sun:ICONS.moon)+'</button>'
     +'<div class="rail-user" title="'+esc(email)+'"><span class="user-avatar sm">'+esc((name||'?')[0].toUpperCase())+'</span>'
       +(LIVE?'<button class="icon-btn" data-act="signout" title="Sign out">'+ICONS.out+'</button>':'')+'</div>'
@@ -2463,6 +2463,7 @@ document.addEventListener('click',e=>{
   else if(act==='cmdk'){ openCmdk(); }
   else if(act==='refresh'){ boot(true); }
   else if(act==='syncnow'){ syncNow(); }
+  else if(act==='syncall'){ if(confirm('Refresh every client for the last 30 days? It takes a long time and uses a lot of Firestore reads.')) syncNow('daily','',30); }
   else if(act==='syncclient'){ syncNow('daily',el.dataset.client); }
   else if(act==='signout'){ fb.auth.signOut().then(()=>location.reload()); }
   else if(act==='signin'){ signIn(); }
@@ -2477,15 +2478,15 @@ document.addEventListener('input',e=>{ if(e.target.id==='q'){ state.q=e.target.v
 // The token is short lived and issued per person, so nothing that reaches the browser here is
 // worth stealing. A static host serves config.js to anyone who asks, logged in or not, which is
 // why the sync key must never live in it.
-async function syncNow(mode,clientId){
+async function syncNow(mode,clientId,days){
   mode=mode||'hourly';
   if(!CFG.syncUrl) return;
   const u=fb&&fb.auth&&fb.auth.currentUser;
   if(!u){ toast('Sign in first to run a sync','warn'); return; }
-  toast(mode==='daily'&&clientId?'Refreshing this client\u2019s ads and thumbnails. This can take 4 to 5 minutes. You can keep working, then reload.':'Sync started, this takes a minute…','warn');
+  toast(mode==='daily'&&days?'Refreshing all clients for the last '+days+' days. This runs on the server for a long while (up to 30 minutes). Reload later.':mode==='daily'&&clientId?'Refreshing this client\u2019s ads and thumbnails. This can take 4 to 5 minutes. You can keep working, then reload.':'Sync started, this takes a minute…','warn');
   try{
     const tok=await u.getIdToken();
-    const r=await fetch(CFG.syncUrl+(CFG.syncUrl.includes('?')?'&':'?')+'mode='+mode+(clientId?'&client='+encodeURIComponent(clientId):''),{method:'POST',headers:{'Authorization':'Bearer '+tok}});
+    const r=await fetch(CFG.syncUrl+(CFG.syncUrl.includes('?')?'&':'?')+'mode='+mode+(clientId?'&client='+encodeURIComponent(clientId):'')+(days?'&days='+days:''),{method:'POST',headers:{'Authorization':'Bearer '+tok}});
     if(r.status===401) throw new Error('this account can open the dashboard but is not cleared to sync. Add it to DESK_ALLOWED_EMAILS on the API service.');
     if(!r.ok) throw new Error('HTTP '+r.status);
     toast('Sync finished, reloading data'); boot(true);
