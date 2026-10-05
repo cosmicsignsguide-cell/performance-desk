@@ -105,7 +105,7 @@
     "id": "mackly",
     "name": "Mackly Store",
     "type": "ecom",
-    "currency": "INR",
+    "currency": "LKR",
     "budget": 1200000,
     "target": {
       "roas": 4
