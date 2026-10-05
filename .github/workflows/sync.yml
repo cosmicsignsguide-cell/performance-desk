@@ -1,0 +1,38 @@
+# Keeps the dashboard fresh without anyone pressing Sync.
+#   every 30 minutes : hourly sync (today and yesterday, ad spend and Shopify)
+#   once a night     : daily sync (restates the last 7 days, refreshes ads), then the API checks
+#                      the stored Shopify figures against Shopify and flags any mismatch
+# The only secret needed is DESK_SYNC_KEY (the same value as on the desk-api service).
+name: desk-sync
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+    - cron: "30 20 * * *"   # 02:00 IST
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "hourly, daily or verify"
+        default: "hourly"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Run sync
+        env:
+          DESK_SYNC_KEY: ${{ secrets.DESK_SYNC_KEY }}
+          API: https://desk-api-si2w.onrender.com
+          SCHEDULE: ${{ github.event.schedule }}
+          MODE_IN: ${{ github.event.inputs.mode }}
+        run: |
+          if [ -z "$DESK_SYNC_KEY" ]; then echo "DESK_SYNC_KEY secret is not set"; exit 1; fi
+          MODE="${MODE_IN:-hourly}"
+          if [ "$SCHEDULE" = "30 20 * * *" ]; then MODE=daily; fi
+          echo "mode=$MODE"
+          # The API may be asleep on the free plan. Wake it first and give it a minute.
+          curl -sS --max-time 90 "$API/health" || true
+          code=$(curl -sS -o out.txt -w "%{http_code}" --max-time 2400 -X POST -H "Authorization: Bearer $DESK_SYNC_KEY" "$API/sync?mode=$MODE")
+          cat out.txt; echo
+          # 409 means the same mode is still running from the last tick, which is fine.
+          if [ "$code" != "200" ] && [ "$code" != "409" ]; then echo "sync failed with HTTP $code"; exit 1; fi

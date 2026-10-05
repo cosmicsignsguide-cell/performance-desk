@@ -20,6 +20,7 @@ import { computeSignals } from './signals.js';
 import { ensureReportTokens, listLinks, reportPayload, reportUrl, resolveToken, rotateReportToken, videoPreviewFor, videoUrlFor } from './report.js';
 import { weeklyReports } from './gamma.js';
 import { raise } from './alerts.js';
+import { verifyShopify } from './verify.js';
 import Sample from './sample.cjs';
 
 const SAMPLE_FALLBACK = /^(1|true|yes)$/i.test(process.env.DESK_SAMPLE_FALLBACK || '');
@@ -303,6 +304,11 @@ async function main() {
         await store.merge('meta', 'lastRun', { sitewatch: nowIso() });
         return { mode, clients: clients.length };
       }
+      if (mode === 'verify') {
+        const r = await verifyShopify(store, clients, { only: String(url.searchParams.get('client') || '').trim().toLowerCase() });
+        await store.merge('meta', 'lastRun', { verify: nowIso(), verifySummary: `${r.clean} clean, ${r.mismatched} mismatched, ${r.skipped} skipped` });
+        return { mode, ...r };
+      }
       if (mode === 'weekly') {
         // Built from the rows already in the store, not from a fresh pull, so the deck and the
         // dashboard are looking at exactly the same numbers.
@@ -341,8 +347,10 @@ async function main() {
           if (v && typeof v === 'object' && v.ok === false && v.error) failures.push(`${c.id}/${src}: ${v.error}`);
         }
       }
+      let verified;
+      if (mode === 'daily' && !only) { try { verified = await verifyShopify(store, clients); await store.merge('meta', 'lastRun', { verify: nowIso(), verifySummary: `${verified.clean} clean, ${verified.mismatched} mismatched, ${verified.skipped} skipped` }); } catch (e) { log('verify after daily failed: ' + String(e.message || e).slice(0, 120)); } }
       if (!only) await store.merge('meta', 'lastRun', { [mode]: nowIso() });
-      return { mode, clients: list.length, ...(only ? { client: only } : {}), ...(failures.length ? { failures } : {}) };
+      return { mode, clients: list.length, ...(verified ? { verify: { clean: verified.clean, mismatched: verified.mismatched } } : {}), ...(only ? { client: only } : {}), ...(failures.length ? { failures } : {}) };
     }
 
     // Every request is wrapped, because until this existed a single Firestore failure took the
@@ -491,7 +499,7 @@ async function main() {
       }
 
       const asked = url.searchParams.get('mode');
-      const mode = ['daily', 'hourly', 'sitewatch', 'weekly'].includes(asked) ? asked : 'hourly';
+      const mode = ['daily', 'hourly', 'sitewatch', 'weekly', 'verify'].includes(asked) ? asked : 'hourly';
       // ?days=N restates N days of history instead of the usual 7. Ignored for hourly and
       // sitewatch, which have nothing to restate.
       const days = mode === 'daily' ? parseInt(url.searchParams.get('days') || '', 10) : NaN;

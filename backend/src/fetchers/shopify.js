@@ -52,7 +52,7 @@ function dayOf(iso) { return new Date(iso).toLocaleDateString('en-CA', { timeZon
 // Returns { 'YYYY-MM-DD': {orders, grossSales, discounts, refunds, netSales} }, or null when this
 // store's token cannot read reports. Discounts and returns come back negative from ShopifyQL; they
 // are stored positive here so the dashboard can show "returned" as a quantity rather than a subtraction.
-async function salesByDay(client, since, until) {
+export async function salesByDay(client, since, until) {
   let body;
   try {
     body = await gql(client, `query DeskSales($q: String!) { shopifyqlQuery(query: $q) { parseErrors tableData { columns { name } rows } } }`, { q: SALES_QL(since, until) });
