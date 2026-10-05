@@ -835,6 +835,17 @@ html.cx-text .cur-dot,html.cx-text .cur-ring,html.cx-text .cur-tag{opacity:0!imp
 .cur-ring:not(.lock).hot{border-color:rgba(255,61,110,.9)}
 .cur-tag{margin:18px 0 0 18px;padding:5px 10px;border-radius:7px;background:#FF5A1F;background:var(--sig,#FF5A1F);color:#fff;font:600 12px/1 "Hanken Grotesk",system-ui,sans-serif;white-space:nowrap;box-shadow:0 8px 20px -8px rgba(255,61,110,.6);transition:opacity .15s ease}
 @media (hover:none),(pointer:coarse){ .cur-dot,.cur-ring,.cur-tag{display:none} }
+/* Cursor v2: a plain arrow that everyone recognises, with a soft halo that follows it. Over anything
+   clickable the halo swells and a small word says what a click will do. The old crosshair and brackets
+   are hidden rather than removed so the script below stays unchanged. */
+.cur-dot{width:20px;height:22px;margin:0;border-radius:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='22' viewBox='0 0 20 22'%3E%3Cpath d='M2.5 2 2.5 17.2 6.4 13.6 9 19.6 11.9 18.4 9.3 12.5 14.8 12.5Z' fill='%23FF5A1F' stroke='%23fff' stroke-width='1.4' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat 0 0/20px 22px;box-shadow:none;filter:drop-shadow(0 2px 5px rgba(0,0,0,.45))}
+.cur-ring{width:30px;height:30px;margin:-15px 0 0 -15px;border:0;background:radial-gradient(circle,rgba(255,90,31,.26),rgba(255,61,110,.10) 55%,transparent 72%)}
+.cur-ring::before,.cur-ring::after,.cur-ring i{display:none!important}
+.cur-ring:not(.lock).hot{width:52px;height:52px;margin:-26px 0 0 -26px;border:0;background:radial-gradient(circle,rgba(255,90,31,.34),rgba(255,61,110,.14) 58%,transparent 74%)}
+.cur-ring.lock{border:1.5px solid rgba(255,90,31,.7);border-radius:10px;background:rgba(255,90,31,.07)}
+.cur-ring.down{transform-origin:center}
+.cur-tag{margin:24px 0 0 16px;padding:4px 9px;border-radius:999px;font:600 11.5px/1.1 "Hanken Grotesk",system-ui,sans-serif;letter-spacing:.01em}
+
 .glow{position:relative}
 .glow::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;z-index:2;
   background:radial-gradient(280px circle at var(--mx,50%) var(--my,50%),rgba(255,90,31,.12),rgba(255,61,110,.06) 42%,transparent 70%);opacity:0;transition:opacity .25s ease}
@@ -1651,7 +1662,7 @@ function plCardHTML(o){
   const HOT='button,a,[data-act],.prow,.sky-col,summary,[role=button],label,.mag,[data-pl-close]', TXT='input,textarea,select,[contenteditable]';
   const say=el=>{ const id=el&&el.dataset&&el.dataset.pl, o=id&&window.__pl&&window.__pl[id];
     if(o) return o.x.c.name.replace(' (sample)','')+'  '+(o.r.dev==null?'no target':(Math.round(Math.abs(o.r.dev*100))===0?'on target':(o.r.dev>0?'+':'\u2212')+Math.round(Math.abs(o.r.dev*100))+'%'));
-    const t=(el.getAttribute&&el.getAttribute('aria-label'))||''; return t&&t.length<30?t:''; };
+    const t=(el.getAttribute&&(el.getAttribute('data-cursor')||el.getAttribute('aria-label')))||''; if(t&&t.length<30) return t; const n=el.tagName; return n==='A'?'Open':(n==='LABEL'?'Select':(n==='BUTTON'||n==='SUMMARY'||(el.getAttribute&&el.getAttribute('role')==='button')?'Click':'')); };
   document.addEventListener('mousemove',e=>{ x=e.clientX; y=e.clientY; if(!live){ live=true; rx=x; ry=y; root.classList.add('cx','cx-on'); } },{passive:true});
   document.addEventListener('mouseover',e=>{ const t=e.target; if(!t.closest) return; const h=t.closest(HOT);
     root.classList.toggle('cx-text',!!t.closest(TXT)); ring.classList.toggle('hot',!!h);
