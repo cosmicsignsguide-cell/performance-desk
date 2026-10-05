@@ -231,7 +231,7 @@ export async function fetchEntities(client, until) {
     return {
       id: r.ad_id, name: r.ad_name, adsetId: r.adset_id, adsetName: r.adset_name, campaignId: r.campaign_id, campaignName: r.campaign_name,
       status: info.effective_status || '', issues, format, isVideo, createdDate: created, daysLive,
-      thumb: cr.thumbnail_url || cr.image_url || '',
+      thumb: cr.image_url || cr.thumbnail_url || '',
       // Kept so a video can be played on demand. The playable file itself is NOT stored: Meta
       // hands back a signed URL that expires, so a stored one would be dead by the next sync.
       // The id is stable, and the media route trades it for a fresh URL at the moment of play.
