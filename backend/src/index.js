@@ -349,6 +349,7 @@ async function main() {
     // whole API down: the rejection went unhandled, node exited, Render restarted it, and the next
     // request killed it again. Health flapped between 200 and 502 and nothing said why. A broken
     // dependency should make the desk answer "I cannot reach the store", not disappear.
+    let clientLogHits = [];
     http.createServer((req, res) => { handle(req, res).catch((e) => {
       const msg = String(e && e.message || e);
       log(`request ${req.method} ${String(req.url).split('?')[0]} FAILED: ${msg.slice(0, 300)}`);
@@ -377,6 +378,17 @@ async function main() {
       if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
       const url = new URL(req.url, 'http://x');
       if (url.pathname === '/health' || url.pathname === '/') { res.end('ok'); return; }
+
+      // Browser error beacon. The dashboard reports its own script errors here so they show up in
+      // the service logs. It accepts a tiny text body, stores nothing, and returns nothing, so it
+      // cannot leak data. A per-minute cap keeps a broken page from flooding the log.
+      if (url.pathname === '/clientlog' && req.method === 'POST') {
+        const now = Date.now(); clientLogHits = clientLogHits.filter((t) => now - t < 60000);
+        let body = ''; let over = false;
+        req.on('data', (c) => { body += c; if (body.length > 2000) { over = true; req.destroy(); } });
+        req.on('end', () => { if (!over && clientLogHits.length < 30) { clientLogHits.push(now); log('clientlog: ' + body.replace(/[\r\n]+/g, ' ').slice(0, 1500)); } res.writeHead(204); res.end(); });
+        return;
+      }
 
       // GET /r/<token> — the client report feed. Public by design: the token is the credential.
       // A bad, unknown or revoked token gets the same flat 404 as a missing route, so the

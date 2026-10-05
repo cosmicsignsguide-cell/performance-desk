@@ -1046,6 +1046,12 @@ body{font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:14px}
   </div>
 </div>
 <script>
+/* Error beacon: sends script errors (message, file line, page hash) to the API log. No data, no tokens. */
+(function(){ var sent=0; function send(m){ try{ if(sent>=5||!window.CFG&&!window.DESK_CONFIG) return; var c=window.CFG||window.DESK_CONFIG||{}; if(!c.syncUrl) return; sent++; fetch(c.syncUrl.replace(/\/sync.*$/,'')+'/clientlog',{method:'POST',body:String(m).slice(0,1500),keepalive:true,headers:{'Content-Type':'text/plain'}}).catch(function(){}); }catch(_){} }
+window.addEventListener('error',function(e){ send('error '+(e.message||'')+' @'+String(e.filename||'').split('/').pop()+':'+e.lineno+':'+e.colno+' page '+location.hash); });
+window.addEventListener('unhandledrejection',function(e){ send('promise '+String((e.reason&&e.reason.message)||e.reason)+' page '+location.hash); }); })();
+</script>
+<script>
 // Runs before the app bundle so the plate is interactive from the first frame: nobody should have
 // to sit through a title card they have already seen because the JS that dismisses it is still
 // parsing. The app hands its arrival animation to __bootReady, and it fires as the plate lifts,
