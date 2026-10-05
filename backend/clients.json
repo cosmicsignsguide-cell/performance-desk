@@ -82,13 +82,13 @@
     "name": "Earth Garden",
     "type": "ecom",
     "currency": "INR",
-    "budget": 500000,
+    "budget": 200000,
     "target": {
-      "roas": 3.0
+      "roas": 4.0
     },
     "am": "",
     "accounts": {
-      "meta": "208553959760117",
+      "meta": "1188994755012558",
       "google": "",
       "shopify": null,
       "ga4": ""
@@ -1209,6 +1209,78 @@
       "expectText": ""
     },
     "active": true,
+    "contact": ""
+  },
+  {
+    "id": "eldercare",
+    "name": "Eldercare",
+    "type": "lead",
+    "currency": "INR",
+    "budget": 35000,
+    "target": {
+      "cpl": 150
+    },
+    "am": "",
+    "accounts": {
+      "meta": "2172937299823386",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": false,
+    "contact": ""
+  },
+  {
+    "id": "tataplay",
+    "name": "Tata Play",
+    "type": "lead",
+    "currency": "INR",
+    "budget": 350000,
+    "target": {
+      "cpl": 5833
+    },
+    "am": "",
+    "accounts": {
+      "meta": "526924335044929",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": false,
+    "contact": ""
+  },
+  {
+    "id": "astrochaitanya",
+    "name": "Astro Chaitanya",
+    "type": "ecom",
+    "currency": "INR",
+    "budget": 240000,
+    "target": {
+      "roas": 1.0
+    },
+    "am": "",
+    "accounts": {
+      "meta": "2481299142216539",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "https://astrochaitanya.com",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": false,
     "contact": ""
   }
 ]
