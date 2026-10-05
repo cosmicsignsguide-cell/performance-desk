@@ -65,7 +65,7 @@
     "am": "",
     "accounts": {
       "meta": "222862346",
-      "google": "",
+      "google": "4216700360",
       "shopify": null,
       "ga4": ""
     },
@@ -84,7 +84,7 @@
     "currency": "INR",
     "budget": 200000,
     "target": {
-      "roas": 4.0
+      "roas": 4
     },
     "am": "",
     "accounts": {
@@ -186,7 +186,7 @@
     "currency": "USD",
     "budget": 4500,
     "target": {
-      "roas": 4.0
+      "roas": 4
     },
     "am": "",
     "accounts": {
@@ -291,7 +291,7 @@
     "currency": "INR",
     "budget": 500000,
     "target": {
-      "roas": 3.0
+      "roas": 3
     },
     "am": "",
     "accounts": {
@@ -1041,7 +1041,7 @@
     "currency": "INR",
     "budget": 500000,
     "target": {
-      "roas": 3.0
+      "roas": 3
     },
     "am": "",
     "accounts": {
@@ -1266,7 +1266,7 @@
     "currency": "INR",
     "budget": 240000,
     "target": {
-      "roas": 1.0
+      "roas": 1
     },
     "am": "",
     "accounts": {
