@@ -1625,7 +1625,7 @@ function plCardHTML(o){
   const pos=gaugePos(r.dev);
   const cell=(l,v)=>'<div><dt>'+l+'</dt><dd>'+v+'</dd></div>';
   return '<div class="pf-head"><div><div class="pf-name">'+esc(c.name.replace(' (sample)',''))+'</div><div class="pf-sub">'+typeLabel(c)+' &middot; '+esc(pfLabel(c))+(c.am?' &middot; '+esc(c.am):'')+'</div></div><button class="pf-x" type="button" data-pl-close aria-label="Close">&times;</button></div>'
-    +'<div class="pf-hero '+r.tone+'"><div class="pf-lab">'+(isE?'Revenue':kpiLabel(c))+' &middot; '+esc(D?rangeSpec(state.plRange||'7d',D.today).label:'')+'</div>'
+    +'<div class="pf-hero '+r.tone+'"><div class="pf-lab">'+(isE?(x.cur.hasShop?'Platform revenue':'Revenue'):kpiLabel(c))+' &middot; '+esc(D?rangeSpec(state.plRange||'7d',D.today).label:'')+'</div>'
       +'<div class="pf-big">'+(isE?fmtMoney(x.cur.revenue,c):kpiFmt(c,x.kpi))+'</div>'
       +(isE?'<div class="pf-roas">ROAS <b>'+kpiFmt(c,x.kpi)+'</b>'+(t?' &middot; target '+kpiFmt(c,t):'')+'</div>':'')
       +'<div class="pf-word">'+esc(r.word)+(!isE&&t?' &middot; target '+kpiFmt(c,t):'')+'</div>'
@@ -1633,7 +1633,7 @@ function plCardHTML(o){
     +'</div>'
     +'<dl class="pf-grid">'
       +cell('Spend',fmtMoney(x.cur.spend,c))
-      +(isE?cell('Avg order value',x.cur.salesCount?fmtMoney(x.cur.revenue/x.cur.salesCount,c):'n/a'):cell(resLab,fmtNum(res)))
+      +(isE?cell('Avg order value',x.cur.aov?fmtMoney(x.cur.aov,c):'n/a'):cell(resLab,fmtNum(res)))
       +(isE?cell('Orders',fmtNum(res)):cell('Cost per '+(isApp(c)?'install':'lead'),kpiFmt(c,x.kpi)))
       +cell('Budget pace',c.budget?Math.round(x.paceRatio*100)+'% of month':'no budget set')
     +'</dl>'
