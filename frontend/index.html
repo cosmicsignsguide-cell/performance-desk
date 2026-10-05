@@ -2221,14 +2221,14 @@ function sourcePanel(x){
   if(!known) return '';
   const rows=[['meta','Instagram, Facebook',a.srcMeta],['google','Google',a.srcGoogle],['direct','Direct',a.srcDirect],['other','Other referrers',a.srcOther],['unknown','Unknown',a.srcUnknown],['none','Not recorded',a.srcNone]];
   const top=Math.max(...rows.map(r=>r[2]),1);
-  let h='<div class="section"><div class="glass-panel"><h2>Where the orders came from <span class="sub">'+spec.label+' · '+fmtNum(known)+' orders, as your store recorded them</span></h2>';
+  let h='<div class="section"><div class="glass-panel"><h2>Where the orders came from <span class="sub">'+spec.label+' · '+fmtNum(known)+' orders, as Shopify recorded them</span><span class="chip good" style="margin-left:8px" title="Source of the order counts and sources in this panel">Source: Shopify</span></h2>';
   h+='<div class="srclist">'+rows.filter(r=>r[2]>0||r[0]==='meta').map(r=>'<div class="srcrow '+r[0]+'"><div class="sl">'+r[1]+'</div><div class="st"><div class="sf" style="width:'+(r[2]/top*100).toFixed(1)+'%"></div></div><div class="sn">'+fmtNum(r[2])+'</div><div class="sp">'+fmtPct(known?r[2]/known*100:null)+'</div></div>').join('')+'</div>';
   // Meta's claim against the store's count, with the gap stated plainly in both directions.
   const claim=Math.round(a.purchases), counted=Math.round(a.srcMeta+a.srcGoogle);
   const gap=claim-counted, ratio=counted?claim/counted:null;
   h+='<div class="srcclaim">'
-    +'<div class="fstage"><div class="l">Meta and Google claim</div><div class="v disp">'+fmtNum(claim)+'</div><div class="r">purchases, their own attribution</div></div>'
-    +'<div class="fstage"><div class="l">Store recorded from ads</div><div class="v disp">'+fmtNum(a.srcMeta+a.srcGoogle)+'</div><div class="r">first visit was Meta or Google</div></div>'
+    +'<div class="fstage"><div class="l">Meta and Google claim (platform data)</div><div class="v disp">'+fmtNum(claim)+'</div><div class="r">purchases, their own attribution</div></div>'
+    +'<div class="fstage"><div class="l">Shopify recorded from ads</div><div class="v disp">'+fmtNum(a.srcMeta+a.srcGoogle)+'</div><div class="r">first visit was Meta or Google</div></div>'
     +'<div class="fstage'+(ratio&&ratio>2?' leak':'')+'"><div class="l">Gap</div><div class="v disp">'+(gap>=0?'+':'')+fmtNum(gap)+'</div><div class="r">'+(ratio?fmtX(ratio)+' the store&rsquo;s count from ads':'no ad-sourced orders recorded')+'</div></div>'
     +'</div>';
   h+='<div class="note">Read the two together, not one instead of the other. The platforms count every order they touched inside their own window, so one order seen on both Meta and Google is counted twice. The store counts where the customer first arrived, so an order that started with an ad and finished from a typed URL lands in Direct instead. The truth sits between them: the store&rsquo;s figure is the floor, the platforms&rsquo; figure is the ceiling. Net sales and MER on this page come from the store, which is why they match the Shopify admin exactly.'+(a.srcNone?' '+fmtNum(a.srcNone)+' order'+(a.srcNone===1?'':'s')+' arrived with no source recorded at all, usually a broken or missing UTM, and every one of those is a sale no platform can be credited for.':'')+'</div>';
