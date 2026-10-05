@@ -81,6 +81,24 @@ export async function salesByDay(client, since, until) {
   return out;
 }
 
+
+// Store traffic straight from Shopify, for clients without GA4. Sessions, sessions that added to
+// cart and sessions that reached checkout, all counted by Shopify's own analytics. Needs the same
+// read_reports scope as the sales query; where it is missing the funnel simply stays on GA4.
+export async function sessionsByDay(client, since, until) {
+  try {
+    const body = await gql(client, `query DeskSessions($q: String!) { shopifyqlQuery(query: $q) { parseErrors tableData { columns { name } rows } } }`, { q: `FROM sessions SHOW sessions, sessions_with_cart_additions, sessions_that_reached_checkout TIMESERIES day SINCE ${since} UNTIL ${until}` });
+    const res = body?.shopifyqlQuery;
+    if (res?.parseErrors?.length || !Array.isArray(res?.tableData?.rows)) return null;
+    const out = {};
+    for (const r of res.tableData.rows) {
+      const d = String(r.day || '').slice(0, 10); if (!d) continue;
+      out[d] = { shSessions: Math.round(num(r.sessions)), shAtc: Math.round(num(r.sessions_with_cart_additions)), shReached: Math.round(num(r.sessions_that_reached_checkout)) };
+    }
+    return out;
+  } catch (e) { log(`shopify ${client.id}: sessions unavailable (${String(e.message || e).slice(0, 100)})`); return null; }
+}
+
 export async function fetchDaily(client, since, until) {
   const off = tzOffset();
   const q = `created_at:>='${since}T00:00:00${off}' created_at:<='${until}T23:59:59${off}'`;
@@ -136,6 +154,8 @@ export async function fetchDaily(client, since, until) {
   // units, first-time buyers, checkouts started and the product list, none of which ShopifyQL carries.
   const sales = await salesByDay(client, since, until);
   if (sales) for (const d in sales) { if (byDay[d]) Object.assign(byDay[d], sales[d]); }
+  const traffic = await sessionsByDay(client, since, until);
+  if (traffic) for (const d in traffic) { if (byDay[d]) Object.assign(byDay[d], traffic[d]); }
 
   const rows = Object.values(byDay).map((r) => ({ ...r, grossSales: round(r.grossSales), netSales: round(r.netSales), totalSales: round(r.totalSales || 0), taxes: round(r.taxes || 0), discounts: round(r.discounts || 0), refunds: round(r.refunds) }));
   // Recent orders feed: the last two days, newest first, for the dashboard's Orders tab.
