@@ -1558,11 +1558,11 @@ function targetRule(x){
 function gaugePos(dev){ return dev==null?null:Math.max(2,Math.min(98,(0.5+Math.max(-0.4,Math.min(0.4,dev))*1.25)*100)); }
 function monogram(c){ let h=0; for(const ch of c.id) h=(h*31+ch.charCodeAt(0))%360; const t=(c.name.replace(/[^A-Za-z0-9]/g,'')[0]||'?').toUpperCase();
   return '<span class="mono" style="--h:'+h+'">'+t+'</span>'; }
-function plChart(x){ const c=x.c, isE=c.type==='ecom', g=isE?(m=>m.revenue):isApp(c)?(m=>m.installs):(m=>m.leads);
-  const v=series14(r=>r.clientId===c.id&&ADS.includes(r.platform),g).map(n=>isFinite(n)?n:0); if(v.length<2||!v.some(n=>n)) return '<div class="pf-chart empty">No daily data yet</div>';
+function plChart(x){ const c=x.c, isE=c.type==='ecom', sh=isE&&x.cur.hasShop, g=sh?(m=>m.netSales):isE?(m=>m.revenue):isApp(c)?(m=>m.installs):(m=>m.leads);
+  const v=series14(sh?(r=>r.clientId===c.id&&r.platform==='shopify'):(r=>r.clientId===c.id&&ADS.includes(r.platform)),g).map(n=>isFinite(n)?n:0); if(v.length<2||!v.some(n=>n)) return '<div class="pf-chart empty">No daily data yet</div>';
   const W=300,H=84,max=Math.max(...v)||1, X=i=>i/(v.length-1)*W, Y=n=>H-6-(n/max)*(H-16);
   const pts=v.map((n,i)=>X(i).toFixed(1)+','+Y(n).toFixed(1)), last=v.length-1;
-  return '<div class="pf-chart"><div class="pf-chart-h"><span>'+(isE?'Revenue':isApp(c)?'Installs':'Leads')+', last 14 days</span><b>'+(isE?fmtMoney(v[last],c):fmtNum(v[last]))+' yesterday</b></div>'
+  return '<div class="pf-chart"><div class="pf-chart-h"><span>'+(sh?'Net sales':isE?'Revenue':isApp(c)?'Installs':'Leads')+', last 14 days</span><b>'+(isE?fmtMoney(v[last],c):fmtNum(v[last]))+' yesterday</b></div>'
     +'<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="pfg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".28"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>'
     +'<path class="pf-area" d="M0,'+H+' L'+pts.join(' L')+' L'+W+','+H+' Z" fill="url(#pfg)"/>'
     +'<polyline class="pf-line" pathLength="1" points="'+pts.join(' ')+'" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>'
@@ -1625,9 +1625,9 @@ function plCardHTML(o){
   const pos=gaugePos(r.dev);
   const cell=(l,v)=>'<div><dt>'+l+'</dt><dd>'+v+'</dd></div>';
   return '<div class="pf-head"><div><div class="pf-name">'+esc(c.name.replace(' (sample)',''))+'</div><div class="pf-sub">'+typeLabel(c)+' &middot; '+esc(pfLabel(c))+(c.am?' &middot; '+esc(c.am):'')+'</div></div><button class="pf-x" type="button" data-pl-close aria-label="Close">&times;</button></div>'
-    +'<div class="pf-hero '+r.tone+'"><div class="pf-lab">'+(isE?(x.cur.hasShop?'Platform revenue':'Revenue'):kpiLabel(c))+' &middot; '+esc(D?rangeSpec(state.plRange||'7d',D.today).label:'')+'</div>'
-      +'<div class="pf-big">'+(isE?fmtMoney(x.cur.revenue,c):kpiFmt(c,x.kpi))+'</div>'
-      +(isE?'<div class="pf-roas">ROAS <b>'+kpiFmt(c,x.kpi)+'</b>'+(t?' &middot; target '+kpiFmt(c,t):'')+'</div>':'')
+    +'<div class="pf-hero '+r.tone+'"><div class="pf-lab">'+(isE?(x.cur.hasShop?'Net sales':'Revenue'):kpiLabel(c))+' &middot; '+esc(D?rangeSpec(state.plRange||'7d',D.today).label:'')+'</div>'
+      +'<div class="pf-big">'+(isE?fmtMoney(x.cur.hasShop?x.cur.netSales:x.cur.revenue,c):kpiFmt(c,x.kpi))+'</div>'
+      +(isE?'<div class="pf-roas">'+(x.cur.hasShop?'Platform ROAS':'ROAS')+' <b>'+kpiFmt(c,x.kpi)+'</b>'+(t?' &middot; target '+kpiFmt(c,t):'')+'</div>':'')
       +'<div class="pf-word">'+esc(r.word)+(!isE&&t?' &middot; target '+kpiFmt(c,t):'')+'</div>'
       +(pos!=null?'<div class="pf-bar"><i style="left:'+pos.toFixed(1)+'%"></i><b class="pf-tick"></b></div><div class="pf-scale"><span>20% behind</span><span>target</span><span>ahead</span></div>':'')
     +'</div>'
