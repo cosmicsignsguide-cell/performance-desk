@@ -682,6 +682,14 @@ td.call{min-width:300px;white-space:normal} td.call .sub{max-width:none}
 .crph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;opacity:.35;text-transform:uppercase;letter-spacing:.08em}
 .crfmt{position:absolute;left:8px;bottom:8px;z-index:2;padding:3px 8px;border-radius:99px;font-size:10px;font-weight:700;background:rgba(9,16,21,.72);color:#E7EDEF;backdrop-filter:blur(4px);text-transform:capitalize}
 .crfmt:empty{display:none}
+.crmodal{position:fixed;inset:0;z-index:9999;background:rgba(5,9,12,.82);display:flex;align-items:center;justify-content:center;padding:16px}
+.crmbox{background:var(--panel,#0f1a21);border:1px solid var(--border);border-radius:16px;width:min(420px,100%);max-height:94vh;overflow:auto;padding:14px}
+.crmhead{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;font-weight:700;font-size:13px}
+.crmhead button{background:none;border:0;color:inherit;font-size:20px;cursor:pointer;line-height:1}
+.crmbox iframe{width:100%;height:min(640px,70vh);border:0;border-radius:10px;background:#000}
+.crmtabs{display:flex;gap:6px;margin-bottom:10px}
+.crmnote{font-size:12px;color:var(--faint);margin-top:10px;line-height:1.5}
+.crmnote a{color:#FF5A1F}
 .crwatch{position:absolute;right:8px;bottom:8px;z-index:3;padding:5px 11px;border-radius:99px;font-size:11px;font-weight:700;text-decoration:none;color:#fff;background:linear-gradient(90deg,#FF5A1F,#FF3D6E);box-shadow:0 6px 16px -6px rgba(255,61,110,.7);opacity:0;transform:translateY(4px);transition:opacity .18s,transform .18s}
 .crcard:hover .crwatch,.crwatch:focus-visible{opacity:1;transform:none}
 @media (hover:none){.crwatch{opacity:1;transform:none}}
@@ -2302,13 +2310,30 @@ function creativeGrid(x,rows,kpiCol,title,note,empty){
   h+='<div class="crgrid">'+rows.map(r=>{ const e=r.e, m=r.m, hook=e.hookRate==null?'':fmtPct(e.hookRate), idle=!(m.spend>0), tone=idle?'neutral':(e.tone||'neutral'), callTxt=idle?'No spend':(e.status||''), why=idle?'No spend in '+x.spec.label+'. Pick 7d or 14d above to judge this creative.':(e.why||''), na='<span class="faint">n/a</span>';
     const img=e.thumb?'<img src="'+esc(e.thumb)+'" alt="" loading="lazy" onerror="this.style.display=\'none\'">':'';
     return '<article class="crcard '+esc(tone)+'"><div class="crmedia">'+img+'<span class="crph">'+esc(e.format||'Ad')+'</span>'
-      +'<span class="crfmt">'+esc(e.format||'')+(e.isVideo&&!/video/i.test(e.format||'')?' video':'')+'</span><span class="chip crcall '+esc(tone)+'">'+esc(callTxt)+'</span>'+(e.previewUrl&&/^https:\/\//.test(e.previewUrl)?'<a class="crwatch" href="'+esc(e.previewUrl)+'" target="_blank" rel="noopener noreferrer" aria-label="'+(e.isVideo?'Play on Meta':'View on Meta')+'">'+(e.isVideo?'\u25B6 Play':'View')+'</a>':'')+'</div>'
+      +'<span class="crfmt">'+esc(e.format||'')+(e.isVideo&&!/video/i.test(e.format||'')?' video':'')+'</span><span class="chip crcall '+esc(tone)+'">'+esc(callTxt)+'</span>'+((e.igUrl||e.fbPost)&&e.isVideo?'<button type="button" class="crwatch" data-act="crembed" data-ad="'+esc(e.id)+'" aria-label="Play here">\u25B6 Play</button>':'')+(!(e.igUrl||e.fbPost)&&e.previewUrl&&/^https:\/\//.test(e.previewUrl)?'<a class="crwatch" href="'+esc(e.previewUrl)+'" target="_blank" rel="noopener noreferrer" aria-label="'+(e.isVideo?'Play on Meta':'View on Meta')+'">'+(e.isVideo?'\u25B6 Play':'View')+'</a>':'')+'</div>'
       +'<div class="crbody"><div class="crname" title="'+esc(e.name)+'">'+esc(e.name)+'</div><div class="sub crset">'+esc(e.adsetName||'')+'</div>'
       +'<dl class="crstats"><div><dt>Spend</dt><dd>'+fmtMoney(m.spend,c)+'</dd></div><div><dt>'+kpiCol.label+'</dt><dd>'+(idle?na:kpiCol.f({e:e,m:m}))+'</dd></div>'
       +'<div><dt>CTR</dt><dd>'+(idle?na:fmtPct(m.ctr))+'</dd></div><div><dt>'+(hook?'Hook':resLab)+'</dt><dd>'+(hook||fmtNum(m[res]))+'</dd></div></dl>'
       +'<p class="crwhy" title="'+esc(why)+'">'+esc(why)+'</p></div></article>'; }).join('')+'</div>';
   return h+(note?'<div class="note">'+note+'</div>':'')+'</div>';
 }
+function crEmbed(adId){
+  let ad=null; for(const k in (D.entities||{})){ const f=((D.entities[k]||{}).ads||[]).find(a=>a&&a.id===adId); if(f){ ad=f; break; } }
+  if(!ad) return;
+  const ig=ad.igUrl?ad.igUrl.replace(/\/?(\?.*)?$/,'/')+'embed/captioned/':'';
+  const fb=ad.fbPost?'https://www.facebook.com/plugins/video.php?show_text=false&width=380&href='+encodeURIComponent('https://www.facebook.com/'+ad.fbPost.split('_')[0]+'/posts/'+ad.fbPost.split('_')[1]):'';
+  const old=document.getElementById('crmodal'); if(old) old.remove();
+  const m=document.createElement('div'); m.id='crmodal'; m.className='crmodal'; m.dataset.act='crclose';
+  const link=ad.previewUrl?'<a href="'+esc(ad.previewUrl)+'" target="_blank" rel="noopener noreferrer">Open on Meta</a>':'';
+  const tabs=(ig&&fb)?'<div class="crmtabs"><button class="crchip on" data-src="ig">Instagram</button><button class="crchip" data-src="fb">Facebook</button></div>':'';
+  m.innerHTML='<div class="crmbox" onclick="event.stopPropagation()"><div class="crmhead"><span>'+esc(ad.name)+'</span><button data-act="crclose" aria-label="Close">\u00d7</button></div>'+tabs
+    +'<iframe id="crframe" allow="autoplay; encrypted-media; fullscreen" allowfullscreen referrerpolicy="origin-when-cross-origin"></iframe>'
+    +'<div class="crmnote">Blank or "unavailable"? Dark ads (not posted publicly) cannot be embedded. '+link+'</div></div>';
+  document.body.appendChild(m);
+  const f=m.querySelector('#crframe'); f.src=ig||fb;
+  m.querySelectorAll('.crmtabs button').forEach(b=>b.onclick=()=>{ m.querySelectorAll('.crmtabs button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); f.src=b.dataset.src==='ig'?ig:fb; });
+}
+document.addEventListener('keydown',ev=>{ if(ev.key==='Escape'){ const m=document.getElementById('crmodal'); if(m) m.remove(); } });
 function crThumb(e,c){
   const tok=(D.reportTokens||{})[c.id]||'';
   const img=e.thumb?'<img class="thumb" src="'+esc(e.thumb)+'" alt="" loading="lazy">':'<span class="thumb ph">'+esc((e.format||'?').slice(0,3))+'</span>';
@@ -2406,6 +2431,8 @@ document.addEventListener('click',e=>{
   else if(act==='plsort'){ const k=el.dataset.k, p=state.plSort; state.plSort=p.key===k?{key:k,dir:p.dir==='asc'?'desc':'asc'}:{key:k,dir:k==='name'?'asc':(k==='dev'?'asc':'desc')}; render(); }
   else if(act==='tab'){ state.tab=el.dataset.tab; render(); }
   else if(act==='crf'){ if(!el.disabled){ state.crf=el.dataset.crf; render(); } }
+  else if(act==='crembed'){ crEmbed(el.dataset.ad); }
+  else if(act==='crclose'){ const m=document.getElementById('crmodal'); if(m) m.remove(); }
   else if(act==='crview'){ state.crView=el.dataset.v==='table'?'table':'grid'; render(); }
   else if(act==='play'){
     // Swapped in place rather than opened in a modal: the row's numbers stay next to the video,

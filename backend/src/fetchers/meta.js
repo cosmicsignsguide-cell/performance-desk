@@ -195,7 +195,7 @@ export async function fetchEntities(client, until) {
     () => pagedRange(ins('adset', DAILY_FIELDS + ',adset_id', { time_increment: '1' }), dSince, dUntil),
     () => pagedRange(ins('ad', DAILY_FIELDS + ',ad_id', { time_increment: '1' }), dSince, dUntil),
     () => paged(`${BASE()}/act_${accountId}/adsets?${q('id,name,campaign_id,effective_status,learning_stage_info,daily_budget,lifetime_budget,optimization_goal')}`),
-    () => paged(`${BASE()}/act_${accountId}/ads?${q('id,name,adset_id,effective_status,created_time,issues_info,preview_shareable_link,creative.thumbnail_width(480).thumbnail_height(480){object_type,thumbnail_url,video_id,image_url}')}`),
+    () => paged(`${BASE()}/act_${accountId}/ads?${q('id,name,adset_id,effective_status,created_time,issues_info,preview_shareable_link,creative.thumbnail_width(480).thumbnail_height(480){object_type,thumbnail_url,video_id,image_url,instagram_permalink_url,effective_object_story_id}')}`),
     () => paged(`${BASE()}/act_${accountId}/campaigns?${q('id,name,effective_status,objective,daily_budget,lifetime_budget,bid_strategy')}`),
     () => metaGet(`${BASE()}/act_${accountId}?${q('name,account_status,disable_reason,currency,amount_spent,spend_cap,timezone_name')}`),
   ], 2);
@@ -239,6 +239,10 @@ export async function fetchEntities(client, until) {
       // hands back a signed URL that expires, so a stored one would be dead by the next sync.
       // The id is stable, and the media route trades it for a fresh URL at the moment of play.
       videoId: cr.video_id || '',
+      // Public post handles, used to embed the video inside the dashboard. Dark (unpublished) ads
+      // have no public post, so the embed can fail there and the UI falls back to the Meta link.
+      igUrl: /^https:\/\/www\.instagram\.com\/(p|reel|tv)\/[\w-]+/i.test(cr.instagram_permalink_url || '') ? cr.instagram_permalink_url : '',
+      fbPost: /^\d+_\d+$/.test(cr.effective_object_story_id || '') ? cr.effective_object_story_id : '',
       hookRate: isVideo && m.impressions ? round(m.v3s / m.impressions * 100, 1) : null,
       holdRate: isVideo && m.v3s ? round(m.thruplays / m.v3s * 100, 1) : null,
       ...m, last7: mk(a7), prev7: mk(a14), days: aDays[r.ad_id] || {},
