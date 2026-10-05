@@ -1189,11 +1189,11 @@ function window_(today,spec){ const end=addDays(today,-spec.offset); return {sta
 function rowsIn(rows,today,spec){ const w=window_(today,spec); return rows.filter(r=>r.date>=w.start&&r.date<=w.end); }
 function daysIn(days,today,spec){ const w=window_(today,spec); const o={spend:0,impressions:0,clicks:0,purchases:0,revenue:0,leads:0,installs:0}; for(const d in days){ if(d>=w.start&&d<=w.end){ const t=days[d]; o.spend+=t[0]||0; o.impressions+=t[1]||0; o.clicks+=t[2]||0; o.purchases+=t[3]||0; o.revenue+=t[4]||0; o.leads+=t[5]||0; o.installs+=t[6]||0; } } return o; }
 const ADS=['meta','google'];
-const SUMS=['spend','impressions','clicks','purchases','revenue','leads','lpv','atc','ic','orders','grossSales','netSales','refunds','newCustomerOrders','units','checkoutsStarted','installs','sessions','srcMeta','srcGoogle','srcDirect','srcOther','srcUnknown','srcNone','ga4Atc','ga4Checkouts','ga4Purchases'];
+const SUMS=['spend','impressions','clicks','purchases','revenue','leads','lpv','atc','ic','orders','grossSales','netSales','totalSales','taxes','refunds','newCustomerOrders','units','checkoutsStarted','installs','sessions','srcMeta','srcGoogle','srcDirect','srcOther','srcUnknown','srcNone','ga4Atc','ga4Checkouts','ga4Purchases'];
 function agg(rows){ const o={}; SUMS.forEach(k=>o[k]=0); let hasShop=false,hasGa=false; rows.forEach(r=>{ SUMS.forEach(k=>{o[k]+=r[k]||0}); if(r.platform==='shopify') hasShop=true; if(r.platform==='ga4') hasGa=true; }); o.hasShop=hasShop; o.hasGa=hasGa; return derive(o); }
 function derive(o){
   o.ctr=o.impressions?o.clicks/o.impressions*100:0; o.cpm=o.impressions?o.spend/o.impressions*1000:0; o.cpc=o.clicks?o.spend/o.clicks:Infinity;
-  o.roas=o.spend?o.revenue/o.spend:0; o.mer=o.hasShop&&o.spend?o.netSales/o.spend:null;
+  o.sales=Math.max(o.totalSales||0,o.netSales||0); o.roas=o.spend?o.revenue/o.spend:0; o.mer=o.hasShop&&o.spend?o.netSales/o.spend:null;
   o.salesCount=o.hasShop?o.orders:o.purchases; o.cpa=o.salesCount?o.spend/o.salesCount:Infinity;
   o.cac=o.hasShop&&o.newCustomerOrders?o.spend/o.newCustomerOrders:null;
   o.aov=o.hasShop&&o.orders?o.netSales/o.orders:(o.purchases?o.revenue/o.purchases:0);
@@ -1601,7 +1601,7 @@ function targetRule(x){
 function gaugePos(dev){ return dev==null?null:Math.max(2,Math.min(98,(0.5+Math.max(-0.4,Math.min(0.4,dev))*1.25)*100)); }
 function monogram(c){ let h=0; for(const ch of c.id) h=(h*31+ch.charCodeAt(0))%360; const t=(c.name.replace(/[^A-Za-z0-9]/g,'')[0]||'?').toUpperCase();
   return '<span class="mono" style="--h:'+h+'">'+t+'</span>'; }
-function plChart(x){ const c=x.c, isE=c.type==='ecom', sh=isE&&x.cur.hasShop, g=sh?(m=>m.netSales):isE?(m=>m.revenue):isApp(c)?(m=>m.installs):(m=>m.leads);
+function plChart(x){ const c=x.c, isE=c.type==='ecom', sh=isE&&x.cur.hasShop, g=sh?(m=>Math.max(m.totalSales||0,m.netSales||0)):isE?(m=>m.revenue):isApp(c)?(m=>m.installs):(m=>m.leads);
   const v=series14(sh?(r=>r.clientId===c.id&&r.platform==='shopify'):(r=>r.clientId===c.id&&ADS.includes(r.platform)),g).map(n=>isFinite(n)?n:0); if(v.length<2||!v.some(n=>n)) return '<div class="pf-chart empty">No daily data yet</div>';
   const W=300,H=84,max=Math.max(...v)||1, X=i=>i/(v.length-1)*W, Y=n=>H-6-(n/max)*(H-16);
   const pts=v.map((n,i)=>X(i).toFixed(1)+','+Y(n).toFixed(1)), last=v.length-1;
@@ -1669,7 +1669,7 @@ function plCardHTML(o){
   const cell=(l,v)=>'<div><dt>'+l+'</dt><dd>'+v+'</dd></div>';
   return '<div class="pf-head"><div><div class="pf-name">'+esc(c.name.replace(' (sample)',''))+'</div><div class="pf-sub">'+typeLabel(c)+' &middot; '+esc(pfLabel(c))+(c.am?' &middot; '+esc(c.am):'')+'</div></div><button class="pf-x" type="button" data-pl-close aria-label="Close">&times;</button></div>'
     +'<div class="pf-hero '+r.tone+'"><div class="pf-lab">'+(isE?(x.cur.hasShop?'Net sales':'Revenue'):kpiLabel(c))+' &middot; '+esc(D?rangeSpec(state.plRange||'7d',D.today).label:'')+'</div>'
-      +'<div class="pf-big">'+(isE?fmtMoney(x.cur.hasShop?x.cur.netSales:x.cur.revenue,c):kpiFmt(c,x.kpi))+'</div>'
+      +'<div class="pf-big">'+(isE?fmtMoney(x.cur.hasShop?x.cur.sales:x.cur.revenue,c):kpiFmt(c,x.kpi))+'</div>'
       +(isE?'<div class="pf-roas">'+(x.cur.hasShop?'Platform ROAS':'ROAS')+' <b>'+kpiFmt(c,x.kpi)+'</b>'+(t?' &middot; target '+kpiFmt(c,t):'')+'</div>':'')
       +'<div class="pf-word">'+esc(r.word)+(!isE&&t?' &middot; target '+kpiFmt(c,t):'')+'</div>'
       +(pos!=null?'<div class="pf-bar"><i style="left:'+pos.toFixed(1)+'%"></i><b class="pf-tick"></b></div><div class="pf-scale"><span>20% behind</span><span>target</span><span>ahead</span></div>':'')
@@ -2034,7 +2034,7 @@ function clientView(x){
       +kpi(ICONS.trend,'Platform ROAS',noSpend?'--':fmtX(a.roas),noSpend?'needs spend to compute':V(a.roas,p.roas),noSpend?'':x.status,['Target',fmtX(kpiTarget(c))],series14(ads,m=>m.spend?m.revenue/m.spend:0),'x')
       +(a.hasShop?kpi(ICONS.bag,'Orders, Shopify',fmtNum(a.orders),V(a.orders,p.orders),'',['Platforms claim',pct(a.coverage)],series14(shop,m=>m.orders),'num')
                  :kpi(ICONS.bag,'Purchases, platform',fmtNum(a.purchases),V(a.purchases,p.purchases),'warn',['Shopify','not connected'],series14(ads,m=>m.purchases),'num'))
-      +(a.hasShop?kpi(ICONS.target,'Net sales',fmtMoney(a.netSales,c),V(a.netSales,p.netSales),'',['MER',noSpend?'--':fmtX(a.mer)],series14(shop,m=>m.netSales),'money')
+      +(a.hasShop?kpi(ICONS.target,'Total sales, incl. GST',fmtMoney(a.sales,c),V(a.sales,p.sales),'',['Net \u00b7 MER',fmtMoney(a.netSales,c)+(noSpend?'':' \u00b7 '+fmtX(a.mer))],series14(shop,m=>Math.max(m.totalSales||0,m.netSales||0)),'money')
                  :kpi(ICONS.target,'Platform revenue',fmtMoney(a.revenue,c),V(a.revenue,p.revenue),'',null,series14(ads,m=>m.revenue),'money'))
       +kpi(ICONS.users,'CPA',noSpend?'--':fmtMoney(a.cpa,c),'AOV '+fmtMoney(a.aov,c),'',['CAC',a.cac?fmtMoney(a.cac,c):'--'],series14(mine,m=>{const n=a.hasShop?m.orders:m.purchases; return n?m.spend/n:0;}),'money')
       +(a.hasShop?kpi(ICONS.cart,'Abandoned checkouts',fmtNum(a.abandoned),fmtNum(a.checkoutsStarted)+' checkouts started','',['Completed',fmtPct(a.checkoutsStarted?a.orders/a.checkoutsStarted*100:null)],series14(shop,m=>Math.max(0,(m.checkoutsStarted||0)-(m.orders||0))),'num')

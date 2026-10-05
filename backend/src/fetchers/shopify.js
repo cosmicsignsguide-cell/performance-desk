@@ -9,7 +9,7 @@
 import { config, shopifyTokenFor } from '../config.js';
 import { fetchJson, emptyDaily, log, num, round, addDays, tzOffset } from '../util.js';
 
-const ORDERS_Q = `query DeskOrders($q: String!, $after: String) { orders(first: 100, after: $after, query: $q, sortKey: CREATED_AT) { pageInfo { hasNextPage endCursor } nodes { id name createdAt cancelledAt displayFinancialStatus currentSubtotalPriceSet { shopMoney { amount currencyCode } } currentTotalPriceSet { shopMoney { amount } } totalRefundedSet { shopMoney { amount } } customer { id numberOfOrders } customerJourneySummary { customerOrderIndex firstVisit { source } } discountCodes lineItems(first: 50) { nodes { quantity title product { id title } variant { id } originalUnitPriceSet { shopMoney { amount } } } } } } }`;
+const ORDERS_Q = `query DeskOrders($q: String!, $after: String) { orders(first: 100, after: $after, query: $q, sortKey: CREATED_AT) { pageInfo { hasNextPage endCursor } nodes { id name createdAt cancelledAt displayFinancialStatus currentSubtotalPriceSet { shopMoney { amount currencyCode } } currentTotalPriceSet { shopMoney { amount } } currentTotalTaxSet { shopMoney { amount } } totalRefundedSet { shopMoney { amount } } customer { id numberOfOrders } customerJourneySummary { customerOrderIndex firstVisit { source } } discountCodes lineItems(first: 50) { nodes { quantity title product { id title } variant { id } originalUnitPriceSet { shopMoney { amount } } } } } } }`;
 const ABANDONED_Q = `query DeskAbandoned($q: String!, $after: String) { abandonedCheckouts(first: 100, after: $after, query: $q) { pageInfo { hasNextPage endCursor } nodes { id createdAt completedAt } } }`;
 const PRODUCTS_Q = `query DeskProducts($ids: [ID!]!) { nodes(ids: $ids) { ... on Product { id title totalInventory featuredMedia { preview { image { url } } } variants(first: 1) { nodes { price } } } } }`;
 const SHOP_Q = `query DeskShop { shop { name myshopifyDomain currencyCode ianaTimezone plan { publicDisplayName } primaryDomain { url } } }`;
@@ -23,7 +23,7 @@ const SHOP_Q = `query DeskShop { shop { name myshopifyDomain currencyCode ianaTi
 // Needs the read_reports scope; where a store's token predates it, fetchDaily quietly keeps the old
 // per-order arithmetic so that client does not simply go blank.
 const SALES_QL = (since, until) =>
-  `FROM sales SHOW orders, gross_sales, discounts, returns, net_sales TIMESERIES day SINCE ${since} UNTIL ${until}`;
+  `FROM sales SHOW orders, gross_sales, discounts, returns, net_sales, taxes, total_sales TIMESERIES day SINCE ${since} UNTIL ${until}`;
 
 async function gql(client, query, variables) {
   const token = shopifyTokenFor(client);
@@ -74,6 +74,8 @@ async function salesByDay(client, since, until) {
       discounts: round(Math.abs(num(r.discounts))),
       refunds: round(Math.abs(num(r.returns))),
       netSales: round(num(r.net_sales)),
+      taxes: round(num(r.taxes)),
+      totalSales: round(num(r.total_sales)),
     };
   }
   return out;
@@ -116,6 +118,8 @@ export async function fetchDaily(client, since, until) {
     // return rate can be read on its own.
     const net = Math.max(0, subtotal - refunded);
     r.orders += 1; r.grossSales += gross; r.netSales += net; r.refunds += refunded;
+    // Total sales is what the store shows as its headline: net sales plus GST (and shipping).
+    r.totalSales = (r.totalSales || 0) + Math.max(0, gross - refunded); r.taxes = (r.taxes || 0) + num(o.currentTotalTaxSet?.shopMoney?.amount);
     r[sourceOf(o)] = (r[sourceOf(o)] || 0) + 1;
     if (o.customerJourneySummary?.customerOrderIndex === 1 || (!o.customerJourneySummary && o.customer?.numberOfOrders === 1)) r.newCustomerOrders += 1;
     for (const li of o.lineItems?.nodes || []) {
@@ -133,7 +137,7 @@ export async function fetchDaily(client, since, until) {
   const sales = await salesByDay(client, since, until);
   if (sales) for (const d in sales) { if (byDay[d]) Object.assign(byDay[d], sales[d]); }
 
-  const rows = Object.values(byDay).map((r) => ({ ...r, grossSales: round(r.grossSales), netSales: round(r.netSales), discounts: round(r.discounts || 0), refunds: round(r.refunds) }));
+  const rows = Object.values(byDay).map((r) => ({ ...r, grossSales: round(r.grossSales), netSales: round(r.netSales), totalSales: round(r.totalSales || 0), taxes: round(r.taxes || 0), discounts: round(r.discounts || 0), refunds: round(r.refunds) }));
   // Recent orders feed: the last two days, newest first, for the dashboard's Orders tab.
   const cutoff = addDays(until, -1);
   const recentOrders = orders.filter((o) => dayOf(o.createdAt) >= cutoff).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, 60).map((o) => ({
