@@ -195,7 +195,7 @@ export async function fetchEntities(client, until) {
     () => pagedRange(ins('adset', DAILY_FIELDS + ',adset_id', { time_increment: '1' }), dSince, dUntil),
     () => pagedRange(ins('ad', DAILY_FIELDS + ',ad_id', { time_increment: '1' }), dSince, dUntil),
     () => paged(`${BASE()}/act_${accountId}/adsets?${q('id,name,campaign_id,effective_status,learning_stage_info,daily_budget,lifetime_budget,optimization_goal')}`),
-    () => paged(`${BASE()}/act_${accountId}/ads?${q('id,name,adset_id,effective_status,created_time,issues_info,creative{object_type,thumbnail_url,video_id,image_url}')}`),
+    () => paged(`${BASE()}/act_${accountId}/ads?${q('id,name,adset_id,effective_status,created_time,issues_info,creative.thumbnail_width(480).thumbnail_height(480){object_type,thumbnail_url,video_id,image_url}')}`),
     () => paged(`${BASE()}/act_${accountId}/campaigns?${q('id,name,effective_status,objective,daily_budget,lifetime_budget,bid_strategy')}`),
     () => metaGet(`${BASE()}/act_${accountId}?${q('name,account_status,disable_reason,currency,amount_spent,spend_cap,timezone_name')}`),
   ], 2);

@@ -2296,14 +2296,14 @@ function creativeGrid(x,rows,kpiCol,title,note,empty){
   let h='<div class="glass-panel"><h2>'+title+crChips(x)+'</h2>';
   h+='<div class="crsort"><span>Sort by</span>'+sorts.map(k=>'<button class="crchip'+(so.key===k[0]?' on':'')+'" data-act="sort" data-table="ads" data-key="'+k[0]+'">'+k[1]+(so.key===k[0]?(so.dir==='asc'?' \u2191':' \u2193'):'')+'</button>').join('')+'</div>';
   if(!rows.length) return h+'<div class="note">'+empty+'</div></div>';
-  h+='<div class="crgrid">'+rows.map(r=>{ const e=r.e, m=r.m, hook=e.hookRate==null?'':fmtPct(e.hookRate);
+  h+='<div class="crgrid">'+rows.map(r=>{ const e=r.e, m=r.m, hook=e.hookRate==null?'':fmtPct(e.hookRate), idle=!(m.spend>0), tone=idle?'neutral':(e.tone||'neutral'), callTxt=idle?'No spend':(e.status||''), why=idle?'No spend in '+x.spec.label+'. Pick 7d or 14d above to judge this creative.':(e.why||''), na='<span class="faint">n/a</span>';
     const img=e.thumb?'<img src="'+esc(e.thumb)+'" alt="" loading="lazy" onerror="this.style.display=\'none\'">':'';
-    return '<article class="crcard '+esc(e.tone||'neutral')+'"><div class="crmedia">'+img+'<span class="crph">'+esc(e.format||'Ad')+'</span>'
-      +'<span class="crfmt">'+esc(e.format||'')+(e.isVideo&&!/video/i.test(e.format||'')?' video':'')+'</span><span class="chip crcall '+esc(e.tone||'neutral')+'">'+esc(e.status||'')+'</span></div>'
+    return '<article class="crcard '+esc(tone)+'"><div class="crmedia">'+img+'<span class="crph">'+esc(e.format||'Ad')+'</span>'
+      +'<span class="crfmt">'+esc(e.format||'')+(e.isVideo&&!/video/i.test(e.format||'')?' video':'')+'</span><span class="chip crcall '+esc(tone)+'">'+esc(callTxt)+'</span></div>'
       +'<div class="crbody"><div class="crname" title="'+esc(e.name)+'">'+esc(e.name)+'</div><div class="sub crset">'+esc(e.adsetName||'')+'</div>'
-      +'<dl class="crstats"><div><dt>Spend</dt><dd>'+fmtMoney(m.spend,c)+'</dd></div><div><dt>'+kpiCol.label+'</dt><dd>'+kpiCol.f({e:e,m:m})+'</dd></div>'
-      +'<div><dt>CTR</dt><dd>'+fmtPct(m.ctr)+'</dd></div><div><dt>'+(hook?'Hook':resLab)+'</dt><dd>'+(hook||fmtNum(m[res]))+'</dd></div></dl>'
-      +'<p class="crwhy" title="'+esc(e.why||'')+'">'+esc(e.why||'')+'</p></div></article>'; }).join('')+'</div>';
+      +'<dl class="crstats"><div><dt>Spend</dt><dd>'+fmtMoney(m.spend,c)+'</dd></div><div><dt>'+kpiCol.label+'</dt><dd>'+(idle?na:kpiCol.f({e:e,m:m}))+'</dd></div>'
+      +'<div><dt>CTR</dt><dd>'+(idle?na:fmtPct(m.ctr))+'</dd></div><div><dt>'+(hook?'Hook':resLab)+'</dt><dd>'+(hook||fmtNum(m[res]))+'</dd></div></dl>'
+      +'<p class="crwhy" title="'+esc(why)+'">'+esc(why)+'</p></div></article>'; }).join('')+'</div>';
   return h+(note?'<div class="note">'+note+'</div>':'')+'</div>';
 }
 function crThumb(e,c){
