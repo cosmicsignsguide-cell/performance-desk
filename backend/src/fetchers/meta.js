@@ -195,7 +195,7 @@ export async function fetchEntities(client, until) {
     () => pagedRange(ins('adset', DAILY_FIELDS + ',adset_id', { time_increment: '1' }), dSince, dUntil),
     () => pagedRange(ins('ad', DAILY_FIELDS + ',ad_id', { time_increment: '1' }), dSince, dUntil),
     () => paged(`${BASE()}/act_${accountId}/adsets?${q('id,name,campaign_id,effective_status,learning_stage_info,daily_budget,lifetime_budget,optimization_goal')}`),
-    () => paged(`${BASE()}/act_${accountId}/ads?${q('id,name,adset_id,effective_status,created_time,issues_info,creative.thumbnail_width(480).thumbnail_height(480){object_type,thumbnail_url,video_id,image_url}')}`),
+    () => paged(`${BASE()}/act_${accountId}/ads?${q('id,name,adset_id,effective_status,created_time,issues_info,preview_shareable_link,creative.thumbnail_width(480).thumbnail_height(480){object_type,thumbnail_url,video_id,image_url}')}`),
     () => paged(`${BASE()}/act_${accountId}/campaigns?${q('id,name,effective_status,objective,daily_budget,lifetime_budget,bid_strategy')}`),
     () => metaGet(`${BASE()}/act_${accountId}?${q('name,account_status,disable_reason,currency,amount_spent,spend_cap,timezone_name')}`),
   ], 2);
@@ -232,6 +232,9 @@ export async function fetchEntities(client, until) {
       id: r.ad_id, name: r.ad_name, adsetId: r.adset_id, adsetName: r.adset_name, campaignId: r.campaign_id, campaignName: r.campaign_name,
       status: info.effective_status || '', issues, format, isVideo, createdDate: created, daysLive,
       thumb: cr.image_url || cr.thumbnail_url || '',
+      // Meta's own shareable preview page. It opens without a login and plays the video, which the
+      // raw file route cannot do (error #10) and an embedded preview cannot do (Meta refuses framing).
+      previewUrl: /^https:\/\/(fb\.me|[a-z0-9.-]*facebook\.com)\//i.test(info.preview_shareable_link || '') ? info.preview_shareable_link : '',
       // Kept so a video can be played on demand. The playable file itself is NOT stored: Meta
       // hands back a signed URL that expires, so a stored one would be dead by the next sync.
       // The id is stable, and the media route trades it for a fresh URL at the moment of play.
