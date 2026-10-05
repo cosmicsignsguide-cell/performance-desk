@@ -2282,7 +2282,7 @@ function crChips(x){
   return '<span class="crchips">'+CRF.map(k=>{
     const n=all.filter(r=>crMatch(r,k[0])).length;
     return '<button class="crchip'+(state.crf===k[0]?' on':'')+'" data-act="crf" data-crf="'+k[0]+'"'+(n?'':' disabled')+'>'+k[1]+' '+n+'</button>';
-  }).join('')+'</span><span class="crchips crview">'+[['grid','Grid'],['table','Table']].map(v=>'<button class="crchip'+(state.crView===v[0]?' on':'')+'" data-act="crview" data-v="'+v[0]+'">'+v[1]+'</button>').join('')+'</span>';
+  }).join('')+'</span><span class="crchips crview">'+[['grid','Grid'],['table','Table']].map(v=>'<button class="crchip'+(state.crView===v[0]?' on':'')+'" data-act="crview" data-v="'+v[0]+'">'+v[1]+'</button>').join('')+(CFG.syncUrl?'<button class="crchip" data-act="syncclient" data-client="'+esc(x.c.id)+'" title="Pull this client\u2019s ads, thumbnails and numbers again from Meta">Refresh ads</button>':'')+'</span>';
 }
 // The still, and for a video the still with a play button over it. Pressing play asks our own
 // server for the file through this client's report route: the server checks the ad belongs to
@@ -2433,6 +2433,7 @@ document.addEventListener('click',e=>{
   else if(act==='cmdk'){ openCmdk(); }
   else if(act==='refresh'){ boot(true); }
   else if(act==='syncnow'){ syncNow(); }
+  else if(act==='syncclient'){ syncNow('daily',el.dataset.client); }
   else if(act==='signout'){ fb.auth.signOut().then(()=>location.reload()); }
   else if(act==='signin'){ signIn(); }
   else if(act==='theme'){ toggleTheme(); }
@@ -2446,14 +2447,15 @@ document.addEventListener('input',e=>{ if(e.target.id==='q'){ state.q=e.target.v
 // The token is short lived and issued per person, so nothing that reaches the browser here is
 // worth stealing. A static host serves config.js to anyone who asks, logged in or not, which is
 // why the sync key must never live in it.
-async function syncNow(){
+async function syncNow(mode,clientId){
+  mode=mode||'hourly';
   if(!CFG.syncUrl) return;
   const u=fb&&fb.auth&&fb.auth.currentUser;
   if(!u){ toast('Sign in first to run a sync','warn'); return; }
-  toast('Sync started, this takes a minute…','warn');
+  toast(mode==='daily'&&clientId?'Refreshing this client\u2019s ads, thumbnails and numbers. Takes up to a minute.':'Sync started, this takes a minute…','warn');
   try{
     const tok=await u.getIdToken();
-    const r=await fetch(CFG.syncUrl+(CFG.syncUrl.includes('?')?'&':'?')+'mode=hourly',{method:'POST',headers:{'Authorization':'Bearer '+tok}});
+    const r=await fetch(CFG.syncUrl+(CFG.syncUrl.includes('?')?'&':'?')+'mode='+mode+(clientId?'&client='+encodeURIComponent(clientId):''),{method:'POST',headers:{'Authorization':'Bearer '+tok}});
     if(r.status===401) throw new Error('this account can open the dashboard but is not cleared to sync. Add it to DESK_ALLOWED_EMAILS on the API service.');
     if(!r.ok) throw new Error('HTTP '+r.status);
     toast('Sync finished, reloading data'); boot(true);
