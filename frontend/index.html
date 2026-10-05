@@ -2452,14 +2452,14 @@ async function syncNow(mode,clientId){
   if(!CFG.syncUrl) return;
   const u=fb&&fb.auth&&fb.auth.currentUser;
   if(!u){ toast('Sign in first to run a sync','warn'); return; }
-  toast(mode==='daily'&&clientId?'Refreshing this client\u2019s ads, thumbnails and numbers. Takes up to a minute.':'Sync started, this takes a minute…','warn');
+  toast(mode==='daily'&&clientId?'Refreshing this client\u2019s ads and thumbnails. This can take 4 to 5 minutes. You can keep working, then reload.':'Sync started, this takes a minute…','warn');
   try{
     const tok=await u.getIdToken();
     const r=await fetch(CFG.syncUrl+(CFG.syncUrl.includes('?')?'&':'?')+'mode='+mode+(clientId?'&client='+encodeURIComponent(clientId):''),{method:'POST',headers:{'Authorization':'Bearer '+tok}});
     if(r.status===401) throw new Error('this account can open the dashboard but is not cleared to sync. Add it to DESK_ALLOWED_EMAILS on the API service.');
     if(!r.ok) throw new Error('HTTP '+r.status);
     toast('Sync finished, reloading data'); boot(true);
-  }catch(e){ toast('Sync failed: '+e.message,'warn'); }
+  }catch(e){ toast(mode==='daily'?'The page stopped waiting ('+e.message+'), but the refresh keeps running on the server. Reload in a few minutes.':'Sync failed: '+e.message,'warn'); }
 }
 function gate(msg,err){ root.innerHTML='<div class="gate"><div class="glass card"><div class="brand" style="padding:0 0 14px"><div class="mark disp">PERFORMANCE</div><div class="sub">Desk · Per4mance Guru</div></div><h1 class="disp">Team sign-in</h1><p>'+msg+'</p><button class="btn btn-primary" style="width:100%;justify-content:center" data-act="signin">Sign in with Google</button>'+(err?'<div class="err">'+esc(err)+'</div>':'')+'</div></div>'; }
 // The hd hint tells Google to show only one workspace domain's accounts. Useful when the team is
