@@ -490,6 +490,9 @@ a{color:var(--cyan)}
 .rpace-mark{position:absolute;top:-3px;bottom:-3px;width:1.5px;background:var(--text);opacity:.4}
 .rpace-lab{font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:8.5px;text-transform:none;letter-spacing:.012em;color:var(--faint);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rpace-day{font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:8.5px;font-weight:600;letter-spacing:.012em;color:var(--faint);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rpace-day.bad{color:var(--red)} .rpace-day.warn{color:var(--amber)} .rpace-day.ok{color:var(--green)}
 .rspark{height:30px;overflow:hidden;display:flex;align-items:center}
 .rspark svg{width:100%;height:30px;display:block}
 .rflag{font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:9.5px;font-weight:600;text-align:center;padding:2px 0;border-radius:3px;
@@ -1246,6 +1249,11 @@ function summarize(D,c,range){
   const mtd=agg(rows.filter(r=>r.date>=today.slice(0,8)+'01'&&r.date<=today));
   const dom=parseInt(today.slice(8),10), dim=new Date(parseInt(today.slice(0,4)),parseInt(today.slice(5,7)),0).getDate();
   const expected=c.budget?c.budget*dom/dim:0; const paceRatio=expected?mtd.spend/expected:0; const projected=mtd.spend/dom*dim;
+  // Daily budget: the month's budget spread over the days in the month. Yesterday is the last full day, so that is the
+  // one compared to it (today is still running). needPerDay is what each remaining day, today included, must spend to
+  // land exactly on budget, given what the finished days already spent.
+  const dailyPlan=c.budget?c.budget/dim:0; const yestRatio=dailyPlan?yest.spend/dailyPlan:null;
+  const needPerDay=c.budget?Math.max(0,(c.budget-(mtd.spend-todayA.spend))/(dim-dom+1)):0;
   const kpi=kpiOf(c,cur), status=kpiStatus(c,kpi); const delta7=kpiDelta(c,kpiOf(c,last7),kpiOf(c,prev7));
   const ent=D.entities[c.id]||{campaigns:[],adsets:[],ads:[],products:[],issues:[],recentOrders:[]};
   // adStatus replaces .status with the desk's own verdict (Scale, Pause, Fatiguing...), so the
@@ -1269,7 +1277,7 @@ function summarize(D,c,range){
   const spark=[]; for(let d=14;d>=1;d--) spark.push(kpiOf(c,agg(rowsIn(rows,today,{days:1,offset:d}))));
   const waiting=Object.entries(sync).filter(([k,v])=>v&&typeof v==='object'&&v.mode==='waiting').map(([k])=>k);
   const sampleSources=Object.entries(sync).filter(([k,v])=>v&&typeof v==='object'&&v.mode==='sample').map(([k])=>k);
-  return {c,rows,spec,cur,prev,last7,prev7,todayA,yest,mtd,expected,paceRatio,projected,kpi,status,delta7,flags,health,ent,ads,sig,sw,sync,spark,waiting,sampleSources,hasData:rows.length>0,intraToday:D.intraday[c.id+'_'+today]||null,intraWeek:D.intraday[c.id+'_'+addDays(today,-7)]||null}; }
+  return {c,rows,spec,cur,prev,last7,prev7,todayA,yest,mtd,expected,paceRatio,projected,dailyPlan,yestRatio,needPerDay,kpi,status,delta7,flags,health,ent,ads,sig,sw,sync,spark,waiting,sampleSources,hasData:rows.length>0,intraToday:D.intraday[c.id+'_'+today]||null,intraWeek:D.intraday[c.id+'_'+addDays(today,-7)]||null}; }
 
 /* ============================== FORMAT =================================== */
 const SYM={INR:'₹',USD:'$',AED:'AED ',AUD:'A$',CAD:'C$',LKR:'Rs ',GBP:'£',EUR:'€'};
@@ -2012,7 +2020,13 @@ function overviewView(){
 
   return h;
 }
-function paceCell(x){ const c=x.c;
+function dayPace(x){ // one word for yesterday's spend against the daily budget
+  if(!x.c.budget||x.yestRatio===null) return null;
+  const r=x.yestRatio, d=Math.round((r-1)*100);
+  const t=r>1.15?'bad':(r<0.85?'warn':'ok');
+  const word=t==='bad'?'over':(t==='warn'?'under':'on plan');
+  return {t,d,word,txt:(t==='ok'?'on plan':(d>0?'+':'')+d+'% '+word)}; }
+function paceCell(x){ const c=x.c, dp=dayPace(x);
   if(!c.budget) return '<span class="rpace"><span class="rpace-lab">no budget set</span></span>';
   const fill=Math.min(100,x.mtd.spend/c.budget*100);
   const dom=parseInt(D.today.slice(8),10), dim=new Date(parseInt(D.today.slice(0,4)),parseInt(D.today.slice(5,7)),0).getDate();
@@ -2021,7 +2035,9 @@ function paceCell(x){ const c=x.c;
   const word=t==='bad'?'overpacing':(t==='warn'?'underpacing':'on pace');
   return '<span class="rpace"><span class="rpace-bar"><span class="rpace-fill '+t+'" style="width:'+fill.toFixed(1)+'%"></span>'
     +'<span class="rpace-mark" style="left:'+mark.toFixed(1)+'%"></span></span>'
-    +'<span class="rpace-lab">'+Math.round(x.paceRatio*100)+'% mtd &middot; '+word+'</span></span>'; }
+    +'<span class="rpace-lab">'+Math.round(x.paceRatio*100)+'% mtd &middot; '+word+'</span>'
+    +(dp?'<span class="rpace-day '+dp.t+'" title="Daily budget '+esc(fmtMoney(x.dailyPlan,c))+' (month budget divided by days in the month). Yesterday spent '+esc(fmtMoney(x.yest.spend,c))+'. To land on budget, each remaining day needs about '+esc(fmtMoney(x.needPerDay,c))+'.">Yest '+fmtMoney(x.yest.spend,c)+' of '+fmtMoney(x.dailyPlan,c)+'/day &middot; '+dp.txt+'</span>':'')
+    +'</span>'; }
 function paceBar(x){ const c=x.c; if(!c.budget) return '<span class="faint small">no budget set</span>'; const fill=Math.min(100,x.mtd.spend/c.budget*100); const dom=parseInt(D.today.slice(8),10), dim=new Date(parseInt(D.today.slice(0,4)),parseInt(D.today.slice(5,7)),0).getDate(); const mark=Math.min(100,dom/dim*100); const tone=x.paceRatio>1.15?'bad':(x.paceRatio<0.85?'warn':''); return '<div class="pace"><div class="pace-track"><div class="pace-fill '+tone+'" style="width:'+fill.toFixed(1)+'%"></div><div class="pace-mark" style="left:'+mark.toFixed(1)+'%"></div></div><span class="pace-num">'+Math.round(x.paceRatio*100)+'%</span></div>'; }
 function spark(vals,delta){ const v=vals.map(x=>isFinite(x)?x:null).filter(x=>x!==null); if(v.length<2) return '<svg class="spark"></svg>'; const min=Math.min(...v),max=Math.max(...v),W=84,H=26; const pts=v.map((y,i)=>(i/(v.length-1)*W).toFixed(1)+','+(H-3-((y-min)/((max-min)||1))*(H-6)).toFixed(1)).join(' '); const cls=Math.abs(delta)<1?'':(delta>0?'up':'down'); return '<svg class="spark" viewBox="0 0 84 26" aria-hidden="true"><polyline class="'+cls+'" points="'+pts+'"/></svg>'; }
 
@@ -2163,7 +2179,7 @@ function noDataPanel(x){
 }
 function syncChips(x){ const s=x.sync||{}; const order=['meta','google','shopify','ga4','sitewatch']; return order.filter(k=>s[k]&&typeof s[k]==='object').map(k=>{ const v=s[k]; const tone=v.mode==='sample'?'warn':v.ok?'good':(v.mode==='waiting'?'neutral':'bad'); const label=v.mode==='sample'?'sample':v.mode==='waiting'?'waiting':v.ok?ago(v.at):'failed'; return '<span class="chip '+tone+'" title="'+esc(v.error||'')+'">'+cap(k==='ga4'?'GA4':k==='sitewatch'?'Site':k)+' · '+label+'</span>'; }).join(' ')||'<span class="chip neutral">no sources</span>'; }
 function pacePanel(x){ const c=x.c; const dom=parseInt(D.today.slice(8),10), dim=new Date(parseInt(D.today.slice(0,4)),parseInt(D.today.slice(5,7)),0).getDate(); const tone=x.paceRatio>1.15?'bad':(x.paceRatio<0.85?'warn':'');
-  return '<div class="glass-panel"><h2>Pacing, month to date</h2>'+(c.budget?'<div class="pacelist"><span class="k">Budget</span><span class="v">'+fmtMoney(c.budget,c)+'</span><span class="k">Spent so far</span><span class="v">'+fmtMoney(x.mtd.spend,c)+'</span><span class="k">Should be at by today</span><span class="v">'+fmtMoney(x.expected,c)+'</span><span class="k">Projected month end</span><span class="v">'+fmtMoney(x.projected,c)+'</span></div><div class="pace big"><div class="pace-track"><div class="pace-fill '+tone+'" style="width:'+Math.min(100,x.mtd.spend/c.budget*100).toFixed(1)+'%"></div><div class="pace-mark" style="left:'+(dom/dim*100).toFixed(1)+'%"></div></div><span class="pace-num">'+Math.round(x.paceRatio*100)+'%</span></div><div class="note">'+(x.paceRatio>1.15?'Running hot. Either the client approved extra budget or daily caps drifted. Confirm before the invoice does.':(x.paceRatio<0.85?'Running cold. Unspent budget reads as lost opportunity to the client. Scale winners or say why you are holding.':'On track. Day '+dom+' of '+dim+'.'))+'</div>':'<div class="note">No monthly budget set. Add it in clients.json to get pacing.</div>')+'</div>'; }
+  return '<div class="glass-panel"><h2>Pacing, month to date</h2>'+(c.budget?'<div class="pacelist"><span class="k">Budget</span><span class="v">'+fmtMoney(c.budget,c)+'</span><span class="k">Spent so far</span><span class="v">'+fmtMoney(x.mtd.spend,c)+'</span><span class="k">Daily budget</span><span class="v">'+fmtMoney(x.dailyPlan,c)+'</span><span class="k">Yesterday spent</span><span class="v">'+fmtMoney(x.yest.spend,c)+(dayPace(x)?' <span class="rpace-day '+dayPace(x).t+'">'+dayPace(x).txt+'</span>':'')+'</span><span class="k">Needed per day from today</span><span class="v">'+fmtMoney(x.needPerDay,c)+'</span><span class="k">Should be at by today</span><span class="v">'+fmtMoney(x.expected,c)+'</span><span class="k">Projected month end</span><span class="v">'+fmtMoney(x.projected,c)+'</span></div><div class="pace big"><div class="pace-track"><div class="pace-fill '+tone+'" style="width:'+Math.min(100,x.mtd.spend/c.budget*100).toFixed(1)+'%"></div><div class="pace-mark" style="left:'+(dom/dim*100).toFixed(1)+'%"></div></div><span class="pace-num">'+Math.round(x.paceRatio*100)+'%</span></div><div class="note">'+(x.paceRatio>1.15?'Running hot. Either the client approved extra budget or daily caps drifted. Confirm before the invoice does.':(x.paceRatio<0.85?'Running cold. Unspent budget reads as lost opportunity to the client. Scale winners or say why you are holding.':'On track. Day '+dom+' of '+dim+'.'))+'</div>':'<div class="note">No monthly budget set. Add it in clients.json to get pacing.</div>')+'</div>'; }
 function intradayPanel(x){
   const c=x.c, isE=c.type==='ecom', t=x.intraToday, w=x.intraWeek; const hours=t?Object.keys(t.hours).sort():[];
   if(!hours.length) return '<div class="glass-panel"><h2>Today so far</h2><div class="note" style="margin-top:0">Fills in after the first hourly sync of the day. Spend '+fmtMoney(x.todayA.spend,c)+', '+(isE?fmtNum(x.todayA.salesCount)+' '+(x.todayA.hasShop?'orders':'purchases'):isApp(c)?fmtNum(x.todayA.installs)+' installs':fmtNum(x.todayA.leads)+' leads')+' so far.</div></div>';
