@@ -8,58 +8,88 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  /* Same system as the main Per4mance Desk dashboard: warm paper ground, one hairline border,
-     one soft shadow, coral accent held for action and state only. */
+  /* Same system as the main Per4mance Desk dashboard: warm paper ground with a faint grid, one
+     hairline border + soft shadow per surface, coral accent held for action and state only. */
   :root{
     --bg:#FAF9F7; --surface:#FFFFFF; --border:#E8E5E0; --border-strong:#D6D2CB;
     --accent:#F06445; --accent-2:#D94E30; --accent-ink:#fff; --accent-soft:rgba(240,100,69,0.10);
-    --fg:#171717; --fg-muted:#6B6B6B; --dim:#4C4A46;
+    --fg:#171717; --fg-muted:#6B6B6B; --dim:#4C4A46; --lattice:rgba(23,23,23,0.016);
     --good:#2E8B68; --good-bg:rgba(46,139,104,0.11);
     --warn:#B6761F; --warn-bg:rgba(182,118,31,0.12);
     --bad:#C0392B; --bad-bg:rgba(192,57,43,0.1);
-    --radius:14px;
+    --radius:18px;
     --lift-1:0 1px 2px rgba(23,23,23,0.04);
-    --lift-2:0 1px 2px rgba(23,23,23,0.04),0 8px 20px -14px rgba(23,23,23,0.22);
+    --lift-2:0 1px 2px rgba(23,23,23,0.04),0 10px 26px -16px rgba(23,23,23,0.26);
+    --chev:%236B6B6B;
   }
   *{box-sizing:border-box;}
-  body{ margin:0; background:var(--bg); color:var(--fg);
+  body{ margin:0; min-height:100vh; background-color:var(--bg); color:var(--fg);
+        background-image:linear-gradient(var(--lattice) 1px,transparent 1px),linear-gradient(90deg,var(--lattice) 1px,transparent 1px);
+        background-size:48px 48px; background-attachment:fixed;
         font:15px/1.55 "Hanken Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
         -webkit-font-smoothing:antialiased; }
   .disp{ font-family:"Bricolage Grotesque","Hanken Grotesk",sans-serif; letter-spacing:-.02em; }
-  .wrap{ max-width:560px; margin:0 auto; padding:28px 16px 64px; }
-  header{ margin-bottom:22px; }
-  header .eyebrow{ font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:700; }
-  header h1{ margin:5px 0 3px; font-size:24px; font-weight:700; }
-  header .who{ font-size:13px; color:var(--fg-muted); }
+  .wrap{ max-width:540px; margin:0 auto; padding:32px 16px 70px; }
+  header{ margin-bottom:24px; }
+  .brand-row{ display:flex; align-items:center; gap:12px; margin-bottom:2px; }
+  .mark{ width:36px; height:36px; border-radius:10px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+         background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:#fff; font-family:"Bricolage Grotesque",sans-serif;
+         font-weight:800; font-size:14px; letter-spacing:-.03em; box-shadow:0 3px 10px -3px rgba(240,100,69,.55); }
+  header .eyebrow{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:700; }
+  header h1{ margin:2px 0 0; font-size:25px; font-weight:700; font-family:"Bricolage Grotesque",sans-serif; letter-spacing:-.02em; }
+  header .who{ font-size:13px; color:var(--fg-muted); margin-top:10px; }
   header .who a{ color:var(--dim); }
   .card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
-         padding:20px; margin-bottom:16px; box-shadow:var(--lift-1); }
-  label{ display:block; font-size:12.5px; font-weight:600; letter-spacing:.01em; color:var(--dim); margin:16px 0 6px; }
+         padding:22px; margin-bottom:16px; box-shadow:var(--lift-2); }
+  label{ display:block; font-size:12.5px; font-weight:600; letter-spacing:.01em; color:var(--dim); margin:18px 0 7px; }
   label:first-child{ margin-top:0; }
-  select, textarea, input[type=file]{
-    width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:10px;
-    font-size:15px; font-family:inherit; background:#fff; color:var(--fg); transition:border-color .15s ease;
+  select, textarea{
+    width:100%; padding:11px 13px; border:1px solid var(--border); border-radius:11px;
+    font-size:15px; font-family:inherit; background:#fff; color:var(--fg); transition:border-color .15s ease,box-shadow .15s ease;
   }
-  select:focus, textarea:focus, input[type=file]:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+  select{ appearance:none; -webkit-appearance:none; -moz-appearance:none; cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%236B6B6B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 13px center; background-size:16px; padding-right:38px; }
+  select:focus, textarea:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
   textarea{ resize:vertical; min-height:60px; }
-  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:6px;
-        padding:11px 18px; border-radius:10px; border:1px solid transparent; font-size:15px;
+  .dropzone{ display:flex; align-items:center; gap:12px; width:100%; padding:14px; border:1.5px dashed var(--border-strong);
+    border-radius:13px; background:var(--bg); cursor:pointer; transition:border-color .15s ease,background .15s ease; }
+  .dropzone:hover{ border-color:var(--accent); }
+  .dropzone.drag{ border-color:var(--accent); background:var(--accent-soft); }
+  .dropzone.has-file{ border-style:solid; border-color:var(--border); background:var(--surface); }
+  .dropzone .dz-icon{ width:38px; height:38px; border-radius:10px; background:var(--accent-soft); color:var(--accent);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .dropzone .dz-text{ font-size:13.5px; color:var(--dim); line-height:1.4; min-width:0; }
+  .dropzone .dz-text b{ color:var(--fg); font-weight:600; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .dropzone .dz-text small{ display:block; color:var(--fg-muted); font-size:11.5px; margin-top:1px; }
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:7px;
+        padding:12px 18px; border-radius:11px; border:1px solid transparent; font-size:15px;
         font-weight:600; cursor:pointer; font-family:inherit; transition:background .15s ease,transform .15s ease,border-color .15s ease; }
   .btn:active{ transform:translateY(1px); }
-  .btn-primary{ background:var(--accent); color:var(--accent-ink); width:100%; margin-top:18px; box-shadow:0 1px 2px rgba(23,23,23,.08); }
-  .btn-primary:hover:not(:disabled){ background:var(--accent-2); }
+  .btn-primary{ background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:var(--accent-ink); width:100%; margin-top:20px;
+    box-shadow:0 4px 14px -5px rgba(240,100,69,.55); }
+  .btn-primary:hover:not(:disabled){ filter:brightness(1.04); }
+  .btn-primary:hover:not(:disabled) svg{ transform:translateX(2px); }
+  .btn-primary svg{ transition:transform .15s ease; }
   .btn-primary:disabled{ opacity:.5; cursor:not-allowed; }
   .btn-ghost{ background:transparent; border:1px solid var(--border); color:var(--fg); }
-  .btn-ghost:hover{ border-color:var(--border-strong); }
-  .err{ color:var(--bad); background:var(--bad-bg); border-radius:9px; padding:9px 11px; font-size:13px; margin-top:10px; }
-  .code-box{ text-align:center; padding:22px 20px; }
-  .code-box .code{ font-family:"Bricolage Grotesque",monospace; font-size:34px; font-weight:800;
-                    letter-spacing:.04em; color:var(--accent); margin:6px 0 12px; }
-  .code-box .hint{ font-size:13.5px; color:var(--fg-muted); line-height:1.55; }
+  .btn-ghost:hover{ border-color:var(--border-strong); background:var(--panel-hover,rgba(23,23,23,.02)); }
+  .err{ color:var(--bad); background:var(--bad-bg); border-radius:10px; padding:10px 12px; font-size:13px; margin-top:12px; }
+  .code-box{ text-align:center; padding:6px 4px 4px; }
+  .code-badge{ display:inline-flex; align-items:center; gap:5px; background:var(--good-bg); color:var(--good);
+    font-size:11.5px; font-weight:700; letter-spacing:.01em; padding:5px 11px; border-radius:999px; margin-bottom:16px; }
+  .code-label{ font-size:12px; color:var(--fg-muted); letter-spacing:.04em; text-transform:uppercase; font-weight:600; }
+  .code-box .code{ font-family:"Bricolage Grotesque",monospace; font-size:38px; font-weight:800;
+                    letter-spacing:.05em; color:var(--accent); margin:6px 0 14px; }
+  .code-divider{ height:1px; background:var(--border); margin:18px 0 16px; }
+  .code-box .hint{ font-size:13.5px; color:var(--fg-muted); line-height:1.55; text-align:left; margin:0; }
   .code-box .hint b{ color:var(--fg); }
-  .code-box .hint code{ background:var(--accent-soft); color:var(--accent-2); padding:2px 5px; border-radius:5px; font-size:12.5px; }
-  h2{ font-size:14.5px; margin:0 0 14px; font-weight:700; letter-spacing:-.01em; }
-  .upload-row{ border-top:1px solid var(--border); padding:13px 0; }
+  .example-chip{ background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:10px 12px;
+    font-family:"Bricolage Grotesque",monospace; font-size:12px; color:var(--dim); margin-top:10px; text-align:left; word-break:break-all; }
+  .example-chip b{ color:var(--accent); font-weight:700; }
+  h2{ font-size:14.5px; margin:0 0 16px; font-weight:700; letter-spacing:-.01em; display:flex; align-items:center; gap:8px; }
+  h2 .dot{ width:7px; height:7px; border-radius:50%; background:var(--accent); flex-shrink:0; }
+  .upload-row{ border-top:1px solid var(--border); padding:14px 0; }
   .upload-row:first-of-type{ border-top:none; padding-top:0; }
   .upload-row .top{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
   .upload-row .code-sm{ font-family:"Bricolage Grotesque",monospace; font-weight:700; letter-spacing:.02em; }
@@ -67,22 +97,27 @@
   .badge{ font-size:11px; font-weight:700; letter-spacing:.02em; padding:3px 9px; border-radius:999px; white-space:nowrap; }
   .badge.pending{ background:var(--warn-bg); color:var(--warn); }
   .badge.linked{ background:var(--good-bg); color:var(--good); }
-  .perf{ margin-top:10px; display:flex; gap:16px; flex-wrap:wrap; font-size:12.5px; color:var(--fg-muted); }
-  .perf b{ display:block; font-size:15.5px; font-weight:700; color:var(--fg); }
+  .perf{ margin-top:10px; display:flex; gap:18px; flex-wrap:wrap; font-size:12px; color:var(--fg-muted); }
+  .perf b{ display:block; font-size:16px; font-weight:700; color:var(--fg); font-family:"Bricolage Grotesque",sans-serif; }
   .empty{ color:var(--fg-muted); font-size:13.5px; padding:8px 0; }
   .gate{ display:flex; min-height:100vh; align-items:center; justify-content:center; padding:20px; }
-  .gate .card{ max-width:380px; text-align:center; }
+  .gate .card{ max-width:380px; width:100%; text-align:center; }
+  .gate .brand-row{ justify-content:center; margin-bottom:14px; }
   .spin{ opacity:.55; }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){ --bg:#141312; --surface:#1C1B19; --border:#2C2A27; --border-strong:#403D38;
       --fg:#F3F1ED; --fg-muted:#8C877F; --dim:#B9B4AC; --accent:#FF7A5C; --accent-2:#F06445; --accent-ink:#1A0E0A; --accent-soft:rgba(255,122,92,0.14);
-      --good:#4FB98C; --good-bg:rgba(79,185,140,0.14); --warn:#D9A44E; --warn-bg:rgba(217,164,78,0.13); --bad:#FF7A5C; --bad-bg:rgba(255,122,92,0.13); }
-    select, textarea, input[type=file]{ background:#20201d; border-color:#2C2A27; color:#F3F1ED; }
+      --good:#4FB98C; --good-bg:rgba(79,185,140,0.14); --warn:#D9A44E; --warn-bg:rgba(217,164,78,0.13); --bad:#FF7A5C; --bad-bg:rgba(255,122,92,0.13);
+      --lattice:rgba(255,255,255,0.018); }
+    select, textarea{ background:#20201d; border-color:#2C2A27; color:#F3F1ED; }
+    select{ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%238C877F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E"); }
   }
   :root[data-theme="dark"]{ --bg:#141312; --surface:#1C1B19; --border:#2C2A27; --border-strong:#403D38;
     --fg:#F3F1ED; --fg-muted:#8C877F; --dim:#B9B4AC; --accent:#FF7A5C; --accent-2:#F06445; --accent-ink:#1A0E0A; --accent-soft:rgba(255,122,92,0.14);
-    --good:#4FB98C; --good-bg:rgba(79,185,140,0.14); --warn:#D9A44E; --warn-bg:rgba(217,164,78,0.13); --bad:#FF7A5C; --bad-bg:rgba(255,122,92,0.13); }
-  :root[data-theme="dark"] select, :root[data-theme="dark"] textarea, :root[data-theme="dark"] input[type=file]{ background:#20201d; border-color:#2C2A27; color:#F3F1ED; }
+    --good:#4FB98C; --good-bg:rgba(79,185,140,0.14); --warn:#D9A44E; --warn-bg:rgba(217,164,78,0.13); --bad:#FF7A5C; --bad-bg:rgba(255,122,92,0.13);
+    --lattice:rgba(255,255,255,0.018); }
+  :root[data-theme="dark"] select, :root[data-theme="dark"] textarea{ background:#20201d; border-color:#2C2A27; color:#F3F1ED; }
+  :root[data-theme="dark"] select{ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%238C877F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E"); }
 </style>
 </head>
 <body>
@@ -94,8 +129,13 @@ const API = (CFG.syncUrl || '').replace(/\/sync.*$/, '');
 const root = document.getElementById('root');
 let fb = null, idToken = '', me = null;
 
+const ICON_UPLOAD = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 13v8"/><path d="m8 17 4-4 4 4"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>';
+const ICON_ARROW = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+const ICON_COPY = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function loadScript(src){ return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('failed to load ' + src)); document.head.appendChild(s); }); }
+function fmtBytes(n){ if (!n) return ''; const u = ['B', 'KB', 'MB', 'GB']; let i = 0, v = n; while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; } return (v < 10 && i > 0 ? v.toFixed(1) : Math.round(v)) + ' ' + u[i]; }
 
 async function initFirebase(){
   const v = CFG.firebaseVersion || '10.14.1';
@@ -104,12 +144,16 @@ async function initFirebase(){
   fb = { auth: firebase.auth() };
 }
 
+function brandRow(){
+  return `<div class="brand-row"><div class="mark">P4</div><div><div class="eyebrow">Per4mance Guru</div></div></div>`;
+}
+
 function gate(msg, err){
   root.innerHTML = `<div class="gate"><div class="card">
-    <div style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-muted);font-weight:600">Per4mance Guru</div>
-    <h1 style="margin:6px 0 10px;font-size:20px">Creator Portal</h1>
+    ${brandRow()}
+    <h1 style="margin:2px 0 10px;font-size:22px;font-family:'Bricolage Grotesque',sans-serif">Creator Portal</h1>
     <p style="color:var(--fg-muted);font-size:14px">${esc(msg)}</p>
-    <button class="btn btn-primary" id="signin-btn">Sign in with Google</button>
+    <button class="btn btn-primary" id="signin-btn" style="margin-top:16px">Sign in with Google</button>
     ${err ? `<div class="err">${esc(err)}</div>` : ''}
   </div></div>`;
   document.getElementById('signin-btn').onclick = signIn;
@@ -138,6 +182,7 @@ function fileToBase64(file){
 }
 
 const MAX_FILE_MB = 20;
+const DZ_DEFAULT = `<b>Click to choose a file</b><small>or drag and drop · image or video, max ${MAX_FILE_MB}MB</small>`;
 
 function fmtMoney(n){ return '₹' + Math.round(n || 0).toLocaleString('en-IN'); }
 
@@ -154,8 +199,8 @@ function renderUploadRow(u){
   }
   const thumb = u.previewUrl
     ? (u.contentType || '').startsWith('video')
-      ? `<video src="${esc(u.previewUrl)}" style="width:100%;border-radius:10px;margin-top:8px;max-height:220px" controls></video>`
-      : `<img src="${esc(u.previewUrl)}" style="width:100%;border-radius:10px;margin-top:8px;max-height:220px;object-fit:cover" alt="">`
+      ? `<video src="${esc(u.previewUrl)}" style="width:100%;border-radius:11px;margin-top:10px;max-height:220px;border:1px solid var(--border)" controls></video>`
+      : `<img src="${esc(u.previewUrl)}" style="width:100%;border-radius:11px;margin-top:10px;max-height:220px;object-fit:cover;border:1px solid var(--border)" alt="">`
     : '';
   return `<div class="upload-row">
     <div class="top">
@@ -178,18 +223,36 @@ async function refreshMine(){
   }
 }
 
+function wireDropzone(){
+  const input = document.getElementById('f-file');
+  const zone = document.getElementById('f-file-zone');
+  const text = document.getElementById('f-file-text');
+  function show(file){
+    if (file) { text.innerHTML = `<b>${esc(file.name)}</b><small>${fmtBytes(file.size)} · click to change</small>`; zone.classList.add('has-file'); }
+    else { text.innerHTML = DZ_DEFAULT; zone.classList.remove('has-file'); }
+  }
+  input.addEventListener('change', () => show(input.files[0]));
+  ['dragover', 'dragenter'].forEach((ev) => zone.addEventListener(ev, (e) => { e.preventDefault(); zone.classList.add('drag'); }));
+  ['dragleave', 'drop'].forEach((ev) => zone.addEventListener(ev, (e) => { e.preventDefault(); zone.classList.remove('drag'); }));
+  zone.addEventListener('drop', (e) => {
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) { input.files = e.dataTransfer.files; show(f); }
+  });
+  return () => show(null);
+}
+
 async function boot(){
   idToken = await me.getIdToken();
   root.innerHTML = `
     <div class="wrap">
       <header>
-        <div class="eyebrow">Per4mance Guru</div>
+        ${brandRow()}
         <h1>Creator Portal</h1>
         <div class="who">Signed in as ${esc(me.email)} · <a href="#" id="signout">sign out</a></div>
       </header>
 
       <div class="card">
-        <h2>Upload a new creative</h2>
+        <h2><span class="dot"></span>Upload a new creative</h2>
         <form id="upload-form">
           <label for="f-client">Client</label>
           <select id="f-client" required></select>
@@ -199,13 +262,17 @@ async function boot(){
             <option>Static</option><option>Video</option><option>Reel</option><option>Carousel</option>
           </select>
 
-          <label for="f-file">File (image or video, max ${MAX_FILE_MB}MB)</label>
-          <input id="f-file" type="file" accept="image/*,video/*">
+          <label for="f-file">File</label>
+          <input id="f-file" type="file" accept="image/*,video/*" style="display:none">
+          <label for="f-file" class="dropzone" id="f-file-zone">
+            <span class="dz-icon">${ICON_UPLOAD}</span>
+            <span class="dz-text" id="f-file-text">${DZ_DEFAULT}</span>
+          </label>
 
           <label for="f-note">Note (optional)</label>
           <textarea id="f-note" placeholder="What is this, in a few words?"></textarea>
 
-          <button class="btn btn-primary" id="f-submit" type="submit">Get my code</button>
+          <button class="btn btn-primary" id="f-submit" type="submit"><span id="f-submit-label">Get my code</span>${ICON_ARROW}</button>
           <div class="err" id="f-err" style="display:none"></div>
         </form>
       </div>
@@ -213,12 +280,13 @@ async function boot(){
       <div class="card" id="result-card" style="display:none"></div>
 
       <div class="card">
-        <h2>My uploads</h2>
+        <h2><span class="dot"></span>My uploads</h2>
         <div id="mine-list"><div class="empty">Loading…</div></div>
       </div>
     </div>`;
 
   document.getElementById('signout').onclick = (e) => { e.preventDefault(); fb.auth.signOut(); };
+  const resetDropzone = wireDropzone();
 
   try {
     const clients = await api('/creator/clients');
@@ -233,13 +301,14 @@ async function boot(){
     e.preventDefault();
     const errBox = document.getElementById('f-err'); errBox.style.display = 'none';
     const btn = document.getElementById('f-submit');
+    const label = document.getElementById('f-submit-label');
     const fileInput = document.getElementById('f-file');
     const file = fileInput.files[0];
     if (file && file.size > MAX_FILE_MB * 1024 * 1024) {
       errBox.style.display = 'block'; errBox.textContent = `That file is over ${MAX_FILE_MB}MB. Please upload a smaller or compressed version.`;
       return;
     }
-    btn.disabled = true; btn.textContent = 'Uploading…';
+    btn.disabled = true; label.textContent = 'Uploading…';
     try {
       const payload = {
         clientId: document.getElementById('f-client').value,
@@ -252,20 +321,22 @@ async function boot(){
       const rc = document.getElementById('result-card');
       rc.style.display = 'block';
       rc.innerHTML = `<div class="code-box">
-        <div style="font-size:13px;color:var(--fg-muted)">Your code</div>
+        <div class="code-badge">✓ Upload received</div>
+        <div class="code-label">Your code</div>
         <div class="code">${esc(r.code)}</div>
-        <button class="btn btn-ghost" id="copy-code">Copy code</button>
-        <p class="hint">Paste this as the <b>last</b> part of the ad's name in Meta Ads Manager,
-        after the final "|", once it goes live. Example:<br>
-        <code>... | Girl Boxers | Reels | 19-09-25 | ${esc(r.code)}</code></p>
+        <button class="btn btn-ghost" id="copy-code">${ICON_COPY} Copy code</button>
+        <div class="code-divider"></div>
+        <p class="hint">Paste this as the <b>last</b> part of the ad's name in Meta Ads Manager, after the final "|", once it goes live:</p>
+        <div class="example-chip">... | Girl Boxers | Reels | 19-09-25 | <b>${esc(r.code)}</b></div>
       </div>`;
       document.getElementById('copy-code').onclick = () => { navigator.clipboard?.writeText(r.code); };
       document.getElementById('upload-form').reset();
+      resetDropzone();
       refreshMine();
     } catch (e) {
       errBox.style.display = 'block'; errBox.textContent = e.message || String(e);
     } finally {
-      btn.disabled = false; btn.textContent = 'Get my code';
+      btn.disabled = false; label.textContent = 'Get my code';
     }
   };
 
