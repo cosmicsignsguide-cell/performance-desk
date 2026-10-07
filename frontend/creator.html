@@ -30,17 +30,30 @@
         -webkit-font-smoothing:antialiased; }
   .disp{ font-family:"Bricolage Grotesque","Hanken Grotesk",sans-serif; letter-spacing:-.02em; }
   .wrap{ max-width:540px; margin:0 auto; padding:32px 16px 70px; }
-  header{ margin-bottom:24px; }
-  .brand-row{ display:flex; align-items:center; gap:12px; margin-bottom:2px; }
+  @keyframes fadeInUp{ from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+  header{ margin-bottom:18px; }
+  .hero{ position:relative; overflow:hidden; background:linear-gradient(150deg,var(--accent-soft),transparent 60%) var(--surface);
+    border:1px solid var(--border); border-radius:var(--radius); padding:26px 24px; box-shadow:var(--lift-2);
+    animation:fadeInUp .45s ease both; }
+  .hero::after{ content:""; position:absolute; top:-50px; right:-50px; width:160px; height:160px; border-radius:50%;
+    background:radial-gradient(circle,var(--accent-soft),transparent 72%); pointer-events:none; }
+  .hero-sub{ margin:9px 0 0; font-size:13.5px; color:var(--fg-muted); position:relative; z-index:1; max-width:85%; }
+  .brand-row{ display:flex; align-items:center; gap:12px; margin-bottom:2px; position:relative; z-index:1; }
   .mark{ width:36px; height:36px; border-radius:10px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
          background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:#fff; font-family:"Bricolage Grotesque",sans-serif;
          font-weight:800; font-size:14px; letter-spacing:-.03em; box-shadow:0 3px 10px -3px rgba(240,100,69,.55); }
   header .eyebrow{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:700; }
-  header h1{ margin:2px 0 0; font-size:25px; font-weight:700; font-family:"Bricolage Grotesque",sans-serif; letter-spacing:-.02em; }
-  header .who{ font-size:13px; color:var(--fg-muted); margin-top:10px; }
+  header h1{ margin:2px 0 0; font-size:25px; font-weight:700; font-family:"Bricolage Grotesque",sans-serif; letter-spacing:-.02em;
+    position:relative; z-index:1; }
+  header .who{ font-size:13px; color:var(--fg-muted); margin-top:12px; }
   header .who a{ color:var(--dim); }
-  .card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
-         padding:22px; margin-bottom:16px; box-shadow:var(--lift-2); }
+  .card{ position:relative; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+         padding:22px; margin-bottom:16px; box-shadow:var(--lift-2); animation:fadeInUp .45s ease both; }
+  .card.accent::before{ content:""; position:absolute; top:0; left:0; right:0; height:4px;
+    border-radius:var(--radius) var(--radius) 0 0; background:linear-gradient(90deg,var(--accent),var(--accent-2)); }
+  .wrap > .card:nth-of-type(1){ animation-delay:.06s; }
+  .wrap > .card:nth-of-type(2){ animation-delay:.11s; }
+  .wrap > .card:nth-of-type(3){ animation-delay:.16s; }
   label{ display:block; font-size:12.5px; font-weight:600; letter-spacing:.01em; color:var(--dim); margin:18px 0 7px; }
   label:first-child{ margin-top:0; }
   select, textarea{
@@ -79,8 +92,9 @@
   .code-badge{ display:inline-flex; align-items:center; gap:5px; background:var(--good-bg); color:var(--good);
     font-size:11.5px; font-weight:700; letter-spacing:.01em; padding:5px 11px; border-radius:999px; margin-bottom:16px; }
   .code-label{ font-size:12px; color:var(--fg-muted); letter-spacing:.04em; text-transform:uppercase; font-weight:600; }
+  @keyframes codePop{ 0%{opacity:0;transform:scale(.8)} 55%{opacity:1;transform:scale(1.06)} 100%{transform:scale(1)} }
   .code-box .code{ font-family:"Bricolage Grotesque",monospace; font-size:38px; font-weight:800;
-                    letter-spacing:.05em; color:var(--accent); margin:6px 0 14px; }
+                    letter-spacing:.05em; color:var(--accent); margin:6px 0 14px; animation:codePop .5s cubic-bezier(.22,.9,.3,1) both; }
   .code-divider{ height:1px; background:var(--border); margin:18px 0 16px; }
   .code-box .hint{ font-size:13.5px; color:var(--fg-muted); line-height:1.55; text-align:left; margin:0; }
   .code-box .hint b{ color:var(--fg); }
@@ -146,6 +160,9 @@ async function initFirebase(){
 
 function brandRow(){
   return `<div class="brand-row"><div class="mark">P4</div><div><div class="eyebrow">Per4mance Guru</div></div></div>`;
+}
+function heroPanel(sub){
+  return `<div class="hero">${brandRow()}<h1>Creator Portal</h1><p class="hero-sub">${esc(sub)}</p></div>`;
 }
 
 function gate(msg, err){
@@ -246,12 +263,11 @@ async function boot(){
   root.innerHTML = `
     <div class="wrap">
       <header>
-        ${brandRow()}
-        <h1>Creator Portal</h1>
+        ${heroPanel('Upload what you made, get a code, paste it on the live ad. We track the rest.')}
         <div class="who">Signed in as ${esc(me.email)} · <a href="#" id="signout">sign out</a></div>
       </header>
 
-      <div class="card">
+      <div class="card accent">
         <h2><span class="dot"></span>Upload a new creative</h2>
         <form id="upload-form">
           <label for="f-client">Client</label>

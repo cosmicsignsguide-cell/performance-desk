@@ -61,6 +61,38 @@
   .stat .num{ font-size:23px; font-weight:700; font-family:"Bricolage Grotesque",sans-serif; letter-spacing:-.02em; font-variant-numeric:tabular-nums; line-height:1.1; }
   .stat .lbl{ font-size:11.5px; color:var(--fg-muted); margin-top:2px; }
   @media (max-width:640px){ .stat{ flex:1 1 50%; border-left:none; border-top:1px solid var(--border); } .stat:nth-child(1),.stat:nth-child(2){ border-top:none; } }
+  @keyframes fadeInUp{ from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+  .card, .stat-row, .podium-card{ animation:fadeInUp .45s ease both; }
+  .stat-row{ animation-delay:.04s; }
+  .podium{ display:flex; flex-direction:column; gap:12px; margin-bottom:16px; }
+  .podium-card{ position:relative; background:var(--surface); border:1px solid var(--border); border-radius:18px;
+    padding:20px 18px; text-align:center; box-shadow:var(--lift-2); overflow:hidden; }
+  .podium-card::before{ content:""; position:absolute; inset:0; opacity:.09; pointer-events:none; }
+  .podium-card.p1::before{ background:linear-gradient(160deg,var(--gold),transparent 65%); }
+  .podium-card.p2::before{ background:linear-gradient(160deg,#8C877F,transparent 65%); }
+  .podium-card.p3::before{ background:linear-gradient(160deg,#B07A4A,transparent 65%); }
+  .podium-card:nth-child(1){ animation-delay:.08s; } .podium-card:nth-child(2){ animation-delay:.13s; } .podium-card:nth-child(3){ animation-delay:.18s; }
+  .podium-rank{ font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--fg-muted); position:relative; z-index:1; }
+  .podium-card.p1 .podium-rank{ color:var(--gold); }
+  .podium-card.p2 .podium-rank{ color:#8C877F; }
+  .podium-card.p3 .podium-rank{ color:#B07A4A; }
+  .podium-crown{ font-size:22px; line-height:1; margin:2px 0 6px; position:relative; z-index:1; }
+  .podium-avatar{ width:56px; height:56px; border-radius:50%; margin:4px auto 10px; display:flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:800; font-size:18px; font-family:"Bricolage Grotesque",sans-serif; box-shadow:0 4px 12px -3px rgba(0,0,0,.25); position:relative; z-index:1; }
+  .podium-card.p1 .podium-avatar{ width:72px; height:72px; font-size:22px; }
+  .podium-name{ font-weight:700; font-size:14.5px; position:relative; z-index:1; }
+  .podium-email{ font-size:11px; color:var(--fg-muted); margin-top:1px; position:relative; z-index:1; }
+  .podium-stats{ display:flex; justify-content:center; gap:18px; margin-top:13px; position:relative; z-index:1; }
+  .podium-stats div{ text-align:center; }
+  .podium-stats b{ display:block; font-size:16px; font-weight:800; font-family:"Bricolage Grotesque",sans-serif; }
+  .podium-stats span{ font-size:9.5px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.05em; }
+  @media (min-width:620px){
+    .podium{ flex-direction:row; align-items:flex-end; }
+    .podium-card{ flex:1; }
+    .podium-card.p1{ order:2; padding-top:26px; padding-bottom:26px; }
+    .podium-card.p2{ order:1; }
+    .podium-card.p3{ order:3; }
+  }
   table{ width:100%; border-collapse:collapse; font-size:14px; }
   th{ text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:600;
       padding:12px 12px; border-bottom:1px solid var(--border); }
@@ -174,6 +206,24 @@ function render(doc, key){
     return;
   }
 
+  const top3 = (doc.creators || []).slice(0, 3);
+  const podiumHtml = top3.length ? `<div class="podium">${top3.map((c, i) => {
+    const cls = i === 0 ? 'p1' : i === 1 ? 'p2' : 'p3';
+    const rankLabel = i === 0 ? '1st place' : i === 1 ? '2nd place' : '3rd place';
+    const crown = i === 0 ? '👑' : '';
+    return `<div class="podium-card ${cls}">
+      ${crown ? `<div class="podium-crown">${crown}</div>` : ''}
+      <div class="podium-rank">${rankLabel}</div>
+      <div class="podium-avatar" style="background:${avatarColor(c.creatorEmail)}">${esc(initials(c.creatorName))}</div>
+      <div class="podium-name">${esc(c.creatorName)}</div>
+      <div class="podium-email">${esc(c.creatorEmail)}</div>
+      <div class="podium-stats">
+        <div><b>${c.qty}</b><span>Qty</span></div>
+        <div><b>${c.effectiveness}</b><span>Effectiveness</span></div>
+      </div>
+    </div>`;
+  }).join('')}</div>` : '';
+
   const rows = (doc.creators || []).map((c, i) => {
     const maxQty = Math.max(1, ...doc.creators.map((x) => x.qty));
     const pct = Math.round((c.qty / maxQty) * 100);
@@ -218,6 +268,8 @@ function render(doc, key){
       <div class="stat"><div class="ic">${ICON_TAG}</div><div><div class="num">${doc.untaggedAdsSeen ?? 0}</div><div class="lbl">Untagged ads</div></div></div>
       <div class="stat"><div class="ic">${ICON_FLAG}</div><div><div class="num">${doc.unresolvedCodes ?? 0}</div><div class="lbl">Unknown codes</div></div></div>
     </div>
+
+    ${podiumHtml}
 
     <div class="card" style="padding:0;overflow:hidden">
       ${doc.creators && doc.creators.length ? `<table>
