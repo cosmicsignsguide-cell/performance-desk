@@ -19,6 +19,7 @@ import { runSitewatch } from './sitewatch.js';
 import { computeSignals } from './signals.js';
 import { ensureReportTokens, listLinks, reportPayload, reportUrl, resolveToken, rotateReportToken, videoPreviewFor, videoUrlFor } from './report.js';
 import { weeklyReports } from './gamma.js';
+import { computeCreatorScores } from './creators.js';
 import { raise } from './alerts.js';
 import { verifyShopify } from './verify.js';
 import Sample from './sample.cjs';
@@ -316,6 +317,16 @@ async function main() {
         await store.merge('meta', 'lastRun', { weekly: nowIso() });
         return { mode, clients: clients.length, ...r };
       }
+      if (mode === 'creators') {
+        // Creative-team incentive scorecard, built from the entity trees already synced today.
+        // ?since=&until= overrides the default current-Monday-to-today window for a one-off
+        // recompute of a past week; otherwise it is always "this week so far".
+        const since = url.searchParams.get('since') || undefined;
+        const until = url.searchParams.get('until') || undefined;
+        const r = await computeCreatorScores(store, clients, { since, until });
+        await store.merge('meta', 'lastRun', { creators: nowIso() });
+        return { mode, weekId: r.weekId, creators: r.creators.length, teamAvgQty: r.teamAvgQty };
+      }
       // ?client=<id> syncs one account instead of the whole book. Chasing a single failing client
       // through a 31 account run costs a few thousand Firestore writes and a real dent in the Meta
       // rate limit, and the other thirty were already fine. The run is not recorded as the day's
@@ -349,6 +360,10 @@ async function main() {
       }
       let verified;
       if (mode === 'daily' && !only) { try { verified = await verifyShopify(store, clients); await store.merge('meta', 'lastRun', { verify: nowIso(), verifySummary: `${verified.clean} clean, ${verified.mismatched} mismatched, ${verified.skipped} skipped` }); } catch (e) { log('verify after daily failed: ' + String(e.message || e).slice(0, 120)); } }
+      // Creator scorecard rides the existing daily cron rather than needing a schedule of its
+      // own: every full-book daily sync also refreshes "this week so far" from the entity trees
+      // it just pulled. Wrapped so a scoring bug costs the scorecard, never the sync it rides on.
+      if (mode === 'daily' && !only) { try { await computeCreatorScores(store, clients); } catch (e) { log('creator scores after daily failed: ' + String(e.message || e).slice(0, 120)); } }
       if (!only) await store.merge('meta', 'lastRun', { [mode]: nowIso() });
       return { mode, clients: list.length, ...(verified ? { verify: { clean: verified.clean, mismatched: verified.mismatched } } : {}), ...(only ? { client: only } : {}), ...(failures.length ? { failures } : {}) };
     }
@@ -435,7 +450,7 @@ async function main() {
         return;
       }
 
-      if (!['/sync', '/run', '/links', '/rotate'].includes(url.pathname)) { res.writeHead(404); res.end('not found'); return; }
+      if (!['/sync', '/run', '/links', '/rotate', '/creators'].includes(url.pathname)) { res.writeHead(404); res.end('not found'); return; }
 
       // Two ways in, and only one of them may ever reach a browser.
       //
@@ -457,8 +472,12 @@ async function main() {
       // screen, but that copy is advisory only. This one decides.
       const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
       const key = bearer || url.searchParams.get('key') || '';
-      const keyOk = !!process.env.DESK_SYNC_KEY && key === process.env.DESK_SYNC_KEY;
-      let who = keyOk ? 'sync key' : '';
+      // DESK_CREATORS_KEY is a second, narrower shared key: read-only, /creators only, so the
+      // scorecard can be pulled by a separate tool without handing out the main sync key, which
+      // can also trigger a full daily/backfill run against every client's ad accounts.
+      const creatorsKeyOk = url.pathname === '/creators' && !!process.env.DESK_CREATORS_KEY && key === process.env.DESK_CREATORS_KEY;
+      const keyOk = (!!process.env.DESK_SYNC_KEY && key === process.env.DESK_SYNC_KEY) || creatorsKeyOk;
+      let who = keyOk ? (creatorsKeyOk ? 'creators key' : 'sync key') : '';
 
       if (!keyOk && bearer.includes('.')) {           // a JWT has dots; a shared key does not
         try {
@@ -488,6 +507,17 @@ async function main() {
         return;
       }
 
+      // GET /creators?week=<id> — the latest computed incentive scorecard (or a named past
+      // week's). Read-only: it never triggers a sync or a recompute, only /run?mode=creators
+      // does that. "current" (the default) is always this week so far.
+      if (url.pathname === '/creators') {
+        const wid = url.searchParams.get('week') || 'current';
+        const doc = await store.get('creatorScores', wid);
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(doc || { error: `no scorecard for "${wid}" yet` }));
+        return;
+      }
+
       // GET /rotate?client=<id> — kill the old link and issue a new one.
       if (url.pathname === '/rotate') {
         const id = url.searchParams.get('client') || '';
@@ -499,7 +529,7 @@ async function main() {
       }
 
       const asked = url.searchParams.get('mode');
-      const mode = ['daily', 'hourly', 'sitewatch', 'weekly', 'verify'].includes(asked) ? asked : 'hourly';
+      const mode = ['daily', 'hourly', 'sitewatch', 'weekly', 'verify', 'creators'].includes(asked) ? asked : 'hourly';
       // ?days=N restates N days of history instead of the usual 7. Ignored for hourly and
       // sitewatch, which have nothing to restate.
       const days = mode === 'daily' ? parseInt(url.searchParams.get('days') || '', 10) : NaN;
