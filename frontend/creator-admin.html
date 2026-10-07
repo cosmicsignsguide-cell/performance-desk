@@ -163,14 +163,19 @@ function render(doc, key){
 
 async function load(key){
   root.innerHTML = '<div class="wrap"><div class="card"><div class="empty">Loading…</div></div></div>';
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
   try {
-    const r = await fetch(API + '/creators?week=current', { headers: { Authorization: 'Bearer ' + key } });
+    const r = await fetch(API + '/creators?week=current', { headers: { Authorization: 'Bearer ' + key }, signal: ctrl.signal });
+    clearTimeout(timer);
     if (r.status === 401 || r.status === 403) { localStorage.removeItem(KEY_STORE); gate('Wrong key.'); return; }
     if (!r.ok) throw new Error(await r.text().catch(() => r.statusText));
     const doc = await r.json();
     render(doc, key);
   } catch (e) {
-    root.innerHTML = `<div class="wrap"><div class="card"><div class="err">Could not load: ${esc(e.message || e)}</div>
+    clearTimeout(timer);
+    const msg = e && e.name === 'AbortError' ? 'Request timed out after 15s. Check your internet connection and try again.' : (e.message || e);
+    root.innerHTML = `<div class="wrap"><div class="card"><div class="err">Could not load: ${esc(msg)}</div>
       <button class="btn" id="retry" style="margin-top:10px">Retry</button></div></div>`;
     document.getElementById('retry').onclick = () => load(key);
   }

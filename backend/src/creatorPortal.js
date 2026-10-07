@@ -34,15 +34,34 @@ async function genCode(store) {
 const MAX_FILE_BYTES = 20 * 1024 * 1024;   // 20MB: a provenance record, not master storage
 
 let bucketCache = null;
+// Newer Firebase projects (created after Oct 2024) default to a
+// "<project>.firebasestorage.app" bucket; older ones use "<project>.appspot.com".
+// Rather than guess one and fail, try the real candidates and use whichever one
+// actually exists -- that way this keeps working whichever convention this project
+// got assigned, with no manual bucket-name lookup needed.
 async function bucket() {
   if (bucketCache) return bucketCache;
   if (!has('firebase')) throw new Error('Firebase is not configured on this server (FIREBASE_SERVICE_ACCOUNT_JSON missing)');
   const admin = (await import('firebase-admin')).default;
   const sa = JSON.parse(config.firebase.serviceAccountJson);
   if (!admin.apps.length) admin.initializeApp({ credential: admin.credential.cert(sa), projectId: config.firebase.projectId || sa.project_id });
-  const name = process.env.DESK_STORAGE_BUCKET || `${(config.firebase.projectId || sa.project_id)}.appspot.com`;
-  bucketCache = admin.storage().bucket(name);
-  return bucketCache;
+  const projectId = config.firebase.projectId || sa.project_id;
+  const candidates = process.env.DESK_STORAGE_BUCKET
+    ? [process.env.DESK_STORAGE_BUCKET]
+    : [`${projectId}.firebasestorage.app`, `${projectId}.appspot.com`];
+  const storage = admin.storage();
+  for (const name of candidates) {
+    try {
+      const b = storage.bucket(name);
+      const [exists] = await b.exists();
+      if (exists) { bucketCache = b; return b; }
+    } catch { /* try the next candidate */ }
+  }
+  throw new Error(
+    `No Firebase Storage bucket found for project "${projectId}" (tried: ${candidates.join(', ')}). ` +
+    `In the Firebase console, go to Build -> Storage and click "Get started" to create the default bucket ` +
+    `(this requires turning on the Blaze pay-as-you-go plan, even though real usage will stay near $0).`
+  );
 }
 
 function safeName(name) {
