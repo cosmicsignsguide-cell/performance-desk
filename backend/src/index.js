@@ -20,6 +20,7 @@ import { computeSignals } from './signals.js';
 import { ensureReportTokens, listLinks, reportPayload, reportUrl, resolveToken, rotateReportToken, videoPreviewFor, videoUrlFor } from './report.js';
 import { weeklyReports } from './gamma.js';
 import { computeCreatorScores } from './creators.js';
+import { createUpload, listMine } from './creatorPortal.js';
 import { raise } from './alerts.js';
 import { verifyShopify } from './verify.js';
 import Sample from './sample.cjs';
@@ -450,7 +451,8 @@ async function main() {
         return;
       }
 
-      if (!['/sync', '/run', '/links', '/rotate', '/creators'].includes(url.pathname)) { res.writeHead(404); res.end('not found'); return; }
+      const isCreatorRoute = url.pathname.startsWith('/creator/');
+      if (!isCreatorRoute && !['/sync', '/run', '/links', '/rotate', '/creators'].includes(url.pathname)) { res.writeHead(404); res.end('not found'); return; }
 
       // Two ways in, and only one of them may ever reach a browser.
       //
@@ -507,15 +509,78 @@ async function main() {
         return;
       }
 
-      // GET /creators?week=<id> — the latest computed incentive scorecard (or a named past
-      // week's). Read-only: it never triggers a sync or a recompute, only /run?mode=creators
-      // does that. "current" (the default) is always this week so far.
+      // GET /creators?week=<id> — the full, every-creator leaderboard. Admin-only by design: a
+      // creator's own Firebase sign-in (checked above, which is enough for /creator/* further
+      // down) does NOT unlock this one, only the two shared keys do, so a teammate signed in
+      // with an ordinary per4mance.guru account cannot see how everyone else scored. Read-only:
+      // it never triggers a sync or a recompute, only /run?mode=creators does that. "current"
+      // (the default) is always this week so far.
       if (url.pathname === '/creators') {
+        if (!keyOk) { res.writeHead(403); res.end('admin only'); return; }
         const wid = url.searchParams.get('week') || 'current';
         const doc = await store.get('creatorScores', wid);
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify(doc || { error: `no scorecard for "${wid}" yet` }));
         return;
+      }
+
+      // Creator Portal routes. These accept a signed-in teammate's own Firebase token (set
+      // above as `who` = their email) but NOT the shared keys, because there is no "me" for a
+      // shared key to mean — isCreator below is what actually enforces that.
+      if (isCreatorRoute) {
+        const isCreator = who.includes('@');
+        if (!isCreator) { res.writeHead(403); res.end('sign in with your own account'); return; }
+
+        // GET /creator/clients — the dropdown list for the upload form.
+        if (url.pathname === '/creator/clients' && req.method === 'GET') {
+          const clients = (await loadClients()).filter((c) => c.type === 'ecom' && !c.sample);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(clients.map((c) => ({ id: c.id, name: c.name }))));
+          return;
+        }
+
+        // GET /creator/mine — this person's own uploads, with live performance once linked.
+        if (url.pathname === '/creator/mine' && req.method === 'GET') {
+          const rows = await listMine(store, who);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(rows));
+          return;
+        }
+
+        // POST /creator/upload — { clientId, format, note, fileName, contentType, fileBase64 }.
+        // Body is read as JSON rather than multipart because this server has no framework and a
+        // hand-rolled multipart parser is a worse place to get something subtly wrong than a
+        // size-capped JSON read. Capped well above the file cap in creatorPortal.js so the cap
+        // the uploader actually sees is the friendly one, not a raw socket cutoff.
+        if (url.pathname === '/creator/upload' && req.method === 'POST') {
+          let body = ''; let over = false;
+          req.on('data', (c) => { body += c; if (body.length > 28 * 1024 * 1024) { over = true; req.destroy(); } });
+          req.on('end', async () => {
+            if (over) { try { res.writeHead(413); res.end('file too large'); } catch {} return; }
+            let payload;
+            try { payload = JSON.parse(body); } catch { res.writeHead(400); res.end('bad json'); return; }
+            try {
+              const clients = await loadClients();
+              const client = clients.find((c) => c.id === payload.clientId);
+              if (!client) { res.writeHead(400); res.end('unknown client'); return; }
+              const fileBuffer = payload.fileBase64 ? Buffer.from(String(payload.fileBase64), 'base64') : null;
+              const doc = await createUpload(store, {
+                creatorEmail: who, creatorName: payload.creatorName || who,
+                clientId: client.id, clientName: client.name,
+                format: payload.format, note: payload.note,
+                fileBuffer, fileName: payload.fileName, contentType: payload.contentType,
+              });
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ ok: true, code: doc.code }));
+            } catch (e) {
+              log(`creator-portal upload FAILED (${who}): ${String(e.message || e).slice(0, 200)}`);
+              res.writeHead(400); res.end(String(e.message || e).slice(0, 300));
+            }
+          });
+          return;
+        }
+
+        res.writeHead(404); res.end('not found'); return;
       }
 
       // GET /rotate?client=<id> — kill the old link and issue a new one.

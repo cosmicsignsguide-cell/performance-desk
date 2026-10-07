@@ -47,34 +47,32 @@ function titleish(t) {
   return t;
 }
 
-// Creative-team incentive tagging: the creator adds their initials as the LAST pipe segment
-// of the ad name, e.g. "PG | Firvt | MOF | Girl Boxers | Reels | 19-09-25 | MK". Checked on the
-// final segment only, never a middle one, so an ordinary two-letter word elsewhere in the name
-// is never mistaken for a tag. A segment that is already a known funnel or noise code, or a
-// date, is never read as one either, so "...| V2" or "...| 19-09-25" cannot collide with it.
-const CREATOR_TAG_RE = /^[A-Za-z]{2,4}$/;
-export function extractCreatorTag(raw) {
+// Creative-team incentive tagging: the Creator Portal hands each uploaded creative a short
+// code (e.g. "C-7K2F"), and the creator pastes it as the LAST pipe segment of the ad name once
+// it goes live, e.g. "PG | Firvt | MOF | Girl Boxers | Reels | 19-09-25 | C-7K2F". The leading
+// "C-" is what makes this safe to detect: nothing in FUNNEL or NOISE starts with it, no date or
+// month token matches it, and it is never read off a middle segment, only the last one, so an
+// ordinary word elsewhere in the name is never mistaken for it.
+const CREATOR_CODE_RE = /^C-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{4,6}$/i;
+export function extractCreatorCode(raw) {
   const src = String(raw || '').trim();
   const parts = src.split(/\s*\|\s*/).map((s) => s.trim()).filter(Boolean);
   if (parts.length < 2) return '';
   const last = parts[parts.length - 1];
-  if (!CREATOR_TAG_RE.test(last)) return '';
-  const u = last.toUpperCase();
-  if (FUNNEL[u] || NOISE.has(u)) return '';
-  if (DATEY.test(last) || MONTHY.test(last)) return '';
-  return u;
+  if (!CREATOR_CODE_RE.test(last)) return '';
+  return last.toUpperCase();
 }
 
 export function cleanName(raw, clientName, kind) {
   // Pipes are the usual separator, but underscores are just as common and leak the same way,
   // so fall back to them before giving up and treating the name as one opaque string.
   const src = String(raw || '').trim();
-  const creatorTag = extractCreatorTag(src);
+  const creatorCode = extractCreatorCode(src);
   let parts = src.split(/\s*\|\s*/).map((s) => s.trim()).filter(Boolean);
-  // The creator tag is an internal, agency-side detail (who gets credit for this creative), not
+  // The creator code is an internal, agency-side detail (who gets credit for this creative), not
   // something the client ordered or should ever see on their own report. Drop it here, before
   // any of the noise filtering below, so it never has a chance to survive as if it were content.
-  if (creatorTag && parts.length > 1) parts = parts.slice(0, -1);
+  if (creatorCode && parts.length > 1) parts = parts.slice(0, -1);
   if (parts.length < 2) parts = src.split(/\s*_\s*/).map((s) => s.trim()).filter(Boolean);
   if (parts.length < 2) parts = src.split(/\s+-\s+/).map((s) => s.trim()).filter(Boolean);  // spaced dash only, so "Anti-Tarnish" survives
   const list = parts.length > 1 ? parts : [src];

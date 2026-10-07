@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Creator Portal · Per4mance Guru</title>
+<style>
+  :root{ --bg:#f6f7f9; --surface:#fff; --border:#e2e5ea; --fg:#15181d; --fg-muted:#6b7280;
+         --accent:#0f766e; --accent-ink:#fff; --good:#15803d; --good-bg:#ecfdf5;
+         --warn:#92400e; --warn-bg:#fffbeb; --radius:14px; }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--bg); color:var(--fg);
+        font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .wrap{ max-width:560px; margin:0 auto; padding:24px 16px 64px; }
+  header{ margin-bottom:20px; }
+  header .eyebrow{ font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--fg-muted); font-weight:600; }
+  header h1{ margin:4px 0 2px; font-size:22px; }
+  header .who{ font-size:13px; color:var(--fg-muted); }
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px; margin-bottom:16px; }
+  label{ display:block; font-size:13px; font-weight:600; margin:14px 0 6px; }
+  label:first-child{ margin-top:0; }
+  select, textarea, input[type=file]{
+    width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:10px;
+    font-size:15px; font-family:inherit; background:#fff; color:var(--fg);
+  }
+  textarea{ resize:vertical; min-height:60px; }
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:6px;
+        padding:11px 18px; border-radius:10px; border:1px solid transparent; font-size:15px;
+        font-weight:600; cursor:pointer; }
+  .btn-primary{ background:var(--accent); color:var(--accent-ink); width:100%; margin-top:16px; }
+  .btn-primary:disabled{ opacity:.55; cursor:not-allowed; }
+  .btn-ghost{ background:transparent; border:1px solid var(--border); color:var(--fg); }
+  .err{ color:#b91c1c; font-size:13px; margin-top:10px; }
+  .code-box{ text-align:center; padding:20px; }
+  .code-box .code{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:32px; font-weight:700;
+                    letter-spacing:.04em; color:var(--accent); margin:6px 0 10px; }
+  .code-box .hint{ font-size:13.5px; color:var(--fg-muted); line-height:1.5; }
+  .code-box .hint b{ color:var(--fg); }
+  h2{ font-size:15px; margin:0 0 12px; }
+  .upload-row{ border-top:1px solid var(--border); padding:12px 0; }
+  .upload-row:first-of-type{ border-top:none; padding-top:0; }
+  .upload-row .top{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+  .upload-row .code-sm{ font-family:ui-monospace,Menlo,Consolas,monospace; font-weight:700; }
+  .upload-row .meta{ font-size:13px; color:var(--fg-muted); margin-top:2px; }
+  .badge{ font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap; }
+  .badge.pending{ background:var(--warn-bg); color:var(--warn); }
+  .badge.linked{ background:var(--good-bg); color:var(--good); }
+  .perf{ margin-top:8px; display:flex; gap:14px; flex-wrap:wrap; font-size:13px; }
+  .perf b{ display:block; font-size:15px; }
+  .empty{ color:var(--fg-muted); font-size:13.5px; padding:8px 0; }
+  .gate{ display:flex; min-height:100vh; align-items:center; justify-content:center; padding:20px; }
+  .gate .card{ max-width:380px; text-align:center; }
+  .spin{ opacity:.6; }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --bg:#0f1115; --surface:#181b21; --border:#2a2e37; --fg:#eef0f3;
+      --fg-muted:#9aa1ab; --accent:#2dd4bf; --accent-ink:#06211f; --good:#4ade80; --good-bg:#122018;
+      --warn:#fbbf24; --warn-bg:#241b0c; }
+    select, textarea, input[type=file]{ background:#20242c; border-color:#2a2e37; color:#eef0f3; }
+  }
+  :root[data-theme="dark"]{ --bg:#0f1115; --surface:#181b21; --border:#2a2e37; --fg:#eef0f3;
+    --fg-muted:#9aa1ab; --accent:#2dd4bf; --accent-ink:#06211f; --good:#4ade80; --good-bg:#122018;
+    --warn:#fbbf24; --warn-bg:#241b0c; }
+</style>
+</head>
+<body>
+<div id="root"><div class="gate"><div class="card"><p class="spin">Loading…</p></div></div></div>
+<script src="config.js"></script>
+<script>
+const CFG = window.DESK_CONFIG || {};
+const API = (CFG.syncUrl || '').replace(/\/sync.*$/, '');
+const root = document.getElementById('root');
+let fb = null, idToken = '', me = null;
+
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function loadScript(src){ return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('failed to load ' + src)); document.head.appendChild(s); }); }
+
+async function initFirebase(){
+  const v = CFG.firebaseVersion || '10.14.1';
+  for (const f of ['app', 'auth']) await loadScript(`https://cdn.jsdelivr.net/npm/firebase@${v}/firebase-${f}-compat.js`);
+  firebase.initializeApp(CFG.firebase);
+  fb = { auth: firebase.auth() };
+}
+
+function gate(msg, err){
+  root.innerHTML = `<div class="gate"><div class="card">
+    <div style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-muted);font-weight:600">Per4mance Guru</div>
+    <h1 style="margin:6px 0 10px;font-size:20px">Creator Portal</h1>
+    <p style="color:var(--fg-muted);font-size:14px">${esc(msg)}</p>
+    <button class="btn btn-primary" id="signin-btn">Sign in with Google</button>
+    ${err ? `<div class="err">${esc(err)}</div>` : ''}
+  </div></div>`;
+  document.getElementById('signin-btn').onclick = signIn;
+}
+
+async function signIn(){
+  const p = new firebase.auth.GoogleAuthProvider();
+  try { await fb.auth.signInWithPopup(p); }
+  catch (e) { gate('Sign in to upload your creatives and track how they perform.', e.message || String(e)); }
+}
+
+async function api(path, opts = {}){
+  const r = await fetch(API + path, { ...opts, headers: { ...(opts.headers || {}), Authorization: 'Bearer ' + idToken } });
+  if (!r.ok) throw new Error(await r.text().catch(() => r.statusText));
+  const ct = r.headers.get('content-type') || '';
+  return ct.includes('json') ? r.json() : r.text();
+}
+
+function fileToBase64(file){
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result).split(',')[1] || '');
+    r.onerror = () => rej(new Error('could not read file'));
+    r.readAsDataURL(file);
+  });
+}
+
+const MAX_FILE_MB = 20;
+
+function fmtMoney(n){ return '₹' + Math.round(n || 0).toLocaleString('en-IN'); }
+
+function renderUploadRow(u){
+  const status = u.status === 'linked' ? 'Live' : 'Pending';
+  const cls = u.status === 'linked' ? 'linked' : 'pending';
+  let perf = '';
+  if (u.live) {
+    perf = `<div class="perf">
+      <div><b>${fmtMoney(u.live.spend)}</b>spend</div>
+      <div><b>${(u.live.ctr || 0).toFixed(2)}%</b>CTR</div>
+      <div><b>${u.live.purchases || 0}</b>purchases</div>
+    </div>`;
+  }
+  const thumb = u.previewUrl
+    ? (u.contentType || '').startsWith('video')
+      ? `<video src="${esc(u.previewUrl)}" style="width:100%;border-radius:10px;margin-top:8px;max-height:220px" controls></video>`
+      : `<img src="${esc(u.previewUrl)}" style="width:100%;border-radius:10px;margin-top:8px;max-height:220px;object-fit:cover" alt="">`
+    : '';
+  return `<div class="upload-row">
+    <div class="top">
+      <div><span class="code-sm">${esc(u.code)}</span></div>
+      <span class="badge ${cls}">${status}</span>
+    </div>
+    <div class="meta">${esc(u.clientName)} · ${esc(u.format)}${u.note ? ' · ' + esc(u.note) : ''}</div>
+    ${perf}
+    ${thumb}
+  </div>`;
+}
+
+async function refreshMine(){
+  const list = document.getElementById('mine-list');
+  try {
+    const rows = await api('/creator/mine');
+    list.innerHTML = rows.length ? rows.map(renderUploadRow).join('') : '<div class="empty">Nothing uploaded yet.</div>';
+  } catch (e) {
+    list.innerHTML = `<div class="err">Could not load your uploads (${esc(e.message || e)})</div>`;
+  }
+}
+
+async function boot(){
+  idToken = await me.getIdToken();
+  root.innerHTML = `
+    <div class="wrap">
+      <header>
+        <div class="eyebrow">Per4mance Guru</div>
+        <h1>Creator Portal</h1>
+        <div class="who">Signed in as ${esc(me.email)} · <a href="#" id="signout">sign out</a></div>
+      </header>
+
+      <div class="card">
+        <h2>Upload a new creative</h2>
+        <form id="upload-form">
+          <label for="f-client">Client</label>
+          <select id="f-client" required></select>
+
+          <label for="f-format">Format</label>
+          <select id="f-format">
+            <option>Static</option><option>Video</option><option>Reel</option><option>Carousel</option>
+          </select>
+
+          <label for="f-file">File (image or video, max ${MAX_FILE_MB}MB)</label>
+          <input id="f-file" type="file" accept="image/*,video/*">
+
+          <label for="f-note">Note (optional)</label>
+          <textarea id="f-note" placeholder="What is this, in a few words?"></textarea>
+
+          <button class="btn btn-primary" id="f-submit" type="submit">Get my code</button>
+          <div class="err" id="f-err" style="display:none"></div>
+        </form>
+      </div>
+
+      <div class="card" id="result-card" style="display:none"></div>
+
+      <div class="card">
+        <h2>My uploads</h2>
+        <div id="mine-list"><div class="empty">Loading…</div></div>
+      </div>
+    </div>`;
+
+  document.getElementById('signout').onclick = (e) => { e.preventDefault(); fb.auth.signOut(); };
+
+  try {
+    const clients = await api('/creator/clients');
+    const sel = document.getElementById('f-client');
+    sel.innerHTML = clients.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+  } catch (e) {
+    document.getElementById('f-err').style.display = 'block';
+    document.getElementById('f-err').textContent = 'Could not load client list: ' + (e.message || e);
+  }
+
+  document.getElementById('upload-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const errBox = document.getElementById('f-err'); errBox.style.display = 'none';
+    const btn = document.getElementById('f-submit');
+    const fileInput = document.getElementById('f-file');
+    const file = fileInput.files[0];
+    if (file && file.size > MAX_FILE_MB * 1024 * 1024) {
+      errBox.style.display = 'block'; errBox.textContent = `That file is over ${MAX_FILE_MB}MB. Please upload a smaller or compressed version.`;
+      return;
+    }
+    btn.disabled = true; btn.textContent = 'Uploading…';
+    try {
+      const payload = {
+        clientId: document.getElementById('f-client').value,
+        format: document.getElementById('f-format').value,
+        note: document.getElementById('f-note').value,
+        creatorName: me.displayName || me.email,
+      };
+      if (file) { payload.fileName = file.name; payload.contentType = file.type; payload.fileBase64 = await fileToBase64(file); }
+      const r = await api('/creator/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const rc = document.getElementById('result-card');
+      rc.style.display = 'block';
+      rc.innerHTML = `<div class="code-box">
+        <div style="font-size:13px;color:var(--fg-muted)">Your code</div>
+        <div class="code">${esc(r.code)}</div>
+        <button class="btn btn-ghost" id="copy-code">Copy code</button>
+        <p class="hint">Paste this as the <b>last</b> part of the ad's name in Meta Ads Manager,
+        after the final "|", once it goes live. Example:<br>
+        <code>... | Girl Boxers | Reels | 19-09-25 | ${esc(r.code)}</code></p>
+      </div>`;
+      document.getElementById('copy-code').onclick = () => { navigator.clipboard?.writeText(r.code); };
+      document.getElementById('upload-form').reset();
+      refreshMine();
+    } catch (e) {
+      errBox.style.display = 'block'; errBox.textContent = e.message || String(e);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Get my code';
+    }
+  };
+
+  refreshMine();
+}
+
+(async () => {
+  try {
+    await initFirebase();
+    fb.auth.onAuthStateChanged(async (u) => {
+      if (!u) { gate('Sign in to upload your creatives and track how they perform.'); return; }
+      me = u;
+      try { await boot(); }
+      catch (e) { gate('Sign in to upload your creatives and track how they perform.', e.message || String(e)); }
+    });
+  } catch (e) {
+    root.innerHTML = `<div class="gate"><div class="card"><p class="err">Could not load: ${esc(e.message || e)}</p></div></div>`;
+  }
+})();
+</script>
+</body>
+</html>

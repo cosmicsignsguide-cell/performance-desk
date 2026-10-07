@@ -18,9 +18,16 @@
 //     (it was made) but left out of the effectiveness average until it has enough signal,
 //     scored neutral rather than zero so a brand-new creative does not drag its creator down
 //     the day it goes live.
+//   * Attribution runs through the Creator Portal, not bare initials in the ad name. Each
+//     upload there gets a short code (creatorPortal.js); the creator pastes that code, not
+//     their own initials, into the ad name once it goes live. That means this module never
+//     has to trust a hand-typed name match — it reads creatorUploads/{code} to find out who
+//     actually made the thing, and flips that upload from "pending" to "linked" the first
+//     time the code is seen on a real ad, which is also how each creator's own portal page
+//     knows their upload went live.
 
 import { addDays, todayStr, log, nowIso, round } from './util.js';
-import { extractCreatorTag } from './report.js';
+import { extractCreatorCode } from './report.js';
 
 const MIN_IMPRESSIONS = 1000;       // below this, an ad's own CTR is too noisy to score on
 const EFFECTIVENESS_NEUTRAL = 100;  // "performed exactly like the account's own average"
@@ -56,7 +63,16 @@ export async function computeCreatorScores(store, clients, { since, until } = {}
   const { start, end } = since && until ? { start: since, end: until } : weekBounds(today);
   const wid = weekId(start);
 
-  const perCreator = new Map();   // tag -> { tag, ads: [...], clientIds: Set }
+  // One read for every code ever issued, not per-ad. A code resolves to the person who
+  // actually uploaded it (not whatever anyone typed into Ads Manager), and the first time a
+  // code shows up on a real ad, that upload flips from "pending" to "linked" right here — the
+  // same write a creator's own portal page reads to show them "this went live".
+  const uploads = await store.list('creatorUploads');
+  const byCode = new Map(uploads.map((u) => [u.id, u]));
+  const linkWrites = [];
+
+  const perCreator = new Map();   // creatorEmail -> { creatorEmail, creatorName, ads: [...], clientIds: Set }
+  let unresolvedCodes = 0;
   let untaggedSeen = 0;
   let clientsConsidered = 0;
 
@@ -76,30 +92,42 @@ export async function computeCreatorScores(store, clients, { since, until } = {}
     const baselineCtr = baseImpr > 0 ? (baseClicks / baseImpr) * 100 : 0;
 
     for (const ad of ads) {
-      const tag = extractCreatorTag(ad.name);
+      const code = extractCreatorCode(ad.name);
       const created = ad.createdDate || '';
       const createdInWindow = !!created && created >= start && created <= end;
       const w = windowTotals(ad, start, end);
-      if (!tag) { if (createdInWindow || w.spend > 0) untaggedSeen += 1; continue; }
+      if (!code) { if (createdInWindow || w.spend > 0) untaggedSeen += 1; continue; }
+      const upload = byCode.get(code);
+      if (!upload) { unresolvedCodes += 1; continue; }   // a code that doesn't match any upload we issued
       if (!createdInWindow && w.spend === 0 && w.impr === 0) continue;   // nothing to say about this ad this week
+
+      if (upload.status !== 'linked') {
+        linkWrites.push(store.merge('creatorUploads', code, {
+          status: 'linked', linkedAdId: ad.id, linkedAdName: ad.name,
+          linkedClientId: client.id, linkedAt: nowIso(),
+        }));
+        upload.status = 'linked';   // so the rest of this same run already treats it as linked
+      }
 
       const ctr = w.impr > 0 ? (w.clicks / w.impr) * 100 : null;
       const effIndex = ctr !== null && w.impr >= MIN_IMPRESSIONS && baselineCtr > 0
         ? Math.min(EFFECTIVENESS_CAP, round((ctr / baselineCtr) * 100, 1))
         : null;   // not enough reach yet to read — scored neutral at rollup, not zero
 
-      const rec = perCreator.get(tag) || { tag, ads: [], clientIds: new Set() };
+      const email = upload.creatorEmail;
+      const rec = perCreator.get(email) || { creatorEmail: email, creatorName: upload.creatorName || email, ads: [], clientIds: new Set() };
       rec.ads.push({
-        clientId: client.id, clientName: client.name, adId: ad.id, adName: ad.name,
+        clientId: client.id, clientName: client.name, adId: ad.id, adName: ad.name, code,
         format: ad.format || (ad.isVideo ? 'Video' : 'Static'),
         createdInWindow, createdDate: created,
         spend: w.spend, impressions: w.impr, clicks: w.clicks,
         ctr: ctr !== null ? round(ctr, 2) : null, effIndex,
       });
       rec.clientIds.add(client.id);
-      perCreator.set(tag, rec);
+      perCreator.set(email, rec);
     }
   }
+  if (linkWrites.length) await Promise.all(linkWrites);
 
   // Weight by whichever is bigger, real spend or real reach, so a winning ad that hasn't had
   // budget pushed into it yet (impressions from organic reach in-feed, or a tiny test spend)
@@ -114,7 +142,7 @@ export async function computeCreatorScores(store, clients, { since, until } = {}
       ? round(scored.reduce((s, a) => s + a.effIndex * weightOf(a), 0) / totalWeight, 1)
       : EFFECTIVENESS_NEUTRAL;
     return {
-      tag: rec.tag, qty, effectiveness,
+      creatorEmail: rec.creatorEmail, creatorName: rec.creatorName, qty, effectiveness,
       scoredAds: scored.length, unscoredAds: rec.ads.length - scored.length,
       clients: [...rec.clientIds],
       ads: rec.ads.sort((a, b) => (b.spend || 0) - (a.spend || 0)),
@@ -124,11 +152,11 @@ export async function computeCreatorScores(store, clients, { since, until } = {}
   const teamAvgQty = creators.length ? round(creators.reduce((s, c) => s + c.qty, 0) / creators.length, 2) : 0;
   const doc = {
     weekId: wid, start, end, computedAt: nowIso(),
-    clientsConsidered, teamAvgQty, untaggedAdsSeen: untaggedSeen,
+    clientsConsidered, teamAvgQty, untaggedAdsSeen: untaggedSeen, unresolvedCodes,
     creators,
   };
   await store.set('creatorScores', wid, doc);
   await store.set('creatorScores', 'current', doc);
-  log(`creators ${wid}: ${creators.length} creator(s) tagged, team avg qty ${teamAvgQty}, ${untaggedSeen} untagged ad(s) seen this window`);
+  log(`creators ${wid}: ${creators.length} creator(s), team avg qty ${teamAvgQty}, ${untaggedSeen} untagged ad(s), ${unresolvedCodes} unresolved code(s)`);
   return doc;
 }
