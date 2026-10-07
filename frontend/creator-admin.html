@@ -8,143 +8,87 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  /* Same system as the main Per4mance Desk dashboard: warm paper ground with a faint grid, one
-     hairline border + soft shadow per surface, coral accent held for action and state only. */
+  /* A standings board, not a dashboard of cards. Rank is the one real sequence here, so it
+     gets the one oversized typographic treatment; everything else stays quiet and the #1
+     row is the only place color does any work. */
   :root{
-    --bg:#FAF9F7; --surface:#FFFFFF; --border:#E8E5E0; --border-strong:#D6D2CB;
-    --accent:#F06445; --accent-2:#D94E30; --accent-soft:rgba(240,100,69,0.10);
-    --fg:#171717; --fg-muted:#6B6B6B; --dim:#4C4A46; --lattice:rgba(23,23,23,0.016);
-    --good:#2E8B68; --good-bg:rgba(46,139,104,0.11);
-    --warn:#B6761F; --warn-bg:rgba(182,118,31,0.12);
-    --bad:#C0392B; --bad-bg:rgba(192,57,43,0.1);
-    --gold:#B6761F;
-    --radius:18px;
-    --lift-1:0 1px 2px rgba(23,23,23,0.04);
-    --lift-2:0 1px 2px rgba(23,23,23,0.04),0 10px 26px -16px rgba(23,23,23,0.26);
+    --bg:#FAF9F7; --surface:#FFFFFF; --line:#E4E0D9; --line-strong:#D6D2CB;
+    --accent:#F06445; --accent-ink:#fff;
+    --ink:#171717; --muted:#767167; --faint:#9A958B;
+    --good:#2E6B4F; --bad:#B23B22;
   }
   *{box-sizing:border-box;}
-  body{ margin:0; min-height:100vh; background-color:var(--bg); color:var(--fg);
-        background-image:linear-gradient(var(--lattice) 1px,transparent 1px),linear-gradient(90deg,var(--lattice) 1px,transparent 1px);
-        background-size:48px 48px; background-attachment:fixed;
-        font:15px/1.5 "Hanken Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  body{ margin:0; min-height:100vh; background:var(--bg); color:var(--ink);
+        font:16px/1.5 "Hanken Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
         -webkit-font-smoothing:antialiased; }
-  .disp{ font-family:"Bricolage Grotesque","Hanken Grotesk",sans-serif; letter-spacing:-.02em; }
-  .wrap{ max-width:920px; margin:0 auto; padding:32px 16px 64px; }
-  header{ margin-bottom:22px; display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
-  .brand-row{ display:flex; align-items:center; gap:12px; margin-bottom:2px; }
-  .mark{ width:36px; height:36px; border-radius:10px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
-         background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:#fff; font-family:"Bricolage Grotesque",sans-serif;
-         font-weight:800; font-size:14px; letter-spacing:-.03em; box-shadow:0 3px 10px -3px rgba(240,100,69,.55); }
-  header .eyebrow{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:700; }
-  header h1{ margin:2px 0 0; font-size:25px; font-weight:700; font-family:"Bricolage Grotesque",sans-serif; letter-spacing:-.02em; }
-  header .sub{ font-size:13px; color:var(--fg-muted); margin-top:8px; }
-  header .actions{ display:flex; gap:8px; }
-  .btn{ padding:9px 15px; border-radius:10px; border:1px solid var(--border); background:var(--surface);
-        color:var(--fg); font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit; transition:border-color .15s ease,background .15s ease;
-        display:inline-flex; align-items:center; gap:6px; }
-  .btn:hover{ border-color:var(--border-strong); }
-  .card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:22px; margin-bottom:16px; box-shadow:var(--lift-2); }
+  .page{ max-width:720px; margin:0 auto; padding:30px 18px 70px; }
+  .topline{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:22px; flex-wrap:wrap; }
+  .topline .org{ font-size:13px; color:var(--muted); }
+  .topline .org b{ color:var(--ink); font-weight:600; }
+  .topline .actions{ display:flex; gap:8px; }
+  h1{ font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:28px; letter-spacing:-.02em; margin:0 0 6px; }
+  .period{ color:var(--muted); font-size:14px; margin:0 0 4px; }
+  .summary{ color:var(--muted); font-size:14.5px; line-height:1.6; margin:0 0 26px; max-width:62ch; }
+  .summary b{ color:var(--ink); font-weight:600; }
+
+  .btn{ padding:9px 14px; border-radius:7px; border:1px solid var(--line-strong); background:transparent;
+        color:var(--ink); font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .btn:hover{ border-color:var(--ink); }
+
   .gate{ display:flex; min-height:100vh; align-items:center; justify-content:center; padding:20px; }
-  .gate .card{ max-width:380px; width:100%; text-align:center; }
-  .gate .brand-row{ justify-content:center; margin-bottom:14px; }
-  .gate input{ width:100%; padding:11px 13px; border:1px solid var(--border); border-radius:11px; font-size:15px; margin:12px 0; font-family:inherit; }
-  .gate input:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
-  .gate .btn{ width:100%; justify-content:center; background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:#fff; border-color:transparent;
-    padding:12px; box-shadow:0 4px 14px -5px rgba(240,100,69,.55); }
-  .gate .btn:hover{ filter:brightness(1.04); }
-  .stat-row{ display:flex; flex-wrap:wrap; margin-bottom:16px; background:var(--surface); border:1px solid var(--border);
-             border-radius:var(--radius); overflow:hidden; box-shadow:var(--lift-2); }
-  .stat{ flex:1; min-width:150px; padding:16px 18px; border-left:1px solid var(--border); display:flex; align-items:center; gap:12px; }
-  .stat:first-child{ border-left:none; }
-  .stat .ic{ width:34px; height:34px; border-radius:9px; background:var(--accent-soft); color:var(--accent); flex-shrink:0;
-    display:flex; align-items:center; justify-content:center; }
-  .stat .num{ font-size:23px; font-weight:700; font-family:"Bricolage Grotesque",sans-serif; letter-spacing:-.02em; font-variant-numeric:tabular-nums; line-height:1.1; }
-  .stat .lbl{ font-size:11.5px; color:var(--fg-muted); margin-top:2px; }
-  @media (max-width:640px){ .stat{ flex:1 1 50%; border-left:none; border-top:1px solid var(--border); } .stat:nth-child(1),.stat:nth-child(2){ border-top:none; } }
-  @keyframes fadeInUp{ from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
-  .card, .stat-row, .podium-card{ animation:fadeInUp .45s ease both; }
-  .stat-row{ animation-delay:.04s; }
-  .podium{ display:flex; flex-direction:column; gap:12px; margin-bottom:16px; }
-  .podium-card{ position:relative; background:var(--surface); border:1px solid var(--border); border-radius:18px;
-    padding:20px 18px; text-align:center; box-shadow:var(--lift-2); overflow:hidden; }
-  .podium-card::before{ content:""; position:absolute; inset:0; opacity:.09; pointer-events:none; }
-  .podium-card.p1::before{ background:linear-gradient(160deg,var(--gold),transparent 65%); }
-  .podium-card.p2::before{ background:linear-gradient(160deg,#8C877F,transparent 65%); }
-  .podium-card.p3::before{ background:linear-gradient(160deg,#B07A4A,transparent 65%); }
-  .podium-card:nth-child(1){ animation-delay:.08s; } .podium-card:nth-child(2){ animation-delay:.13s; } .podium-card:nth-child(3){ animation-delay:.18s; }
-  .podium-rank{ font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--fg-muted); position:relative; z-index:1; }
-  .podium-card.p1 .podium-rank{ color:var(--gold); }
-  .podium-card.p2 .podium-rank{ color:#8C877F; }
-  .podium-card.p3 .podium-rank{ color:#B07A4A; }
-  .podium-crown{ font-size:22px; line-height:1; margin:2px 0 6px; position:relative; z-index:1; }
-  .podium-avatar{ width:56px; height:56px; border-radius:50%; margin:4px auto 10px; display:flex; align-items:center; justify-content:center;
-    color:#fff; font-weight:800; font-size:18px; font-family:"Bricolage Grotesque",sans-serif; box-shadow:0 4px 12px -3px rgba(0,0,0,.25); position:relative; z-index:1; }
-  .podium-card.p1 .podium-avatar{ width:72px; height:72px; font-size:22px; }
-  .podium-name{ font-weight:700; font-size:14.5px; position:relative; z-index:1; }
-  .podium-email{ font-size:11px; color:var(--fg-muted); margin-top:1px; position:relative; z-index:1; }
-  .podium-stats{ display:flex; justify-content:center; gap:18px; margin-top:13px; position:relative; z-index:1; }
-  .podium-stats div{ text-align:center; }
-  .podium-stats b{ display:block; font-size:16px; font-weight:800; font-family:"Bricolage Grotesque",sans-serif; }
-  .podium-stats span{ font-size:9.5px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.05em; }
-  @media (min-width:620px){
-    .podium{ flex-direction:row; align-items:flex-end; }
-    .podium-card{ flex:1; }
-    .podium-card.p1{ order:2; padding-top:26px; padding-bottom:26px; }
-    .podium-card.p2{ order:1; }
-    .podium-card.p3{ order:3; }
-  }
-  table{ width:100%; border-collapse:collapse; font-size:14px; }
-  th{ text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:600;
-      padding:12px 12px; border-bottom:1px solid var(--border); }
-  td{ padding:13px 12px; border-bottom:1px solid var(--border); vertical-align:middle; }
-  tr:last-child>td{ border-bottom:none; }
-  tbody tr:hover>td{ background:rgba(23,23,23,0.015); }
-  .rank{ font-weight:800; color:var(--fg-muted); width:30px; font-family:"Bricolage Grotesque",sans-serif; font-size:16px; text-align:center; }
-  .rank.r1{ color:var(--gold); font-size:19px; } .rank.r2{ color:#8C877F; font-size:18px; } .rank.r3{ color:#B07A4A; font-size:17px; }
-  .who-cell{ display:flex; align-items:center; gap:11px; }
-  .avatar{ width:34px; height:34px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center;
-    color:#fff; font-weight:700; font-size:12.5px; font-family:"Bricolage Grotesque",sans-serif; }
-  .name{ font-weight:700; }
-  .email{ font-size:12px; color:var(--fg-muted); }
-  .clients-cell{ font-size:12px; color:var(--fg-muted); margin-top:1px; }
-  .bar-wrap{ background:var(--border); border-radius:6px; height:6px; width:100%; max-width:130px; overflow:hidden; margin-top:6px; }
-  .bar{ height:100%; background:linear-gradient(90deg,var(--accent),var(--accent-2)); border-radius:6px; }
-  .qty-num{ font-weight:700; font-family:"Bricolage Grotesque",sans-serif; font-size:15px; }
-  .eff-num{ font-weight:700; font-family:"Bricolage Grotesque",sans-serif; font-size:15px; }
-  .badge{ font-size:10.5px; font-weight:700; letter-spacing:.02em; padding:2px 8px; border-radius:999px; display:inline-block; margin-top:4px; }
-  .badge.good{ background:var(--good-bg); color:var(--good); }
-  .badge.warn{ background:var(--warn-bg); color:var(--warn); }
-  .empty{ color:var(--fg-muted); font-size:14px; padding:28px 20px; text-align:center; line-height:1.65; }
-  .err{ color:var(--bad); background:var(--bad-bg); border-radius:10px; padding:10px 12px; font-size:13px; margin-top:10px; }
-  .expand-row td{ background:#FBFAF8; font-size:13px; }
-  .ad-line{ display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px dashed var(--border); }
+  .gate-box{ max-width:340px; width:100%; }
+  .gate input{ width:100%; padding:10px 12px; border:1px solid var(--line-strong); border-radius:7px; font-size:15.5px; margin:14px 0; font-family:inherit; background:#fff; color:var(--ink); }
+  .gate input:focus{ outline:none; border-color:var(--accent); }
+  .gate .btn{ width:100%; background:var(--accent); color:#fff; border-color:var(--accent); padding:11px; }
+  .err{ color:var(--bad); font-size:13.5px; margin-top:10px; line-height:1.5; }
+
+  /* The board */
+  .board{ border-top:1px solid var(--line); }
+  .entry{ border-bottom:1px solid var(--line); padding:16px 0; cursor:pointer; }
+  .entry-main{ display:grid; grid-template-columns:48px 1fr auto auto 20px; align-items:center; gap:14px; }
+  .rank{ font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:21px; color:var(--faint); font-variant-numeric:tabular-nums; }
+  .entry.lead{ position:relative; }
+  .entry.lead::before{ content:""; position:absolute; left:-18px; top:0; bottom:0; width:3px; background:var(--accent); }
+  .entry.lead .rank{ color:var(--accent); font-size:25px; }
+  .who-name{ font-weight:700; font-size:15.5px; }
+  .who-sub{ font-size:12.5px; color:var(--muted); margin-top:1px; }
+  .num-col{ text-align:right; }
+  .num-col .v{ font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:17px; font-variant-numeric:tabular-nums; }
+  .num-col .k{ font-size:10.5px; color:var(--muted); }
+  .tier{ font-size:11.5px; margin-top:2px; }
+  .tier.up{ color:var(--good); } .tier.down{ color:var(--faint); }
+  .chev{ color:var(--faint); transition:transform .18s ease; justify-self:end; }
+  .entry.open .chev{ transform:rotate(180deg); }
+  .entry-detail{ display:none; margin:14px 0 0 62px; font-size:13.5px; }
+  .entry.open .entry-detail{ display:block; }
+  .ad-line{ display:flex; justify-content:space-between; gap:10px; padding:5px 0; color:var(--muted); border-bottom:1px dashed var(--line); }
   .ad-line:last-child{ border-bottom:none; }
-  .toggle{ cursor:pointer; color:var(--fg-muted); background:transparent; border:1px solid var(--border); border-radius:8px;
-    width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; transition:transform .18s ease,border-color .15s ease,color .15s ease; }
-  .toggle:hover{ color:var(--accent); border-color:var(--border-strong); }
-  .toggle.open{ transform:rotate(180deg); color:var(--accent); }
-  .foot-note{ font-size:12.5px; color:var(--fg-muted); line-height:1.6; }
+  .ad-line b{ color:var(--ink); font-weight:600; }
+
+  .empty{ color:var(--muted); font-size:14.5px; padding:32px 0; text-align:center; line-height:1.6; }
+  .foot{ font-size:12.5px; color:var(--muted); line-height:1.6; margin-top:22px; max-width:65ch; }
   a{ color:var(--accent); }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){ --bg:#141312; --surface:#1C1B19; --border:#2C2A27; --border-strong:#403D38;
-      --fg:#F3F1ED; --fg-muted:#8C877F; --dim:#B9B4AC; --accent:#FF7A5C; --accent-2:#F06445; --accent-soft:rgba(255,122,92,0.14);
-      --good:#4FB98C; --good-bg:rgba(79,185,140,0.14); --warn:#D9A44E; --warn-bg:rgba(217,164,78,0.13); --bad:#FF7A5C; --bad-bg:rgba(255,122,92,0.13); --gold:#D9A44E;
-      --lattice:rgba(255,255,255,0.018); }
-    .expand-row td{ background:#17160f; }
-    .gate input{ background:#20201d; border-color:#2C2A27; color:#F3F1ED; }
-    tbody tr:hover>td{ background:rgba(255,255,255,0.025); }
+
+  @media (max-width:560px){
+    .entry-main{ grid-template-columns:34px 1fr auto 18px; }
+    .num-col.eff-col{ display:none; }
+    .entry.open .entry-detail{ margin-left:48px; }
   }
-  :root[data-theme="dark"]{ --bg:#141312; --surface:#1C1B19; --border:#2C2A27; --border-strong:#403D38;
-    --fg:#F3F1ED; --fg-muted:#8C877F; --dim:#B9B4AC; --accent:#FF7A5C; --accent-2:#F06445; --accent-soft:rgba(255,122,92,0.14);
-    --good:#4FB98C; --good-bg:rgba(79,185,140,0.14); --warn:#D9A44E; --warn-bg:rgba(217,164,78,0.13); --bad:#FF7A5C; --bad-bg:rgba(255,122,92,0.13); --gold:#D9A44E;
-    --lattice:rgba(255,255,255,0.018); }
-  :root[data-theme="dark"] .expand-row td{ background:#17160f; }
-  :root[data-theme="dark"] .gate input{ background:#20201d; border-color:#2C2A27; color:#F3F1ED; }
-  :root[data-theme="dark"] tbody tr:hover>td{ background:rgba(255,255,255,0.025); }
+
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --bg:#15140F; --surface:#1C1B16; --line:#2C2A22; --line-strong:#43402F;
+      --ink:#F3F1EA; --muted:#A49C89; --faint:#746C5A; --accent:#FF7A5C; --accent-ink:#1A0E0A;
+      --good:#6FCB9F; --bad:#FF8A6B; }
+    .gate input{ background:#1F1D16; border-color:#43402F; color:#F3F1EA; }
+  }
+  :root[data-theme="dark"]{ --bg:#15140F; --surface:#1C1B16; --line:#2C2A22; --line-strong:#43402F;
+    --ink:#F3F1EA; --muted:#A49C89; --faint:#746C5A; --accent:#FF7A5C; --accent-ink:#1A0E0A;
+    --good:#6FCB9F; --bad:#FF8A6B; }
+  :root[data-theme="dark"] .gate input{ background:#1F1D16; border-color:#43402F; color:#F3F1EA; }
 </style>
 </head>
 <body>
-<div id="root"><div class="gate"><div class="card"><p>Loading…</p></div></div></div>
+<div id="root"><div class="gate"><p style="color:var(--muted)">Loading…</p></div></div>
 <script src="config.js"></script>
 <script>
 const CFG = window.DESK_CONFIG || {};
@@ -152,31 +96,27 @@ const API = (CFG.syncUrl || '').replace(/\/sync.*$/, '');
 const root = document.getElementById('root');
 const KEY_STORE = 'desk_creators_admin_key';
 
-const ICON_PEOPLE = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
-const ICON_CHART = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg>';
-const ICON_TAG = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2H2v10l9.29 9.29a1 1 0 0 0 1.41 0l8.59-8.59a1 1 0 0 0 0-1.41z"/><circle cx="7" cy="7" r="1.5"/></svg>';
-const ICON_FLAG = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4a1 1 0 0 1 1-1h13.38a.5.5 0 0 1 .4.8L15 9l3.78 5.2a.5.5 0 0 1-.4.8H5"/></svg>';
-const ICON_CHEVRON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
-const ICON_REFRESH = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>';
-const ICON_KEY = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>';
-const AVATAR_COLORS = ['#F06445', '#2E8B68', '#6687B8', '#B6761F', '#9B59B6', '#2E8B68', '#D94E30', '#5B8DBE'];
+const ICON_CHEV = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
 
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function fmtMoney(n){ return '₹' + Math.round(n || 0).toLocaleString('en-IN'); }
-function initials(name){ const parts = String(name || '').trim().split(/\s+/); return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || '?'; }
-function avatarColor(seed){ let h = 0; for (const c of String(seed)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return AVATAR_COLORS[h % AVATAR_COLORS.length]; }
-
-function brandRow(){
-  return `<div class="brand-row"><div class="mark">P4</div><div><div class="eyebrow">Per4mance Guru · Admin</div></div></div>`;
+function fmtDateRange(start, end){
+  try {
+    const a = new Date(start + 'T00:00:00'), b = new Date(end + 'T00:00:00');
+    const sameMonth = a.getMonth() === b.getMonth();
+    const af = a.toLocaleDateString('en-IN', { day: 'numeric', month: sameMonth ? undefined : 'short' });
+    const bf = b.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    return `Week of ${af}–${bf}`;
+  } catch { return `Week of ${start} to ${end}`; }
 }
 
 function gate(err){
-  root.innerHTML = `<div class="gate"><div class="card">
-    ${brandRow()}
-    <h1 style="margin:2px 0 10px;font-size:21px;font-family:'Bricolage Grotesque',sans-serif">Creative Incentive Scorecard</h1>
-    <p style="color:var(--fg-muted);font-size:13.5px">Admin key required.</p>
+  root.innerHTML = `<div class="gate"><div class="gate-box">
+    <div class="topline"><span class="org"><b>Per4mance Guru</b> admin</span></div>
+    <h1>Creative Incentive Scorecard</h1>
+    <p class="summary" style="margin-bottom:0">This board is admin-only. Enter the key to view it.</p>
     <input id="k" type="password" placeholder="Admin key">
-    <button class="btn" id="go">${ICON_KEY} View scorecard</button>
+    <button class="btn" id="go">View scorecard</button>
     ${err ? `<div class="err">${esc(err)}</div>` : ''}
   </div></div>`;
   document.getElementById('go').onclick = () => {
@@ -188,109 +128,80 @@ function gate(err){
   document.getElementById('k').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('go').click(); });
 }
 
-function tierBadge(qty, teamAvgQty){
-  if (!teamAvgQty) return '';
-  return qty >= teamAvgQty ? '<span class="badge good">Above team avg</span>' : '<span class="badge warn">Below team avg</span>';
-}
-
 function render(doc, key){
   if (doc.error) {
-    root.innerHTML = `<div class="wrap">
-      <header>${brandRow()}<h1 style="width:100%">Creative Incentive Scorecard</h1>
-      <div class="actions"><button class="btn" id="reset">${ICON_KEY} Change key</button></div></header>
-      <div class="card"><div class="empty">${esc(doc.error)}<br><br>
-        This fills in automatically once the team starts pasting their upload codes into live ad names
-        (<a href="creator.html" target="_blank">Creator Portal</a>), and refreshes every day on its own.</div></div>
+    root.innerHTML = `<div class="page">
+      <div class="topline"><span class="org"><b>Per4mance Guru</b> admin</span>
+        <span class="actions"><button class="btn" id="reset">Change key</button></span></div>
+      <h1>Creative Incentive Scorecard</h1>
+      <div class="empty">${esc(doc.error)}<br><br>
+        This fills in once the team starts pasting their codes into live ad names
+        (<a href="creator.html" target="_blank">Creator Portal</a>), and refreshes every day on its own.</div>
     </div>`;
     document.getElementById('reset').onclick = () => { localStorage.removeItem(KEY_STORE); gate(); };
     return;
   }
 
-  const top3 = (doc.creators || []).slice(0, 3);
-  const podiumHtml = top3.length ? `<div class="podium">${top3.map((c, i) => {
-    const cls = i === 0 ? 'p1' : i === 1 ? 'p2' : 'p3';
-    const rankLabel = i === 0 ? '1st place' : i === 1 ? '2nd place' : '3rd place';
-    const crown = i === 0 ? '👑' : '';
-    return `<div class="podium-card ${cls}">
-      ${crown ? `<div class="podium-crown">${crown}</div>` : ''}
-      <div class="podium-rank">${rankLabel}</div>
-      <div class="podium-avatar" style="background:${avatarColor(c.creatorEmail)}">${esc(initials(c.creatorName))}</div>
-      <div class="podium-name">${esc(c.creatorName)}</div>
-      <div class="podium-email">${esc(c.creatorEmail)}</div>
-      <div class="podium-stats">
-        <div><b>${c.qty}</b><span>Qty</span></div>
-        <div><b>${c.effectiveness}</b><span>Effectiveness</span></div>
-      </div>
-    </div>`;
-  }).join('')}</div>` : '';
-
-  const rows = (doc.creators || []).map((c, i) => {
-    const maxQty = Math.max(1, ...doc.creators.map((x) => x.qty));
-    const pct = Math.round((c.qty / maxQty) * 100);
+  const creators = doc.creators || [];
+  const entries = creators.map((c, i) => {
+    const rank = i + 1;
+    const lead = i === 0 ? ' lead' : '';
     const adsHtml = c.ads.map((a) => `<div class="ad-line">
-        <span>${esc(a.clientName)} · ${esc(a.format)}${a.createdInWindow ? '' : ' (from an earlier week, still earning)'}</span>
-        <span>${fmtMoney(a.spend)} spend · ${a.ctr != null ? a.ctr.toFixed(2) + '% CTR' : 'not enough reach yet'}</span>
-      </div>`).join('');
-    const rankCls = i === 0 ? ' r1' : i === 1 ? ' r2' : i === 2 ? ' r3' : '';
-    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
-    return `<tr>
-        <td class="rank${rankCls}">${medal}</td>
-        <td>
-          <div class="who-cell">
-            <div class="avatar" style="background:${avatarColor(c.creatorEmail)}">${esc(initials(c.creatorName))}</div>
-            <div>
-              <div class="name">${esc(c.creatorName)}</div>
-              <div class="email">${esc(c.creatorEmail)}</div>
-              <div class="clients-cell">${esc(c.clients.join(', '))}</div>
-            </div>
-          </div>
-        </td>
-        <td>
-          <span class="qty-num">${c.qty}</span>
-          <div class="bar-wrap"><div class="bar" style="width:${pct}%"></div></div>
-        </td>
-        <td><span class="eff-num">${c.effectiveness}</span>${tierBadge(c.qty, doc.teamAvgQty) ? '<br>' + tierBadge(c.qty, doc.teamAvgQty) : ''}</td>
-        <td><button class="toggle" data-i="${i}" aria-label="Toggle details">${ICON_CHEVRON}</button></td>
-      </tr>
-      <tr class="expand-row" id="row-${i}" style="display:none"><td colspan="5">${adsHtml || 'No scored ads yet.'}</td></tr>`;
+        <span>${esc(a.clientName)}, ${esc(a.format)}${a.createdInWindow ? '' : ' (earlier week, still earning)'}</span>
+        <span>${fmtMoney(a.spend)} spend${a.ctr != null ? ', ' + a.ctr.toFixed(2) + '% CTR' : ', not enough reach yet'}</span>
+      </div>`).join('') || 'No scored ads yet.';
+    const tier = doc.teamAvgQty
+      ? (c.qty >= doc.teamAvgQty ? `<div class="tier up">Above team average</div>` : `<div class="tier down">Below team average</div>`)
+      : '';
+    return `<div class="entry${lead}" data-i="${i}">
+      <div class="entry-main">
+        <div class="rank">${String(rank).padStart(2, '0')}</div>
+        <div>
+          <div class="who-name">${esc(c.creatorName)}</div>
+          <div class="who-sub">${esc(c.creatorEmail)}, ${esc(c.clients.join(', '))}</div>
+        </div>
+        <div class="num-col"><div class="v">${c.qty}</div><div class="k">creatives</div>${tier}</div>
+        <div class="num-col eff-col"><div class="v">${c.effectiveness}</div><div class="k">effectiveness</div></div>
+        <div class="chev">${ICON_CHEV}</div>
+      </div>
+      <div class="entry-detail">${adsHtml}</div>
+    </div>`;
   }).join('');
 
-  root.innerHTML = `<div class="wrap">
-    <header>
-      <div>${brandRow()}<h1>Creative Incentive Scorecard</h1>
-        <div class="sub">Week ${esc(doc.weekId)} · ${esc(doc.start)} to ${esc(doc.end)} · computed ${new Date(doc.computedAt).toLocaleString('en-IN')}</div></div>
-      <div class="actions"><button class="btn" id="refresh">${ICON_REFRESH} Refresh</button> <button class="btn" id="reset">${ICON_KEY} Change key</button></div>
-    </header>
+  const summary = creators.length
+    ? `<b>${creators.length}</b> creator${creators.length === 1 ? '' : 's'} scored this week, averaging <b>${doc.teamAvgQty ?? 0}</b> creatives each.
+       ${doc.untaggedAdsSeen ? `${doc.untaggedAdsSeen} ad${doc.untaggedAdsSeen === 1 ? '' : 's'} untagged.` : ''}
+       ${doc.unresolvedCodes ? `${doc.unresolvedCodes} unknown code${doc.unresolvedCodes === 1 ? '' : 's'} seen.` : ''}`
+    : '';
 
-    <div class="stat-row">
-      <div class="stat"><div class="ic">${ICON_PEOPLE}</div><div><div class="num">${doc.creators?.length || 0}</div><div class="lbl">Creators scored</div></div></div>
-      <div class="stat"><div class="ic">${ICON_CHART}</div><div><div class="num">${doc.teamAvgQty ?? 0}</div><div class="lbl">Team avg. / week</div></div></div>
-      <div class="stat"><div class="ic">${ICON_TAG}</div><div><div class="num">${doc.untaggedAdsSeen ?? 0}</div><div class="lbl">Untagged ads</div></div></div>
-      <div class="stat"><div class="ic">${ICON_FLAG}</div><div><div class="num">${doc.unresolvedCodes ?? 0}</div><div class="lbl">Unknown codes</div></div></div>
+  root.innerHTML = `<div class="page">
+    <div class="topline">
+      <span class="org"><b>Per4mance Guru</b> admin</span>
+      <span class="actions"><button class="btn" id="refresh">Refresh</button><button class="btn" id="reset">Change key</button></span>
     </div>
+    <h1>Creative Incentive Scorecard</h1>
+    <p class="period">${esc(fmtDateRange(doc.start, doc.end))}, updated ${new Date(doc.computedAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</p>
+    ${summary ? `<p class="summary">${summary}</p>` : ''}
 
-    ${podiumHtml}
+    ${creators.length ? `<div class="board">${entries}</div>` : `<div class="empty">No creators scored yet this week.<br><br>
+      This fills in once someone submits at <a href="creator.html" target="_blank">the Creator Portal</a> and pastes
+      their code into a live ad name. It recomputes automatically every day.</div>`}
 
-    <div class="card" style="padding:0;overflow:hidden">
-      ${doc.creators && doc.creators.length ? `<table>
-        <thead><tr><th></th><th>Creator</th><th>Qty this week</th><th>Effectiveness</th><th></th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>` : `<div class="empty">No creators scored yet this week.<br><br>
-        This fills in once someone uploads at <a href="creator.html" target="_blank">the Creator Portal</a> and pastes
-        their code into a live ad name. It recomputes automatically every day.</div>`}
-    </div>
-    <p class="foot-note">Effectiveness: 100 = performing exactly like that client account's own average CTR this week. No fixed quantity target by design — quantity is shown raw, against the team's own average.</p>
+    <p class="foot">Effectiveness: 100 means performing exactly like that client account's own average CTR this week. There is no fixed quantity target by design. Quantity is shown raw, against the team's own average.</p>
   </div>`;
 
-  root.querySelectorAll('.toggle').forEach((el) => {
-    el.onclick = () => { const r = document.getElementById('row-' + el.dataset.i); const open = r.style.display !== 'none'; r.style.display = open ? 'none' : ''; el.classList.toggle('open', !open); };
+  root.querySelectorAll('.entry').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('a')) return;
+      el.classList.toggle('open');
+    });
   });
   document.getElementById('refresh').onclick = () => load(key);
   document.getElementById('reset').onclick = () => { localStorage.removeItem(KEY_STORE); gate(); };
 }
 
 async function load(key){
-  root.innerHTML = `<div class="wrap"><div class="card"><div class="empty">Loading…</div></div></div>`;
+  root.innerHTML = `<div class="page"><div class="empty">Loading…</div></div>`;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 15000);
   try {
@@ -302,9 +213,9 @@ async function load(key){
     render(doc, key);
   } catch (e) {
     clearTimeout(timer);
-    const msg = e && e.name === 'AbortError' ? 'Request timed out after 15s. Check your internet connection and try again.' : (e.message || e);
-    root.innerHTML = `<div class="wrap"><div class="card"><div class="err">Could not load: ${esc(msg)}</div>
-      <button class="btn" id="retry" style="margin-top:10px">Retry</button></div></div>`;
+    const msg = e && e.name === 'AbortError' ? 'The request timed out after 15 seconds. Check your connection and try again.' : (e.message || e);
+    root.innerHTML = `<div class="page"><div class="empty">Could not load the scorecard. ${esc(msg)}<br><br>
+      <button class="btn" id="retry">Retry</button></div></div>`;
     document.getElementById('retry').onclick = () => load(key);
   }
 }

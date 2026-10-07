@@ -8,134 +8,114 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  /* Same system as the main Per4mance Desk dashboard: warm paper ground with a faint grid, one
-     hairline border + soft shadow per surface, coral accent held for action and state only. */
+  /* A claim ticket, not a form in a card. You hand in what you made; you get a stub with a
+     code on it; later you redeem that code by pasting it into the live ad's name. The shape
+     of the page follows that exchange instead of defaulting to bordered boxes everywhere. */
   :root{
-    --bg:#FAF9F7; --surface:#FFFFFF; --border:#E8E5E0; --border-strong:#D6D2CB;
-    --accent:#F06445; --accent-2:#D94E30; --accent-ink:#fff; --accent-soft:rgba(240,100,69,0.10);
-    --fg:#171717; --fg-muted:#6B6B6B; --dim:#4C4A46; --lattice:rgba(23,23,23,0.016);
-    --good:#2E8B68; --good-bg:rgba(46,139,104,0.11);
-    --warn:#B6761F; --warn-bg:rgba(182,118,31,0.12);
-    --bad:#C0392B; --bad-bg:rgba(192,57,43,0.1);
-    --radius:18px;
-    --lift-1:0 1px 2px rgba(23,23,23,0.04);
-    --lift-2:0 1px 2px rgba(23,23,23,0.04),0 10px 26px -16px rgba(23,23,23,0.26);
-    --chev:%236B6B6B;
+    --bg:#FAF9F7; --surface:#FFFFFF; --line:#E4E0D9; --line-strong:#D6D2CB;
+    --accent:#F06445; --accent-ink:#fff;
+    --ink:#171717; --muted:#767167; --faint:#9A958B;
+    --good:#2E6B4F; --bad:#B23B22;
   }
   *{box-sizing:border-box;}
-  body{ margin:0; min-height:100vh; background-color:var(--bg); color:var(--fg);
-        background-image:linear-gradient(var(--lattice) 1px,transparent 1px),linear-gradient(90deg,var(--lattice) 1px,transparent 1px);
-        background-size:48px 48px; background-attachment:fixed;
-        font:15px/1.55 "Hanken Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  body{ margin:0; min-height:100vh; background:var(--bg); color:var(--ink);
+        font:16px/1.5 "Hanken Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
         -webkit-font-smoothing:antialiased; }
-  .disp{ font-family:"Bricolage Grotesque","Hanken Grotesk",sans-serif; letter-spacing:-.02em; }
-  .wrap{ max-width:540px; margin:0 auto; padding:32px 16px 70px; }
-  @keyframes fadeInUp{ from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
-  header{ margin-bottom:18px; }
-  .hero{ position:relative; overflow:hidden; background:linear-gradient(150deg,var(--accent-soft),transparent 60%) var(--surface);
-    border:1px solid var(--border); border-radius:var(--radius); padding:26px 24px; box-shadow:var(--lift-2);
-    animation:fadeInUp .45s ease both; }
-  .hero::after{ content:""; position:absolute; top:-50px; right:-50px; width:160px; height:160px; border-radius:50%;
-    background:radial-gradient(circle,var(--accent-soft),transparent 72%); pointer-events:none; }
-  .hero-sub{ margin:9px 0 0; font-size:13.5px; color:var(--fg-muted); position:relative; z-index:1; max-width:85%; }
-  .brand-row{ display:flex; align-items:center; gap:12px; margin-bottom:2px; position:relative; z-index:1; }
-  .mark{ width:36px; height:36px; border-radius:10px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
-         background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:#fff; font-family:"Bricolage Grotesque",sans-serif;
-         font-weight:800; font-size:14px; letter-spacing:-.03em; box-shadow:0 3px 10px -3px rgba(240,100,69,.55); }
-  header .eyebrow{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:700; }
-  header h1{ margin:2px 0 0; font-size:25px; font-weight:700; font-family:"Bricolage Grotesque",sans-serif; letter-spacing:-.02em;
-    position:relative; z-index:1; }
-  header .who{ font-size:13px; color:var(--fg-muted); margin-top:12px; }
-  header .who a{ color:var(--dim); }
-  .card{ position:relative; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
-         padding:22px; margin-bottom:16px; box-shadow:var(--lift-2); animation:fadeInUp .45s ease both; }
-  .card.accent::before{ content:""; position:absolute; top:0; left:0; right:0; height:4px;
-    border-radius:var(--radius) var(--radius) 0 0; background:linear-gradient(90deg,var(--accent),var(--accent-2)); }
-  .wrap > .card:nth-of-type(1){ animation-delay:.06s; }
-  .wrap > .card:nth-of-type(2){ animation-delay:.11s; }
-  .wrap > .card:nth-of-type(3){ animation-delay:.16s; }
-  label{ display:block; font-size:12.5px; font-weight:600; letter-spacing:.01em; color:var(--dim); margin:18px 0 7px; }
+  .page{ max-width:460px; margin:0 auto; padding:30px 18px 70px; }
+  .topline{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:28px;
+    font-size:13px; color:var(--muted); flex-wrap:wrap; }
+  .topline .org{ color:var(--ink); font-weight:600; }
+  .topline a{ color:var(--muted); }
+  h1{ font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:30px; letter-spacing:-.02em; margin:0 0 8px; }
+  .lede{ color:var(--muted); font-size:15px; line-height:1.55; margin:0 0 26px; max-width:40ch; }
+  h2{ font-family:"Bricolage Grotesque",sans-serif; font-size:17px; font-weight:700; letter-spacing:-.01em; margin:30px 0 4px; }
+
+  /* The ticket itself */
+  .ticket{ position:relative; background:var(--surface); border:1px solid var(--line); }
+  .ticket-body{ padding:22px 22px 24px; }
+  label{ display:block; font-size:13.5px; font-weight:600; color:var(--muted); margin:18px 0 6px; }
   label:first-child{ margin-top:0; }
   select, textarea{
-    width:100%; padding:11px 13px; border:1px solid var(--border); border-radius:11px;
-    font-size:15px; font-family:inherit; background:#fff; color:var(--fg); transition:border-color .15s ease,box-shadow .15s ease;
+    width:100%; padding:10px 12px; border:1px solid var(--line-strong); border-radius:7px;
+    font-size:15.5px; font-family:inherit; background:#fff; color:var(--ink); transition:border-color .15s ease;
   }
   select{ appearance:none; -webkit-appearance:none; -moz-appearance:none; cursor:pointer;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%236B6B6B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E");
-    background-repeat:no-repeat; background-position:right 13px center; background-size:16px; padding-right:38px; }
-  select:focus, textarea:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
-  textarea{ resize:vertical; min-height:60px; }
-  .dropzone{ display:flex; align-items:center; gap:12px; width:100%; padding:14px; border:1.5px dashed var(--border-strong);
-    border-radius:13px; background:var(--bg); cursor:pointer; transition:border-color .15s ease,background .15s ease; }
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23767167' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 12px center; background-size:15px; padding-right:36px; }
+  select:focus, textarea:focus{ outline:none; border-color:var(--accent); }
+  textarea{ resize:vertical; min-height:56px; }
+
+  .dropzone{ display:flex; align-items:center; gap:11px; width:100%; padding:12px; border:1px dashed var(--line-strong);
+    border-radius:7px; background:transparent; cursor:pointer; transition:border-color .15s ease; }
   .dropzone:hover{ border-color:var(--accent); }
-  .dropzone.drag{ border-color:var(--accent); background:var(--accent-soft); }
-  .dropzone.has-file{ border-style:solid; border-color:var(--border); background:var(--surface); }
-  .dropzone .dz-icon{ width:38px; height:38px; border-radius:10px; background:var(--accent-soft); color:var(--accent);
-    display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-  .dropzone .dz-text{ font-size:13.5px; color:var(--dim); line-height:1.4; min-width:0; }
-  .dropzone .dz-text b{ color:var(--fg); font-weight:600; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .dropzone .dz-text small{ display:block; color:var(--fg-muted); font-size:11.5px; margin-top:1px; }
+  .dropzone.drag{ border-color:var(--accent); border-style:solid; }
+  .dropzone.has-file{ border-style:solid; border-color:var(--line-strong); }
+  .dropzone svg{ color:var(--muted); flex-shrink:0; }
+  .dropzone .dz-text{ font-size:14px; color:var(--ink); line-height:1.4; min-width:0; }
+  .dropzone .dz-text b{ font-weight:600; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .dropzone .dz-text small{ display:block; color:var(--muted); font-size:12px; margin-top:1px; }
+
   .btn{ display:inline-flex; align-items:center; justify-content:center; gap:7px;
-        padding:12px 18px; border-radius:11px; border:1px solid transparent; font-size:15px;
-        font-weight:600; cursor:pointer; font-family:inherit; transition:background .15s ease,transform .15s ease,border-color .15s ease; }
-  .btn:active{ transform:translateY(1px); }
-  .btn-primary{ background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:var(--accent-ink); width:100%; margin-top:20px;
-    box-shadow:0 4px 14px -5px rgba(240,100,69,.55); }
-  .btn-primary:hover:not(:disabled){ filter:brightness(1.04); }
-  .btn-primary:hover:not(:disabled) svg{ transform:translateX(2px); }
-  .btn-primary svg{ transition:transform .15s ease; }
-  .btn-primary:disabled{ opacity:.5; cursor:not-allowed; }
-  .btn-ghost{ background:transparent; border:1px solid var(--border); color:var(--fg); }
-  .btn-ghost:hover{ border-color:var(--border-strong); background:var(--panel-hover,rgba(23,23,23,.02)); }
-  .err{ color:var(--bad); background:var(--bad-bg); border-radius:10px; padding:10px 12px; font-size:13px; margin-top:12px; }
-  .code-box{ text-align:center; padding:6px 4px 4px; }
-  .code-badge{ display:inline-flex; align-items:center; gap:5px; background:var(--good-bg); color:var(--good);
-    font-size:11.5px; font-weight:700; letter-spacing:.01em; padding:5px 11px; border-radius:999px; margin-bottom:16px; }
-  .code-label{ font-size:12px; color:var(--fg-muted); letter-spacing:.04em; text-transform:uppercase; font-weight:600; }
-  @keyframes codePop{ 0%{opacity:0;transform:scale(.8)} 55%{opacity:1;transform:scale(1.06)} 100%{transform:scale(1)} }
-  .code-box .code{ font-family:"Bricolage Grotesque",monospace; font-size:38px; font-weight:800;
-                    letter-spacing:.05em; color:var(--accent); margin:6px 0 14px; animation:codePop .5s cubic-bezier(.22,.9,.3,1) both; }
-  .code-divider{ height:1px; background:var(--border); margin:18px 0 16px; }
-  .code-box .hint{ font-size:13.5px; color:var(--fg-muted); line-height:1.55; text-align:left; margin:0; }
-  .code-box .hint b{ color:var(--fg); }
-  .example-chip{ background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:10px 12px;
-    font-family:"Bricolage Grotesque",monospace; font-size:12px; color:var(--dim); margin-top:10px; text-align:left; word-break:break-all; }
-  .example-chip b{ color:var(--accent); font-weight:700; }
-  h2{ font-size:14.5px; margin:0 0 16px; font-weight:700; letter-spacing:-.01em; display:flex; align-items:center; gap:8px; }
-  h2 .dot{ width:7px; height:7px; border-radius:50%; background:var(--accent); flex-shrink:0; }
-  .upload-row{ border-top:1px solid var(--border); padding:14px 0; }
-  .upload-row:first-of-type{ border-top:none; padding-top:0; }
-  .upload-row .top{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
-  .upload-row .code-sm{ font-family:"Bricolage Grotesque",monospace; font-weight:700; letter-spacing:.02em; }
-  .upload-row .meta{ font-size:13px; color:var(--fg-muted); margin-top:3px; }
-  .badge{ font-size:11px; font-weight:700; letter-spacing:.02em; padding:3px 9px; border-radius:999px; white-space:nowrap; }
-  .badge.pending{ background:var(--warn-bg); color:var(--warn); }
-  .badge.linked{ background:var(--good-bg); color:var(--good); }
-  .perf{ margin-top:10px; display:flex; gap:18px; flex-wrap:wrap; font-size:12px; color:var(--fg-muted); }
-  .perf b{ display:block; font-size:16px; font-weight:700; color:var(--fg); font-family:"Bricolage Grotesque",sans-serif; }
-  .empty{ color:var(--fg-muted); font-size:13.5px; padding:8px 0; }
+        padding:12px 18px; border-radius:7px; border:1px solid var(--accent); font-size:15.5px;
+        font-weight:600; cursor:pointer; font-family:inherit; transition:opacity .15s ease; }
+  .btn:active{ opacity:.85; }
+  .btn-primary{ background:var(--accent); color:var(--accent-ink); width:100%; margin-top:20px; }
+  .btn-primary:disabled{ opacity:.45; cursor:not-allowed; }
+  .btn-ghost{ background:transparent; border-color:var(--line-strong); color:var(--ink); }
+  .btn-ghost:hover{ border-color:var(--ink); }
+  .err{ color:var(--bad); font-size:13.5px; margin-top:12px; line-height:1.5; }
+
+  /* Perforation between the form and the stub -- the one place a motion cue is earned: it
+     only appears, with a brief reveal, the moment a code is actually issued. */
+  .tear{ position:relative; height:0; border-top:2px dashed var(--line-strong); margin:0; }
+  .tear::before, .tear::after{ content:""; position:absolute; top:50%; transform:translateY(-50%);
+    width:18px; height:18px; border-radius:50%; background:var(--bg); border:1px solid var(--line); }
+  .tear::before{ left:-19px; } .tear::after{ right:-19px; }
+
+  @keyframes stubIn{ from{ opacity:0; transform:translateY(-6px); } to{ opacity:1; transform:none; } }
+  .stub{ padding:22px 22px 24px; animation:stubIn .35s cubic-bezier(.2,.8,.3,1) both; }
+  .stub-label{ font-size:13px; color:var(--muted); font-weight:600; }
+  .stub-code{ font-family:"Bricolage Grotesque",monospace; font-size:44px; font-weight:800; letter-spacing:.03em;
+    color:var(--accent); margin:4px 0 14px; }
+  .stub p{ font-size:14px; color:var(--muted); line-height:1.6; margin:0 0 10px; }
+  .stub p b{ color:var(--ink); font-weight:600; }
+  .example{ font-family:"Bricolage Grotesque",monospace; font-size:12.5px; color:var(--muted);
+    background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:9px 11px; word-break:break-all; }
+  .example b{ color:var(--accent); font-weight:700; }
+
+  .who{ font-size:13.5px; }
+  .row{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:14px 0; border-bottom:1px solid var(--line); }
+  .row:last-child{ border-bottom:none; }
+  .row .left{ min-width:0; }
+  .row .code-sm{ font-family:"Bricolage Grotesque",monospace; font-weight:700; font-size:15px; }
+  .row .meta{ font-size:13.5px; color:var(--muted); margin-top:2px; }
+  .row .status{ font-size:13px; font-weight:600; white-space:nowrap; flex-shrink:0; }
+  .row .status.live{ color:var(--accent); }
+  .row .status.pending{ color:var(--faint); }
+  .perf{ display:flex; gap:16px; margin-top:8px; font-size:12.5px; color:var(--muted); }
+  .perf b{ display:block; font-size:15px; font-weight:700; color:var(--ink); font-family:"Bricolage Grotesque",sans-serif; }
+  .thumb{ width:100%; border-radius:6px; margin-top:10px; max-height:200px; object-fit:cover; border:1px solid var(--line); display:block; }
+  .empty{ color:var(--muted); font-size:14.5px; padding:6px 0 0; }
+
   .gate{ display:flex; min-height:100vh; align-items:center; justify-content:center; padding:20px; }
-  .gate .card{ max-width:380px; width:100%; text-align:center; }
-  .gate .brand-row{ justify-content:center; margin-bottom:14px; }
-  .spin{ opacity:.55; }
+  .gate-box{ max-width:340px; width:100%; text-align:left; }
+  .spin{ color:var(--muted); }
+
   @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){ --bg:#141312; --surface:#1C1B19; --border:#2C2A27; --border-strong:#403D38;
-      --fg:#F3F1ED; --fg-muted:#8C877F; --dim:#B9B4AC; --accent:#FF7A5C; --accent-2:#F06445; --accent-ink:#1A0E0A; --accent-soft:rgba(255,122,92,0.14);
-      --good:#4FB98C; --good-bg:rgba(79,185,140,0.14); --warn:#D9A44E; --warn-bg:rgba(217,164,78,0.13); --bad:#FF7A5C; --bad-bg:rgba(255,122,92,0.13);
-      --lattice:rgba(255,255,255,0.018); }
-    select, textarea{ background:#20201d; border-color:#2C2A27; color:#F3F1ED; }
-    select{ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%238C877F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E"); }
+    :root:not([data-theme="light"]){ --bg:#15140F; --surface:#1C1B16; --line:#2C2A22; --line-strong:#43402F;
+      --ink:#F3F1EA; --muted:#A49C89; --faint:#746C5A; --accent:#FF7A5C; --accent-ink:#1A0E0A;
+      --good:#6FCB9F; --bad:#FF8A6B; }
+    select, textarea{ background:#1F1D16; border-color:#43402F; color:#F3F1EA; }
+    select{ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23A49C89' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E"); }
   }
-  :root[data-theme="dark"]{ --bg:#141312; --surface:#1C1B19; --border:#2C2A27; --border-strong:#403D38;
-    --fg:#F3F1ED; --fg-muted:#8C877F; --dim:#B9B4AC; --accent:#FF7A5C; --accent-2:#F06445; --accent-ink:#1A0E0A; --accent-soft:rgba(255,122,92,0.14);
-    --good:#4FB98C; --good-bg:rgba(79,185,140,0.14); --warn:#D9A44E; --warn-bg:rgba(217,164,78,0.13); --bad:#FF7A5C; --bad-bg:rgba(255,122,92,0.13);
-    --lattice:rgba(255,255,255,0.018); }
-  :root[data-theme="dark"] select, :root[data-theme="dark"] textarea{ background:#20201d; border-color:#2C2A27; color:#F3F1ED; }
-  :root[data-theme="dark"] select{ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%238C877F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E"); }
+  :root[data-theme="dark"]{ --bg:#15140F; --surface:#1C1B16; --line:#2C2A22; --line-strong:#43402F;
+    --ink:#F3F1EA; --muted:#A49C89; --faint:#746C5A; --accent:#FF7A5C; --accent-ink:#1A0E0A;
+    --good:#6FCB9F; --bad:#FF8A6B; }
+  :root[data-theme="dark"] select, :root[data-theme="dark"] textarea{ background:#1F1D16; border-color:#43402F; color:#F3F1EA; }
 </style>
 </head>
 <body>
-<div id="root"><div class="gate"><div class="card"><p class="spin">Loading…</p></div></div></div>
+<div id="root"><div class="gate"><p class="spin">Loading…</p></div></div>
 <script src="config.js"></script>
 <script>
 const CFG = window.DESK_CONFIG || {};
@@ -143,9 +123,8 @@ const API = (CFG.syncUrl || '').replace(/\/sync.*$/, '');
 const root = document.getElementById('root');
 let fb = null, idToken = '', me = null;
 
-const ICON_UPLOAD = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 13v8"/><path d="m8 17 4-4 4 4"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>';
-const ICON_ARROW = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
-const ICON_COPY = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+const ICON_UPLOAD = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 13v8"/><path d="m8 17 4-4 4 4"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>';
+const ICON_COPY = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
 
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function loadScript(src){ return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('failed to load ' + src)); document.head.appendChild(s); }); }
@@ -158,19 +137,12 @@ async function initFirebase(){
   fb = { auth: firebase.auth() };
 }
 
-function brandRow(){
-  return `<div class="brand-row"><div class="mark">P4</div><div><div class="eyebrow">Per4mance Guru</div></div></div>`;
-}
-function heroPanel(sub){
-  return `<div class="hero">${brandRow()}<h1>Creator Portal</h1><p class="hero-sub">${esc(sub)}</p></div>`;
-}
-
 function gate(msg, err){
-  root.innerHTML = `<div class="gate"><div class="card">
-    ${brandRow()}
-    <h1 style="margin:2px 0 10px;font-size:22px;font-family:'Bricolage Grotesque',sans-serif">Creator Portal</h1>
-    <p style="color:var(--fg-muted);font-size:14px">${esc(msg)}</p>
-    <button class="btn btn-primary" id="signin-btn" style="margin-top:16px">Sign in with Google</button>
+  root.innerHTML = `<div class="gate"><div class="gate-box">
+    <div class="topline"><span class="org">Per4mance Guru</span></div>
+    <h1>Creator Portal</h1>
+    <p class="lede">${esc(msg)}</p>
+    <button class="btn btn-primary" id="signin-btn">Sign in with Google</button>
     ${err ? `<div class="err">${esc(err)}</div>` : ''}
   </div></div>`;
   document.getElementById('signin-btn').onclick = signIn;
@@ -199,13 +171,12 @@ function fileToBase64(file){
 }
 
 const MAX_FILE_MB = 20;
-const DZ_DEFAULT = `<b>Click to choose a file</b><small>or drag and drop · image or video, max ${MAX_FILE_MB}MB</small>`;
+const DZ_DEFAULT = `<b>Drop a file here, or click to choose one</b><small>Image or video, up to ${MAX_FILE_MB}MB</small>`;
 
 function fmtMoney(n){ return '₹' + Math.round(n || 0).toLocaleString('en-IN'); }
 
-function renderUploadRow(u){
-  const status = u.status === 'linked' ? 'Live' : 'Pending';
-  const cls = u.status === 'linked' ? 'linked' : 'pending';
+function renderRow(u){
+  const live = u.status === 'linked';
   let perf = '';
   if (u.live) {
     perf = `<div class="perf">
@@ -216,17 +187,17 @@ function renderUploadRow(u){
   }
   const thumb = u.previewUrl
     ? (u.contentType || '').startsWith('video')
-      ? `<video src="${esc(u.previewUrl)}" style="width:100%;border-radius:11px;margin-top:10px;max-height:220px;border:1px solid var(--border)" controls></video>`
-      : `<img src="${esc(u.previewUrl)}" style="width:100%;border-radius:11px;margin-top:10px;max-height:220px;object-fit:cover;border:1px solid var(--border)" alt="">`
+      ? `<video class="thumb" src="${esc(u.previewUrl)}" controls></video>`
+      : `<img class="thumb" src="${esc(u.previewUrl)}" alt="">`
     : '';
-  return `<div class="upload-row">
-    <div class="top">
-      <div><span class="code-sm">${esc(u.code)}</span></div>
-      <span class="badge ${cls}">${status}</span>
+  return `<div class="row">
+    <div class="left">
+      <div class="code-sm">${esc(u.code)}</div>
+      <div class="meta">${esc(u.clientName)}, ${esc(u.format)}${u.note ? ', ' + esc(u.note) : ''}</div>
+      ${perf}
+      ${thumb}
     </div>
-    <div class="meta">${esc(u.clientName)} · ${esc(u.format)}${u.note ? ' · ' + esc(u.note) : ''}</div>
-    ${perf}
-    ${thumb}
+    <div class="status ${live ? 'live' : 'pending'}">${live ? 'Live' : 'Waiting'}</div>
   </div>`;
 }
 
@@ -234,9 +205,9 @@ async function refreshMine(){
   const list = document.getElementById('mine-list');
   try {
     const rows = await api('/creator/mine');
-    list.innerHTML = rows.length ? rows.map(renderUploadRow).join('') : '<div class="empty">Nothing uploaded yet.</div>';
+    list.innerHTML = rows.length ? rows.map(renderRow).join('') : '<div class="empty">Nothing submitted yet.</div>';
   } catch (e) {
-    list.innerHTML = `<div class="err">Could not load your uploads (${esc(e.message || e)})</div>`;
+    list.innerHTML = `<div class="err">Could not load your submissions. ${esc(e.message || e)}</div>`;
   }
 }
 
@@ -245,7 +216,7 @@ function wireDropzone(){
   const zone = document.getElementById('f-file-zone');
   const text = document.getElementById('f-file-text');
   function show(file){
-    if (file) { text.innerHTML = `<b>${esc(file.name)}</b><small>${fmtBytes(file.size)} · click to change</small>`; zone.classList.add('has-file'); }
+    if (file) { text.innerHTML = `<b>${esc(file.name)}</b><small>${fmtBytes(file.size)}, click to change</small>`; zone.classList.add('has-file'); }
     else { text.innerHTML = DZ_DEFAULT; zone.classList.remove('has-file'); }
   }
   input.addEventListener('change', () => show(input.files[0]));
@@ -261,44 +232,45 @@ function wireDropzone(){
 async function boot(){
   idToken = await me.getIdToken();
   root.innerHTML = `
-    <div class="wrap">
-      <header>
-        ${heroPanel('Upload what you made, get a code, paste it on the live ad. We track the rest.')}
-        <div class="who">Signed in as ${esc(me.email)} · <a href="#" id="signout">sign out</a></div>
-      </header>
-
-      <div class="card accent">
-        <h2><span class="dot"></span>Upload a new creative</h2>
-        <form id="upload-form">
-          <label for="f-client">Client</label>
-          <select id="f-client" required></select>
-
-          <label for="f-format">Format</label>
-          <select id="f-format">
-            <option>Static</option><option>Video</option><option>Reel</option><option>Carousel</option>
-          </select>
-
-          <label for="f-file">File</label>
-          <input id="f-file" type="file" accept="image/*,video/*" style="display:none">
-          <label for="f-file" class="dropzone" id="f-file-zone">
-            <span class="dz-icon">${ICON_UPLOAD}</span>
-            <span class="dz-text" id="f-file-text">${DZ_DEFAULT}</span>
-          </label>
-
-          <label for="f-note">Note (optional)</label>
-          <textarea id="f-note" placeholder="What is this, in a few words?"></textarea>
-
-          <button class="btn btn-primary" id="f-submit" type="submit"><span id="f-submit-label">Get my code</span>${ICON_ARROW}</button>
-          <div class="err" id="f-err" style="display:none"></div>
-        </form>
+    <div class="page">
+      <div class="topline">
+        <span><span class="org">Per4mance Guru</span> · Creator Portal</span>
+        <span class="who">${esc(me.email)} · <a href="#" id="signout">sign out</a></span>
       </div>
 
-      <div class="card" id="result-card" style="display:none"></div>
+      <h1>Submit a creative</h1>
+      <p class="lede">Upload what you made and we'll hand you a code. Drop that code into the ad's name once it goes live, and we'll track its performance from there.</p>
 
-      <div class="card">
-        <h2><span class="dot"></span>My uploads</h2>
-        <div id="mine-list"><div class="empty">Loading…</div></div>
+      <div class="ticket">
+        <div class="ticket-body">
+          <form id="upload-form">
+            <label for="f-client">Client</label>
+            <select id="f-client" required></select>
+
+            <label for="f-format">Format</label>
+            <select id="f-format">
+              <option>Static</option><option>Video</option><option>Reel</option><option>Carousel</option>
+            </select>
+
+            <label for="f-file">File</label>
+            <input id="f-file" type="file" accept="image/*,video/*" style="display:none">
+            <label for="f-file" class="dropzone" id="f-file-zone">
+              ${ICON_UPLOAD}
+              <span class="dz-text" id="f-file-text">${DZ_DEFAULT}</span>
+            </label>
+
+            <label for="f-note">Note (optional)</label>
+            <textarea id="f-note" placeholder="What is this, in a few words?"></textarea>
+
+            <button class="btn btn-primary" id="f-submit" type="submit"><span id="f-submit-label">Get my code</span></button>
+            <div class="err" id="f-err" style="display:none"></div>
+          </form>
+        </div>
+        <div id="stub-wrap"></div>
       </div>
+
+      <h2>My submissions</h2>
+      <div id="mine-list"><div class="empty">Loading…</div></div>
     </div>`;
 
   document.getElementById('signout').onclick = (e) => { e.preventDefault(); fb.auth.signOut(); };
@@ -310,7 +282,7 @@ async function boot(){
     sel.innerHTML = clients.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
   } catch (e) {
     document.getElementById('f-err').style.display = 'block';
-    document.getElementById('f-err').textContent = 'Could not load client list: ' + (e.message || e);
+    document.getElementById('f-err').textContent = 'Could not load the client list. ' + (e.message || e);
   }
 
   document.getElementById('upload-form').onsubmit = async (e) => {
@@ -321,7 +293,7 @@ async function boot(){
     const fileInput = document.getElementById('f-file');
     const file = fileInput.files[0];
     if (file && file.size > MAX_FILE_MB * 1024 * 1024) {
-      errBox.style.display = 'block'; errBox.textContent = `That file is over ${MAX_FILE_MB}MB. Please upload a smaller or compressed version.`;
+      errBox.style.display = 'block'; errBox.textContent = `That file is over ${MAX_FILE_MB}MB. Try a smaller or compressed version.`;
       return;
     }
     btn.disabled = true; label.textContent = 'Uploading…';
@@ -334,16 +306,12 @@ async function boot(){
       };
       if (file) { payload.fileName = file.name; payload.contentType = file.type; payload.fileBase64 = await fileToBase64(file); }
       const r = await api('/creator/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      const rc = document.getElementById('result-card');
-      rc.style.display = 'block';
-      rc.innerHTML = `<div class="code-box">
-        <div class="code-badge">✓ Upload received</div>
-        <div class="code-label">Your code</div>
-        <div class="code">${esc(r.code)}</div>
-        <button class="btn btn-ghost" id="copy-code">${ICON_COPY} Copy code</button>
-        <div class="code-divider"></div>
-        <p class="hint">Paste this as the <b>last</b> part of the ad's name in Meta Ads Manager, after the final "|", once it goes live:</p>
-        <div class="example-chip">... | Girl Boxers | Reels | 19-09-25 | <b>${esc(r.code)}</b></div>
+      document.getElementById('stub-wrap').innerHTML = `<div class="tear"></div><div class="stub">
+        <div class="stub-label">Your code</div>
+        <div class="stub-code">${esc(r.code)}</div>
+        <p>Add this as the <b>last</b> part of the ad's name in Meta Ads Manager, once it's live:</p>
+        <div class="example">... | Girl Boxers | Reels | 19-09-25 | <b>${esc(r.code)}</b></div>
+        <button class="btn btn-ghost" id="copy-code" style="margin-top:14px">${ICON_COPY} Copy code</button>
       </div>`;
       document.getElementById('copy-code').onclick = () => { navigator.clipboard?.writeText(r.code); };
       document.getElementById('upload-form').reset();
@@ -369,7 +337,7 @@ async function boot(){
       catch (e) { gate('Sign in to upload your creatives and track how they perform.', e.message || String(e)); }
     });
   } catch (e) {
-    root.innerHTML = `<div class="gate"><div class="card"><p class="err">Could not load: ${esc(e.message || e)}</p></div></div>`;
+    root.innerHTML = `<div class="gate"><div class="gate-box"><p class="err">Could not load. ${esc(e.message || e)}</p></div></div>`;
   }
 })();
 </script>
