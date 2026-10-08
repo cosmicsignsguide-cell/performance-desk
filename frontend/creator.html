@@ -8,45 +8,53 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  /* A claim ticket, not a form in a card. You hand in what you made; you get a stub with a
-     code on it; later you redeem that code by pasting it into the live ad's name. The shape
-     of the page follows that exchange instead of defaulting to bordered boxes everywhere. */
+  /* A darkroom light table. You lay a frame down (upload), a number gets burned into its
+     corner (the code), and you carry the strip of sprocket holes down the page the whole
+     way, because that's literally what this team works in all day: negatives and frames. */
   :root{
-    --bg:#FAF9F7; --surface:#FFFFFF; --line:#E4E0D9; --line-strong:#D6D2CB;
-    --accent:#F06445; --accent-ink:#fff;
-    --ink:#171717; --muted:#767167; --faint:#9A958B;
-    --good:#2E6B4F; --bad:#B23B22;
+    --bg:#120F0B; --surface:#1D1812; --rail:#0A0806; --line:#342A1D; --line-strong:#4A3C28;
+    --accent:#FF6F4D; --accent-ink:#1A0E08; --accent-dim:rgba(255,111,77,0.14);
+    --ink:#F2E9DA; --muted:#A99A80; --faint:#6E6151;
+    --good:#7FC79B; --bad:#FF8669;
   }
   *{box-sizing:border-box;}
-  body{ margin:0; min-height:100vh; background:var(--bg); color:var(--ink);
+  body{ margin:0; background:var(--rail); color:var(--ink);
         font:16px/1.5 "Hanken Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
         -webkit-font-smoothing:antialiased; }
+  .filmwrap{ display:flex; min-height:100vh; }
+  .rail{ flex:0 0 16px; background-color:var(--rail);
+    background-image:radial-gradient(circle at 8px 11px, var(--bg) 4.5px, transparent 5px);
+    background-size:16px 22px; background-repeat:repeat-y; }
+  #root{ flex:1; min-width:0; background:var(--bg); }
+  @media (max-width:540px){ .rail{ flex-basis:9px; background-size:9px 16px; background-position:-3px 0; } }
+
   .page{ max-width:460px; margin:0 auto; padding:30px 18px 70px; }
-  .topline{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:28px;
+  .topline{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:26px;
     font-size:13px; color:var(--muted); flex-wrap:wrap; }
   .topline .org{ color:var(--ink); font-weight:600; }
   .topline a{ color:var(--muted); }
-  h1{ font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:30px; letter-spacing:-.02em; margin:0 0 8px; }
+  .who{ display:flex; align-items:center; gap:8px; }
+  h1{ font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:29px; letter-spacing:-.02em; margin:0 0 8px; color:var(--ink); }
   .lede{ color:var(--muted); font-size:15px; line-height:1.55; margin:0 0 26px; max-width:40ch; }
-  h2{ font-family:"Bricolage Grotesque",sans-serif; font-size:17px; font-weight:700; letter-spacing:-.01em; margin:30px 0 4px; }
+  h2{ font-family:"Bricolage Grotesque",sans-serif; font-size:16px; font-weight:700; letter-spacing:-.01em; margin:30px 0 4px; color:var(--ink); }
 
-  /* The ticket itself */
-  .ticket{ position:relative; background:var(--surface); border:1px solid var(--line); }
-  .ticket-body{ padding:22px 22px 24px; }
+  /* The frame */
+  .frame{ position:relative; background:var(--surface); border:1px solid var(--line); }
+  .frame-body{ padding:22px 22px 24px; }
   label{ display:block; font-size:13.5px; font-weight:600; color:var(--muted); margin:18px 0 6px; }
   label:first-child{ margin-top:0; }
   select, textarea{
-    width:100%; padding:10px 12px; border:1px solid var(--line-strong); border-radius:7px;
-    font-size:15.5px; font-family:inherit; background:#fff; color:var(--ink); transition:border-color .15s ease;
+    width:100%; padding:10px 12px; border:1px solid var(--line-strong); border-radius:6px;
+    font-size:15.5px; font-family:inherit; background:#140F0A; color:var(--ink); transition:border-color .15s ease;
   }
   select{ appearance:none; -webkit-appearance:none; -moz-appearance:none; cursor:pointer;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23767167' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E");
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23A99A80' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E");
     background-repeat:no-repeat; background-position:right 12px center; background-size:15px; padding-right:36px; }
   select:focus, textarea:focus{ outline:none; border-color:var(--accent); }
   textarea{ resize:vertical; min-height:56px; }
 
   .dropzone{ display:flex; align-items:center; gap:11px; width:100%; padding:12px; border:1px dashed var(--line-strong);
-    border-radius:7px; background:transparent; cursor:pointer; transition:border-color .15s ease; }
+    border-radius:6px; background:transparent; cursor:pointer; transition:border-color .15s ease; }
   .dropzone:hover{ border-color:var(--accent); }
   .dropzone.drag{ border-color:var(--accent); border-style:solid; }
   .dropzone.has-file{ border-style:solid; border-color:var(--line-strong); }
@@ -56,17 +64,17 @@
   .dropzone .dz-text small{ display:block; color:var(--muted); font-size:12px; margin-top:1px; }
 
   .btn{ display:inline-flex; align-items:center; justify-content:center; gap:7px;
-        padding:12px 18px; border-radius:7px; border:1px solid var(--accent); font-size:15.5px;
+        padding:12px 18px; border-radius:6px; border:1px solid var(--accent); font-size:15.5px;
         font-weight:600; cursor:pointer; font-family:inherit; transition:opacity .15s ease; }
   .btn:active{ opacity:.85; }
   .btn-primary{ background:var(--accent); color:var(--accent-ink); width:100%; margin-top:20px; }
   .btn-primary:disabled{ opacity:.45; cursor:not-allowed; }
   .btn-ghost{ background:transparent; border-color:var(--line-strong); color:var(--ink); }
-  .btn-ghost:hover{ border-color:var(--ink); }
+  .btn-ghost:hover{ border-color:var(--accent); color:var(--accent); }
   .err{ color:var(--bad); font-size:13.5px; margin-top:12px; line-height:1.5; }
 
-  /* Perforation between the form and the stub -- the one place a motion cue is earned: it
-     only appears, with a brief reveal, the moment a code is actually issued. */
+  /* Sprocket tear between the form and the exposed frame -- same device as the filmstrip
+     rails, so the one motion moment (the code appearing) reads as part of the same strip. */
   .tear{ position:relative; height:0; border-top:2px dashed var(--line-strong); margin:0; }
   .tear::before, .tear::after{ content:""; position:absolute; top:50%; transform:translateY(-50%);
     width:18px; height:18px; border-radius:50%; background:var(--bg); border:1px solid var(--line); }
@@ -76,18 +84,20 @@
   .stub{ padding:22px 22px 24px; animation:stubIn .35s cubic-bezier(.2,.8,.3,1) both; }
   .stub-label{ font-size:13px; color:var(--muted); font-weight:600; }
   .stub-code{ font-family:"Bricolage Grotesque",monospace; font-size:44px; font-weight:800; letter-spacing:.03em;
-    color:var(--accent); margin:4px 0 14px; }
+    color:var(--accent); margin:4px 0 14px; text-shadow:0 0 28px var(--accent-dim); }
   .stub p{ font-size:14px; color:var(--muted); line-height:1.6; margin:0 0 10px; }
   .stub p b{ color:var(--ink); font-weight:600; }
   .example{ font-family:"Bricolage Grotesque",monospace; font-size:12.5px; color:var(--muted);
-    background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:9px 11px; word-break:break-all; }
+    background:#140F0A; border:1px solid var(--line); border-radius:6px; padding:9px 11px; word-break:break-all; }
   .example b{ color:var(--accent); font-weight:700; }
 
-  .who{ font-size:13.5px; }
+  .avatar{ width:26px; height:26px; border-radius:50%; flex-shrink:0; overflow:hidden; background:#140F0A; border:1px solid var(--line-strong); }
+  .avatar svg{ display:block; }
+
   .row{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:14px 0; border-bottom:1px solid var(--line); }
   .row:last-child{ border-bottom:none; }
   .row .left{ min-width:0; }
-  .row .code-sm{ font-family:"Bricolage Grotesque",monospace; font-weight:700; font-size:15px; }
+  .row .code-sm{ font-family:"Bricolage Grotesque",monospace; font-weight:700; font-size:15px; color:var(--ink); }
   .row .meta{ font-size:13.5px; color:var(--muted); margin-top:2px; }
   .row .status{ font-size:13px; font-weight:600; white-space:nowrap; flex-shrink:0; }
   .row .status.live{ color:var(--accent); }
@@ -100,22 +110,14 @@
   .gate{ display:flex; min-height:100vh; align-items:center; justify-content:center; padding:20px; }
   .gate-box{ max-width:340px; width:100%; text-align:left; }
   .spin{ color:var(--muted); }
-
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){ --bg:#15140F; --surface:#1C1B16; --line:#2C2A22; --line-strong:#43402F;
-      --ink:#F3F1EA; --muted:#A49C89; --faint:#746C5A; --accent:#FF7A5C; --accent-ink:#1A0E0A;
-      --good:#6FCB9F; --bad:#FF8A6B; }
-    select, textarea{ background:#1F1D16; border-color:#43402F; color:#F3F1EA; }
-    select{ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23A49C89' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E"); }
-  }
-  :root[data-theme="dark"]{ --bg:#15140F; --surface:#1C1B16; --line:#2C2A22; --line-strong:#43402F;
-    --ink:#F3F1EA; --muted:#A49C89; --faint:#746C5A; --accent:#FF7A5C; --accent-ink:#1A0E0A;
-    --good:#6FCB9F; --bad:#FF8A6B; }
-  :root[data-theme="dark"] select, :root[data-theme="dark"] textarea{ background:#1F1D16; border-color:#43402F; color:#F3F1EA; }
 </style>
 </head>
 <body>
-<div id="root"><div class="gate"><p class="spin">Loading…</p></div></div>
+<div class="filmwrap">
+  <div class="rail"></div>
+  <div id="root"><div class="gate"><p class="spin">Loading…</p></div></div>
+  <div class="rail"></div>
+</div>
 <script src="config.js"></script>
 <script>
 const CFG = window.DESK_CONFIG || {};
@@ -129,6 +131,49 @@ const ICON_COPY = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" s
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function loadScript(src){ return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('failed to load ' + src)); document.head.appendChild(s); }); }
 function fmtBytes(n){ if (!n) return ''; const u = ['B', 'KB', 'MB', 'GB']; let i = 0, v = n; while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; } return (v < 10 && i > 0 ? v.toFixed(1) : Math.round(v)) + ' ' + u[i]; }
+
+/* A small cartoon face per person, generated deterministically from their email so it's
+   stable across reloads without storing anything. Same trick avatar generators use: layer
+   a hair shape behind the face circle so only the top sliver shows through. */
+const AVATAR_SKIN = ['#E8A33D', '#D9664A', '#6B9A7E', '#6B8CAE', '#C77DB0', '#C2A23B', '#8C7AE6', '#4FB8A6'];
+const AVATAR_HAIR = ['#2A2118', '#4A3321', '#6B4226', '#1C1C1C', '#8A5A2E'];
+function hashStr(s){ let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; }
+function cartoonAvatar(seed, px){
+  const h = hashStr(seed);
+  const skin = AVATAR_SKIN[h % AVATAR_SKIN.length];
+  const hairColor = AVATAR_HAIR[(h >> 4) % AVATAR_HAIR.length];
+  const hairStyle = (h >> 7) % 5;
+  const eyeStyle = (h >> 10) % 3;
+  const mouthStyle = (h >> 13) % 3;
+  const headphones = (h >> 16) % 3 === 0;
+  let hair = '';
+  if (hairStyle === 1) hair = `<ellipse cx="20" cy="9" rx="13" ry="7" fill="${hairColor}"/>`;
+  else if (hairStyle === 2) hair = `<ellipse cx="20" cy="11" rx="13.5" ry="10" fill="${hairColor}"/>`;
+  else if (hairStyle === 3) hair = `<ellipse cx="20" cy="9" rx="13" ry="7" fill="${hairColor}"/><circle cx="20" cy="3" r="2.6" fill="${hairColor}"/>`;
+  else if (hairStyle === 4) hair = `<rect x="6" y="5" width="28" height="11" rx="5.5" fill="${hairColor}"/>`;
+  let eyes;
+  if (eyeStyle === 0) eyes = `<circle cx="15" cy="21" r="1.6" fill="#201912"/><circle cx="25" cy="21" r="1.6" fill="#201912"/>`;
+  else if (eyeStyle === 1) eyes = `<circle cx="15" cy="21" r="3.2" fill="none" stroke="#201912" stroke-width="1.3"/><circle cx="25" cy="21" r="3.2" fill="none" stroke="#201912" stroke-width="1.3"/><line x1="18.3" y1="21" x2="21.7" y2="21" stroke="#201912" stroke-width="1.3"/><circle cx="15" cy="21" r="1" fill="#201912"/><circle cx="25" cy="21" r="1" fill="#201912"/>`;
+  else eyes = `<path d="M12.5 20.5 Q15 18.3 17.5 20.5" stroke="#201912" stroke-width="1.4" fill="none" stroke-linecap="round"/><path d="M22.5 20.5 Q25 18.3 27.5 20.5" stroke="#201912" stroke-width="1.4" fill="none" stroke-linecap="round"/>`;
+  let mouth;
+  if (mouthStyle === 0) mouth = `<path d="M14 27 Q20 31 26 27" stroke="#201912" stroke-width="1.6" fill="none" stroke-linecap="round"/>`;
+  else if (mouthStyle === 1) mouth = `<path d="M15 27.5 Q20 28.3 24 26.8" stroke="#201912" stroke-width="1.4" fill="none" stroke-linecap="round"/>`;
+  else mouth = `<ellipse cx="20" cy="27.3" rx="3" ry="2.1" fill="#201912"/>`;
+  const hp = headphones ? `<path d="M6 21 A14 14 0 0 1 34 21" stroke="#201912" stroke-width="2.2" fill="none" stroke-linecap="round"/><rect x="3.5" y="19" width="5" height="8" rx="2.5" fill="#201912"/><rect x="31.5" y="19" width="5" height="8" rx="2.5" fill="#201912"/>` : '';
+  return `<svg width="${px}" height="${px}" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="20" cy="21" r="14" fill="${skin}"/>${hair}${eyes}${mouth}${hp}
+  </svg>`;
+}
+
+// A few teammates already have a real photo on file (team-shoot crops); everyone else still
+// gets the generated face above, so no one shows a blank or broken avatar.
+const AVATAR_PHOTOS = { abhigyan: 'avatars/abhigyan.jpg', nasreen: 'avatars/nasreen.jpg', ayush: 'avatars/ayush.jpg', sallauddin: 'avatars/sallauddin.jpg', dhruv: 'avatars/dhruv.jpg' };
+function avatarKey(s){ return String(s || '').toLowerCase().split('@')[0].replace(/[^a-z]/g, ''); }
+function renderAvatar(name, email, px){
+  const photo = AVATAR_PHOTOS[avatarKey(name)] || AVATAR_PHOTOS[avatarKey(email)];
+  if (photo) return `<img src="${photo}" width="${px}" height="${px}" style="width:${px}px;height:${px}px;object-fit:cover;display:block;" alt="">`;
+  return cartoonAvatar(email, px);
+}
 
 async function initFirebase(){
   const v = CFG.firebaseVersion || '10.14.1';
@@ -234,15 +279,15 @@ async function boot(){
   root.innerHTML = `
     <div class="page">
       <div class="topline">
-        <span><span class="org">Per4mance Guru</span> · Creator Portal</span>
-        <span class="who">${esc(me.email)} · <a href="#" id="signout">sign out</a></span>
+        <span><span class="org">Per4mance Guru</span> &middot; Creator Portal</span>
+        <span class="who"><span class="avatar">${renderAvatar(me.displayName, me.email, 26)}</span>${esc(me.email)} &middot; <a href="#" id="signout">sign out</a></span>
       </div>
 
       <h1>Submit a creative</h1>
       <p class="lede">Upload what you made and we'll hand you a code. Drop that code into the ad's name once it goes live, and we'll track its performance from there.</p>
 
-      <div class="ticket">
-        <div class="ticket-body">
+      <div class="frame">
+        <div class="frame-body">
           <form id="upload-form">
             <label for="f-client">Client</label>
             <select id="f-client" required></select>

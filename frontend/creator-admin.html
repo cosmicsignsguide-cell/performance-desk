@@ -8,58 +8,70 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  /* A standings board, not a dashboard of cards. Rank is the one real sequence here, so it
-     gets the one oversized typographic treatment; everything else stays quiet and the #1
-     row is the only place color does any work. */
+  /* Same darkroom light table as the Creator Portal, same filmstrip rail down both edges.
+     A standings board on the light table: rank is the one real sequence here, so it gets
+     the one oversized typographic treatment, and the #1 row is the only place color does
+     any work. Everyone's face sits next to their name, same deterministic avatar trick the
+     portal uses, so the board reads as people, not just numbers. */
   :root{
-    --bg:#FAF9F7; --surface:#FFFFFF; --line:#E4E0D9; --line-strong:#D6D2CB;
-    --accent:#F06445; --accent-ink:#fff;
-    --ink:#171717; --muted:#767167; --faint:#9A958B;
-    --good:#2E6B4F; --bad:#B23B22;
+    --bg:#120F0B; --surface:#1D1812; --rail:#0A0806; --line:#342A1D; --line-strong:#4A3C28;
+    --accent:#FF6F4D; --accent-ink:#1A0E08; --accent-dim:rgba(255,111,77,0.14);
+    --ink:#F2E9DA; --muted:#A99A80; --faint:#6E6151;
+    --good:#7FC79B; --bad:#FF8669;
   }
   *{box-sizing:border-box;}
-  body{ margin:0; min-height:100vh; background:var(--bg); color:var(--ink);
+  body{ margin:0; background:var(--rail); color:var(--ink);
         font:16px/1.5 "Hanken Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
         -webkit-font-smoothing:antialiased; }
+  .filmwrap{ display:flex; min-height:100vh; }
+  .rail{ flex:0 0 16px; background-color:var(--rail);
+    background-image:radial-gradient(circle at 8px 11px, var(--bg) 4.5px, transparent 5px);
+    background-size:16px 22px; background-repeat:repeat-y; }
+  #root{ flex:1; min-width:0; background:var(--bg); }
+  @media (max-width:540px){ .rail{ flex-basis:9px; background-size:9px 16px; background-position:-3px 0; } }
+
   .page{ max-width:720px; margin:0 auto; padding:30px 18px 70px; }
   .topline{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:22px; flex-wrap:wrap; }
   .topline .org{ font-size:13px; color:var(--muted); }
   .topline .org b{ color:var(--ink); font-weight:600; }
   .topline .actions{ display:flex; gap:8px; }
-  h1{ font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:28px; letter-spacing:-.02em; margin:0 0 6px; }
+  h1{ font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:28px; letter-spacing:-.02em; margin:0 0 6px; color:var(--ink); }
   .period{ color:var(--muted); font-size:14px; margin:0 0 4px; }
   .summary{ color:var(--muted); font-size:14.5px; line-height:1.6; margin:0 0 26px; max-width:62ch; }
   .summary b{ color:var(--ink); font-weight:600; }
 
-  .btn{ padding:9px 14px; border-radius:7px; border:1px solid var(--line-strong); background:transparent;
+  .btn{ padding:9px 14px; border-radius:6px; border:1px solid var(--line-strong); background:transparent;
         color:var(--ink); font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit; }
-  .btn:hover{ border-color:var(--ink); }
+  .btn:hover{ border-color:var(--accent); color:var(--accent); }
 
   .gate{ display:flex; min-height:100vh; align-items:center; justify-content:center; padding:20px; }
   .gate-box{ max-width:340px; width:100%; }
-  .gate input{ width:100%; padding:10px 12px; border:1px solid var(--line-strong); border-radius:7px; font-size:15.5px; margin:14px 0; font-family:inherit; background:#fff; color:var(--ink); }
+  .gate input{ width:100%; padding:10px 12px; border:1px solid var(--line-strong); border-radius:6px; font-size:15.5px; margin:14px 0; font-family:inherit; background:#140F0A; color:var(--ink); }
   .gate input:focus{ outline:none; border-color:var(--accent); }
-  .gate .btn{ width:100%; background:var(--accent); color:#fff; border-color:var(--accent); padding:11px; }
+  .gate .btn{ width:100%; background:var(--accent); color:var(--accent-ink); border-color:var(--accent); padding:11px; }
   .err{ color:var(--bad); font-size:13.5px; margin-top:10px; line-height:1.5; }
 
   /* The board */
   .board{ border-top:1px solid var(--line); }
   .entry{ border-bottom:1px solid var(--line); padding:16px 0; cursor:pointer; }
-  .entry-main{ display:grid; grid-template-columns:48px 1fr auto auto 20px; align-items:center; gap:14px; }
+  .entry-main{ display:grid; grid-template-columns:40px 32px 1fr auto auto 20px; align-items:center; gap:12px; }
   .rank{ font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:21px; color:var(--faint); font-variant-numeric:tabular-nums; }
+  .avatar{ width:32px; height:32px; border-radius:50%; flex-shrink:0; overflow:hidden; background:#140F0A; border:1px solid var(--line-strong); }
+  .avatar svg{ display:block; }
   .entry.lead{ position:relative; }
   .entry.lead::before{ content:""; position:absolute; left:-18px; top:0; bottom:0; width:3px; background:var(--accent); }
   .entry.lead .rank{ color:var(--accent); font-size:25px; }
-  .who-name{ font-weight:700; font-size:15.5px; }
+  .entry.lead .avatar{ border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-dim); }
+  .who-name{ font-weight:700; font-size:15.5px; color:var(--ink); }
   .who-sub{ font-size:12.5px; color:var(--muted); margin-top:1px; }
   .num-col{ text-align:right; }
-  .num-col .v{ font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:17px; font-variant-numeric:tabular-nums; }
+  .num-col .v{ font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:17px; font-variant-numeric:tabular-nums; color:var(--ink); }
   .num-col .k{ font-size:10.5px; color:var(--muted); }
   .tier{ font-size:11.5px; margin-top:2px; }
   .tier.up{ color:var(--good); } .tier.down{ color:var(--faint); }
   .chev{ color:var(--faint); transition:transform .18s ease; justify-self:end; }
   .entry.open .chev{ transform:rotate(180deg); }
-  .entry-detail{ display:none; margin:14px 0 0 62px; font-size:13.5px; }
+  .entry-detail{ display:none; margin:14px 0 0 84px; font-size:13.5px; }
   .entry.open .entry-detail{ display:block; }
   .ad-line{ display:flex; justify-content:space-between; gap:10px; padding:5px 0; color:var(--muted); border-bottom:1px dashed var(--line); }
   .ad-line:last-child{ border-bottom:none; }
@@ -70,25 +82,19 @@
   a{ color:var(--accent); }
 
   @media (max-width:560px){
-    .entry-main{ grid-template-columns:34px 1fr auto 18px; }
+    .entry-main{ grid-template-columns:30px 26px 1fr auto 18px; }
+    .avatar{ width:26px; height:26px; }
     .num-col.eff-col{ display:none; }
-    .entry.open .entry-detail{ margin-left:48px; }
+    .entry.open .entry-detail{ margin-left:64px; }
   }
-
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){ --bg:#15140F; --surface:#1C1B16; --line:#2C2A22; --line-strong:#43402F;
-      --ink:#F3F1EA; --muted:#A49C89; --faint:#746C5A; --accent:#FF7A5C; --accent-ink:#1A0E0A;
-      --good:#6FCB9F; --bad:#FF8A6B; }
-    .gate input{ background:#1F1D16; border-color:#43402F; color:#F3F1EA; }
-  }
-  :root[data-theme="dark"]{ --bg:#15140F; --surface:#1C1B16; --line:#2C2A22; --line-strong:#43402F;
-    --ink:#F3F1EA; --muted:#A49C89; --faint:#746C5A; --accent:#FF7A5C; --accent-ink:#1A0E0A;
-    --good:#6FCB9F; --bad:#FF8A6B; }
-  :root[data-theme="dark"] .gate input{ background:#1F1D16; border-color:#43402F; color:#F3F1EA; }
 </style>
 </head>
 <body>
-<div id="root"><div class="gate"><p style="color:var(--muted)">Loading…</p></div></div>
+<div class="filmwrap">
+  <div class="rail"></div>
+  <div id="root"><div class="gate"><p style="color:var(--muted)">Loading…</p></div></div>
+  <div class="rail"></div>
+</div>
 <script src="config.js"></script>
 <script>
 const CFG = window.DESK_CONFIG || {};
@@ -108,6 +114,48 @@ function fmtDateRange(start, end){
     const bf = b.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
     return `Week of ${af}–${bf}`;
   } catch { return `Week of ${start} to ${end}`; }
+}
+
+/* Same deterministic cartoon face as the Creator Portal: hashed from the person's email so
+   it's stable across reloads and across both pages, with no image to store or fetch. */
+const AVATAR_SKIN = ['#E8A33D', '#D9664A', '#6B9A7E', '#6B8CAE', '#C77DB0', '#C2A23B', '#8C7AE6', '#4FB8A6'];
+const AVATAR_HAIR = ['#2A2118', '#4A3321', '#6B4226', '#1C1C1C', '#8A5A2E'];
+function hashStr(s){ let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; }
+function cartoonAvatar(seed, px){
+  const h = hashStr(seed);
+  const skin = AVATAR_SKIN[h % AVATAR_SKIN.length];
+  const hairColor = AVATAR_HAIR[(h >> 4) % AVATAR_HAIR.length];
+  const hairStyle = (h >> 7) % 5;
+  const eyeStyle = (h >> 10) % 3;
+  const mouthStyle = (h >> 13) % 3;
+  const headphones = (h >> 16) % 3 === 0;
+  let hair = '';
+  if (hairStyle === 1) hair = `<ellipse cx="20" cy="9" rx="13" ry="7" fill="${hairColor}"/>`;
+  else if (hairStyle === 2) hair = `<ellipse cx="20" cy="11" rx="13.5" ry="10" fill="${hairColor}"/>`;
+  else if (hairStyle === 3) hair = `<ellipse cx="20" cy="9" rx="13" ry="7" fill="${hairColor}"/><circle cx="20" cy="3" r="2.6" fill="${hairColor}"/>`;
+  else if (hairStyle === 4) hair = `<rect x="6" y="5" width="28" height="11" rx="5.5" fill="${hairColor}"/>`;
+  let eyes;
+  if (eyeStyle === 0) eyes = `<circle cx="15" cy="21" r="1.6" fill="#201912"/><circle cx="25" cy="21" r="1.6" fill="#201912"/>`;
+  else if (eyeStyle === 1) eyes = `<circle cx="15" cy="21" r="3.2" fill="none" stroke="#201912" stroke-width="1.3"/><circle cx="25" cy="21" r="3.2" fill="none" stroke="#201912" stroke-width="1.3"/><line x1="18.3" y1="21" x2="21.7" y2="21" stroke="#201912" stroke-width="1.3"/><circle cx="15" cy="21" r="1" fill="#201912"/><circle cx="25" cy="21" r="1" fill="#201912"/>`;
+  else eyes = `<path d="M12.5 20.5 Q15 18.3 17.5 20.5" stroke="#201912" stroke-width="1.4" fill="none" stroke-linecap="round"/><path d="M22.5 20.5 Q25 18.3 27.5 20.5" stroke="#201912" stroke-width="1.4" fill="none" stroke-linecap="round"/>`;
+  let mouth;
+  if (mouthStyle === 0) mouth = `<path d="M14 27 Q20 31 26 27" stroke="#201912" stroke-width="1.6" fill="none" stroke-linecap="round"/>`;
+  else if (mouthStyle === 1) mouth = `<path d="M15 27.5 Q20 28.3 24 26.8" stroke="#201912" stroke-width="1.4" fill="none" stroke-linecap="round"/>`;
+  else mouth = `<ellipse cx="20" cy="27.3" rx="3" ry="2.1" fill="#201912"/>`;
+  const hp = headphones ? `<path d="M6 21 A14 14 0 0 1 34 21" stroke="#201912" stroke-width="2.2" fill="none" stroke-linecap="round"/><rect x="3.5" y="19" width="5" height="8" rx="2.5" fill="#201912"/><rect x="31.5" y="19" width="5" height="8" rx="2.5" fill="#201912"/>` : '';
+  return `<svg width="${px}" height="${px}" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="20" cy="21" r="14" fill="${skin}"/>${hair}${eyes}${mouth}${hp}
+  </svg>`;
+}
+
+// A few teammates already have a real photo on file (team-shoot crops); everyone else still
+// gets the generated face above, so the board never has a blank or broken avatar.
+const AVATAR_PHOTOS = { abhigyan: 'avatars/abhigyan.jpg', nasreen: 'avatars/nasreen.jpg', ayush: 'avatars/ayush.jpg', sallauddin: 'avatars/sallauddin.jpg', dhruv: 'avatars/dhruv.jpg' };
+function avatarKey(s){ return String(s || '').toLowerCase().split('@')[0].replace(/[^a-z]/g, ''); }
+function renderAvatar(name, email, px){
+  const photo = AVATAR_PHOTOS[avatarKey(name)] || AVATAR_PHOTOS[avatarKey(email)];
+  if (photo) return `<img src="${photo}" width="${px}" height="${px}" style="width:${px}px;height:${px}px;object-fit:cover;display:block;" alt="">`;
+  return cartoonAvatar(email, px);
 }
 
 function gate(err){
@@ -156,6 +204,7 @@ function render(doc, key){
     return `<div class="entry${lead}" data-i="${i}">
       <div class="entry-main">
         <div class="rank">${String(rank).padStart(2, '0')}</div>
+        <span class="avatar">${renderAvatar(c.creatorName, c.creatorEmail, 32)}</span>
         <div>
           <div class="who-name">${esc(c.creatorName)}</div>
           <div class="who-sub">${esc(c.creatorEmail)}, ${esc(c.clients.join(', '))}</div>
