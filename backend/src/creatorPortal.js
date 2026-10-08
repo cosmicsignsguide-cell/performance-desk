@@ -128,3 +128,27 @@ export async function listMine(store, creatorEmail) {
   }
   return out;
 }
+
+// The team's own calendar day, not the server's: this agency works out of Delhi, and a raw
+// UTC cutoff would roll today's race over at 5:30am IST instead of midnight.
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+export function istDateStr(d) { return new Date(d.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10); }
+export function istToday() { return istDateStr(new Date()); }
+
+// The live competition board: raw submission counts for today across the whole team, ranked
+// highest first. Deliberately separate from the weekly effectiveness scorecard in creators.js
+// (admin-only, fairness-adjusted, computed once a day) -- this is the number that moves while
+// people are actually working, the one that makes the race visible in real time.
+export async function listToday(store) {
+  const rows = await store.list('creatorUploads');
+  const today = istToday();
+  const byCreator = new Map();
+  for (const u of rows) {
+    const t = new Date(u.createdAt);
+    if (isNaN(t) || istDateStr(t) !== today) continue;
+    const key = u.creatorEmail;
+    if (!byCreator.has(key)) byCreator.set(key, { creatorEmail: u.creatorEmail, creatorName: u.creatorName || u.creatorEmail, count: 0 });
+    byCreator.get(key).count++;
+  }
+  return [...byCreator.values()].sort((a, b) => b.count - a.count || a.creatorName.localeCompare(b.creatorName));
+}

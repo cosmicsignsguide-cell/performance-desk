@@ -87,6 +87,32 @@
     .num-col.eff-col{ display:none; }
     .entry.open .entry-detail{ margin-left:64px; }
   }
+
+  /* The actual competition, up front and bigger than anything below it: raw submissions so
+     far today, ranked. The weekly scorecard underneath is the fair, effectiveness-adjusted
+     number; this is the one that moves while people are still working and makes the race
+     visible in real time. */
+  .race-hero{ background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:22px 22px 10px; margin:4px 0 30px; }
+  .race-hero-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+  .race-hero-label{ font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:21px; letter-spacing:-.01em; color:var(--ink); }
+  .race-live{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--accent); }
+  .race-live::before{ content:""; width:7px; height:7px; border-radius:50%; background:var(--accent); box-shadow:0 0 9px var(--accent); animation:raceLivePulse 1.6s ease-in-out infinite; }
+  @keyframes raceLivePulse{ 0%,100%{ opacity:1; } 50%{ opacity:.3; } }
+  .race-day{ font-size:12.5px; color:var(--muted); margin:0 0 16px; }
+  .race-row{ display:flex; align-items:center; gap:14px; padding:12px 0; border-bottom:1px solid var(--line); }
+  .race-row:last-child{ border-bottom:none; }
+  .race-rank{ font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:17px; color:var(--faint); width:20px; text-align:center; flex-shrink:0; }
+  .race-row.lead .race-rank, .race-row.lead .race-name{ color:var(--accent); }
+  .race-row.lead .race-fill{ background:var(--accent); box-shadow:0 0 14px var(--accent-dim); }
+  .race-avatar{ width:38px; height:38px; border-radius:50%; flex-shrink:0; overflow:hidden; background:#140F0A; border:1px solid var(--line-strong); }
+  .race-row.lead .race-avatar{ border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-dim); }
+  .race-main{ flex:1; min-width:0; }
+  .race-top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:7px; gap:10px; }
+  .race-name{ font-weight:700; font-size:15px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .race-count{ font-family:"Bricolage Grotesque",sans-serif; font-weight:800; font-size:23px; color:var(--ink); font-variant-numeric:tabular-nums; flex-shrink:0; }
+  .race-track{ height:7px; border-radius:4px; background:var(--line); overflow:hidden; }
+  .race-fill{ height:100%; background:var(--faint); border-radius:4px; transition:width .5s cubic-bezier(.2,.8,.3,1); }
+  .section-label{ font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:14px; color:var(--muted); margin:0 0 2px; }
 </style>
 </head>
 <body>
@@ -158,6 +184,25 @@ function renderAvatar(name, email, px){
   return cartoonAvatar(email, px);
 }
 
+// Raw submission counts for today, ranked. This is the real competition: the fairness-adjusted
+// effectiveness score below only settles once ads have run, but this moves all day long.
+function renderTodayBoard(rows){
+  if (!rows || !rows.length) return '<div class="empty" style="padding:20px 0">Nobody has submitted yet today.</div>';
+  const max = Math.max(...rows.map((r) => r.count));
+  return rows.map((r, i) => {
+    const pct = Math.max(6, Math.round((r.count / max) * 100));
+    const lead = i === 0 ? ' lead' : '';
+    return `<div class="race-row${lead}">
+      <span class="race-rank">${i + 1}</span>
+      <span class="race-avatar">${renderAvatar(r.creatorName, r.creatorEmail, 38)}</span>
+      <div class="race-main">
+        <div class="race-top"><span class="race-name">${esc(r.creatorName)}</span><span class="race-count">${r.count}</span></div>
+        <div class="race-track"><div class="race-fill" style="width:${pct}%"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function gate(err){
   root.innerHTML = `<div class="gate"><div class="gate-box">
     <div class="topline"><span class="org"><b>Per4mance Guru</b> admin</span></div>
@@ -176,16 +221,25 @@ function gate(err){
   document.getElementById('k').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('go').click(); });
 }
 
-function render(doc, key){
+function render(doc, key, today){
+  today = today || { day: '', rows: [] };
+  const raceHero = `<div class="race-hero">
+      <div class="race-hero-head"><span class="race-hero-label">Today's race</span><span class="race-live">Live</span></div>
+      <p class="race-day">${today.day ? esc(today.day) + ', ' : ''}raw submissions so far, highest first.</p>
+      ${renderTodayBoard(today.rows)}
+    </div>`;
+
   if (doc.error) {
     root.innerHTML = `<div class="page">
       <div class="topline"><span class="org"><b>Per4mance Guru</b> admin</span>
-        <span class="actions"><button class="btn" id="reset">Change key</button></span></div>
+        <span class="actions"><button class="btn" id="refresh">Refresh</button><button class="btn" id="reset">Change key</button></span></div>
       <h1>Creative Incentive Scorecard</h1>
+      ${raceHero}
       <div class="empty">${esc(doc.error)}<br><br>
         This fills in once the team starts pasting their codes into live ad names
         (<a href="creator.html" target="_blank">Creator Portal</a>), and refreshes every day on its own.</div>
     </div>`;
+    document.getElementById('refresh').onclick = () => load(key);
     document.getElementById('reset').onclick = () => { localStorage.removeItem(KEY_STORE); gate(); };
     return;
   }
@@ -229,6 +283,9 @@ function render(doc, key){
       <span class="actions"><button class="btn" id="refresh">Refresh</button><button class="btn" id="reset">Change key</button></span>
     </div>
     <h1>Creative Incentive Scorecard</h1>
+    ${raceHero}
+
+    <p class="section-label">This week's scorecard</p>
     <p class="period">${esc(fmtDateRange(doc.start, doc.end))}, updated ${new Date(doc.computedAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</p>
     ${summary ? `<p class="summary">${summary}</p>` : ''}
 
@@ -254,12 +311,17 @@ async function load(key){
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 15000);
   try {
-    const r = await fetch(API + '/creators?week=current', { headers: { Authorization: 'Bearer ' + key }, signal: ctrl.signal });
+    const [r, rToday] = await Promise.all([
+      fetch(API + '/creators?week=current', { headers: { Authorization: 'Bearer ' + key }, signal: ctrl.signal }),
+      fetch(API + '/creators/today', { headers: { Authorization: 'Bearer ' + key }, signal: ctrl.signal }).catch(() => null),
+    ]);
     clearTimeout(timer);
     if (r.status === 401 || r.status === 403) { localStorage.removeItem(KEY_STORE); gate('Wrong key.'); return; }
     if (!r.ok) throw new Error(await r.text().catch(() => r.statusText));
     const doc = await r.json();
-    render(doc, key);
+    let today = { day: '', rows: [] };
+    if (rToday && rToday.ok) { try { today = await rToday.json(); } catch {} }
+    render(doc, key, today);
   } catch (e) {
     clearTimeout(timer);
     const msg = e && e.name === 'AbortError' ? 'The request timed out after 15 seconds. Check your connection and try again.' : (e.message || e);

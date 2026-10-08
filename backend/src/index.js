@@ -20,7 +20,7 @@ import { computeSignals } from './signals.js';
 import { ensureReportTokens, listLinks, reportPayload, reportUrl, resolveToken, rotateReportToken, videoPreviewFor, videoUrlFor } from './report.js';
 import { weeklyReports } from './gamma.js';
 import { computeCreatorScores } from './creators.js';
-import { createUpload, listMine } from './creatorPortal.js';
+import { createUpload, listMine, listToday, istToday } from './creatorPortal.js';
 import { raise } from './alerts.js';
 import { verifyShopify } from './verify.js';
 import Sample from './sample.cjs';
@@ -452,7 +452,7 @@ async function main() {
       }
 
       const isCreatorRoute = url.pathname.startsWith('/creator/');
-      if (!isCreatorRoute && !['/sync', '/run', '/links', '/rotate', '/creators'].includes(url.pathname)) { res.writeHead(404); res.end('not found'); return; }
+      if (!isCreatorRoute && !['/sync', '/run', '/links', '/rotate', '/creators', '/creators/today'].includes(url.pathname)) { res.writeHead(404); res.end('not found'); return; }
 
       // Two ways in, and only one of them may ever reach a browser.
       //
@@ -524,6 +524,16 @@ async function main() {
         return;
       }
 
+      // GET /creators/today: admin view of the same live race /creator/today gives each
+      // creator, raw submission counts for the current IST day, highest first.
+      if (url.pathname === '/creators/today') {
+        if (!keyOk) { res.writeHead(403); res.end('admin only'); return; }
+        const rows = await listToday(store);
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ day: istToday(), rows }));
+        return;
+      }
+
       // Creator Portal routes. These accept a signed-in teammate's own Firebase token (set
       // above as `who` = their email) but NOT the shared keys, because there is no "me" for a
       // shared key to mean — isCreator below is what actually enforces that.
@@ -544,6 +554,16 @@ async function main() {
           const rows = await listMine(store, who);
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify(rows));
+          return;
+        }
+
+        // GET /creator/today: the live race, raw submission counts for everyone today, not
+        // just this person's own. Deliberately open to any signed-in creator (unlike /creators,
+        // which stays admin-only) because the whole point is that the team can see it moving.
+        if (url.pathname === '/creator/today' && req.method === 'GET') {
+          const rows = await listToday(store);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ day: istToday(), rows }));
           return;
         }
 
