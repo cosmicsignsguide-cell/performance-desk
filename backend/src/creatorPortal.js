@@ -147,8 +147,14 @@ export async function listToday(store) {
     const t = new Date(u.createdAt);
     if (isNaN(t) || istDateStr(t) !== today) continue;
     const key = u.creatorEmail;
-    if (!byCreator.has(key)) byCreator.set(key, { creatorEmail: u.creatorEmail, creatorName: u.creatorName || u.creatorEmail, count: 0 });
-    byCreator.get(key).count++;
+    if (!byCreator.has(key)) byCreator.set(key, { creatorEmail: u.creatorEmail, creatorName: u.creatorName || u.creatorEmail, count: 0, items: [] });
+    const entry = byCreator.get(key);
+    entry.count++;
+    // The whole point of the race is that it is checkable -- a number alone invites "says who,"
+    // so each creator's row carries what they actually submitted today, not just the tally.
+    entry.items.push({ code: u.code, clientName: u.clientName, format: u.format, note: u.note || '', status: u.status, createdAt: u.createdAt });
   }
-  return [...byCreator.values()].sort((a, b) => b.count - a.count || a.creatorName.localeCompare(b.creatorName));
+  const list = [...byCreator.values()];
+  for (const c of list) c.items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  return list.sort((a, b) => b.count - a.count || a.creatorName.localeCompare(b.creatorName));
 }

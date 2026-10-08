@@ -99,8 +99,18 @@
   .race-live::before{ content:""; width:7px; height:7px; border-radius:50%; background:var(--accent); box-shadow:0 0 9px var(--accent); animation:raceLivePulse 1.6s ease-in-out infinite; }
   @keyframes raceLivePulse{ 0%,100%{ opacity:1; } 50%{ opacity:.3; } }
   .race-day{ font-size:12.5px; color:var(--muted); margin:0 0 16px; }
-  .race-row{ display:flex; align-items:center; gap:14px; padding:12px 0; border-bottom:1px solid var(--line); }
+  .race-row{ padding:12px 0; border-bottom:1px solid var(--line); cursor:pointer; }
   .race-row:last-child{ border-bottom:none; }
+  .race-row-head{ display:flex; align-items:center; gap:14px; }
+  .race-chev{ color:var(--faint); transition:transform .18s ease; flex-shrink:0; }
+  .race-row.open .race-chev{ transform:rotate(180deg); }
+  .race-detail{ display:none; margin:10px 0 0 52px; font-size:12.5px; }
+  .race-row.open .race-detail{ display:block; }
+  .race-item{ display:flex; justify-content:space-between; gap:10px; padding:5px 0; color:var(--muted); border-bottom:1px dashed var(--line); }
+  .race-item:last-child{ border-bottom:none; }
+  .race-item .ri-status{ font-weight:600; }
+  .race-item .ri-status.live{ color:var(--accent); }
+  .race-item .ri-status.pending{ color:var(--faint); }
   .race-rank{ font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:17px; color:var(--faint); width:22px; text-align:center; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
   .race-row.lead .race-rank, .race-row.lead .race-name{ color:var(--accent); }
   .race-row.lead .race-fill{ background:var(--accent); box-shadow:0 0 14px var(--accent-dim); }
@@ -128,7 +138,7 @@
   .race-stat-big{ font-family:"Bricolage Grotesque",sans-serif; font-weight:800; font-size:30px; color:var(--ink); margin-left:auto; flex-shrink:0; }
   .race-stat:not(.race-stat-leader) .race-stat-big{ margin-top:6px; margin-left:0; }
   .race-stat-of{ font-size:15px; color:var(--muted); font-weight:600; }
-  @media (max-width:640px){ .race-stats{ grid-template-columns:1fr 1fr; } .race-stat-leader{ grid-column:1 / -1; } }
+  @media (max-width:640px){ .race-stats{ grid-template-columns:1fr 1fr; } .race-stat-leader{ grid-column:1 / -1; } .race-detail{ margin-left:0; } }
 </style>
 </head>
 <body>
@@ -228,6 +238,21 @@ function renderRaceStats(rows){
     </div>
   </div>`;
 }
+function fmtTime(iso){
+  try { return new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' }); }
+  catch { return ''; }
+}
+
+// What a row's count is actually made of -- click to open it. A number on its own invites
+// "says who"; the submitted client, format and time is the receipt that backs it up.
+function renderRaceItems(items){
+  if (!items || !items.length) return '<div class="race-item">Nothing on file yet.</div>';
+  return items.map((it) => `<div class="race-item">
+      <span>${esc(it.clientName)}, ${esc(it.format)}${it.note ? ', ' + esc(it.note) : ''}</span>
+      <span><span class="ri-status ${it.status === 'linked' ? 'live' : 'pending'}">${it.status === 'linked' ? 'Live' : 'Waiting'}</span> &middot; ${fmtTime(it.createdAt)}</span>
+    </div>`).join('');
+}
+
 function renderTodayBoard(rows){
   if (!rows || !rows.length) return '<div class="empty" style="padding:20px 0">Nobody has submitted yet today.</div>';
   const leader = rows[0];
@@ -249,16 +274,26 @@ function renderTodayBoard(rows){
         : `<div class="race-gap lead-gap">Tied at the top</div>`;
     }
     return `<div class="race-row${lead}">
-      <span class="race-rank">${i === 0 ? ICON_CROWN : i + 1}</span>
-      <span class="race-avatar">${renderAvatar(r.creatorName, r.creatorEmail, 38)}</span>
-      <div class="race-main">
-        <div class="race-top"><span class="race-name">${esc(r.creatorName)}</span><span class="race-count">${r.count}</span></div>
-        <div class="race-track"><div class="race-fill" style="width:${pct}%"></div></div>
-        ${gap}
+      <div class="race-row-head">
+        <span class="race-rank">${i === 0 ? ICON_CROWN : i + 1}</span>
+        <span class="race-avatar">${renderAvatar(r.creatorName, r.creatorEmail, 38)}</span>
+        <div class="race-main">
+          <div class="race-top"><span class="race-name">${esc(r.creatorName)}</span><span class="race-count">${r.count}</span></div>
+          <div class="race-track"><div class="race-fill" style="width:${pct}%"></div></div>
+          ${gap}
+        </div>
+        <span class="race-chev">${ICON_CHEV}</span>
       </div>
+      <div class="race-detail">${renderRaceItems(r.items)}</div>
     </div>`;
   }).join('');
   return renderRaceStats(rows) + rowsHtml;
+}
+
+function wireRaceRows(){
+  root.querySelectorAll('.race-row').forEach((el) => {
+    el.querySelector('.race-row-head').addEventListener('click', () => el.classList.toggle('open'));
+  });
 }
 
 function gate(err){
@@ -297,6 +332,7 @@ function render(doc, key, today){
         This fills in once the team starts pasting their codes into live ad names
         (<a href="creator.html" target="_blank">Creator Portal</a>), and refreshes every day on its own.</div>
     </div>`;
+    wireRaceRows();
     document.getElementById('refresh').onclick = () => load(key);
     document.getElementById('reset').onclick = () => { localStorage.removeItem(KEY_STORE); gate(); };
     return;
@@ -360,6 +396,7 @@ function render(doc, key, today){
       el.classList.toggle('open');
     });
   });
+  wireRaceRows();
   document.getElementById('refresh').onclick = () => load(key);
   document.getElementById('reset').onclick = () => { localStorage.removeItem(KEY_STORE); gate(); };
 }
