@@ -30,7 +30,7 @@
   #root{ flex:1; min-width:0; background:var(--bg); }
   @media (max-width:540px){ .rail{ flex-basis:9px; background-size:9px 16px; background-position:-3px 0; } }
 
-  .page{ max-width:720px; margin:0 auto; padding:30px 18px 70px; }
+  .page{ max-width:900px; margin:0 auto; padding:30px 18px 70px; }
   .topline{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:22px; flex-wrap:wrap; }
   .topline .org{ font-size:13px; color:var(--muted); }
   .topline .org b{ color:var(--ink); font-weight:600; }
@@ -101,18 +101,34 @@
   .race-day{ font-size:12.5px; color:var(--muted); margin:0 0 16px; }
   .race-row{ display:flex; align-items:center; gap:14px; padding:12px 0; border-bottom:1px solid var(--line); }
   .race-row:last-child{ border-bottom:none; }
-  .race-rank{ font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:17px; color:var(--faint); width:20px; text-align:center; flex-shrink:0; }
+  .race-rank{ font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:17px; color:var(--faint); width:22px; text-align:center; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
   .race-row.lead .race-rank, .race-row.lead .race-name{ color:var(--accent); }
   .race-row.lead .race-fill{ background:var(--accent); box-shadow:0 0 14px var(--accent-dim); }
+  .race-row.lead .race-rank{ color:var(--accent); }
   .race-avatar{ width:38px; height:38px; border-radius:50%; flex-shrink:0; overflow:hidden; background:#140F0A; border:1px solid var(--line-strong); }
-  .race-row.lead .race-avatar{ border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-dim); }
+  .race-row.lead .race-avatar{ width:48px; height:48px; border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-dim); }
   .race-main{ flex:1; min-width:0; }
   .race-top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:7px; gap:10px; }
   .race-name{ font-weight:700; font-size:15px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .race-count{ font-family:"Bricolage Grotesque",sans-serif; font-weight:800; font-size:23px; color:var(--ink); font-variant-numeric:tabular-nums; flex-shrink:0; }
   .race-track{ height:7px; border-radius:4px; background:var(--line); overflow:hidden; }
   .race-fill{ height:100%; background:var(--faint); border-radius:4px; transition:width .5s cubic-bezier(.2,.8,.3,1); }
+  .race-gap{ font-size:11.5px; color:var(--muted); margin-top:5px; }
+  .race-gap.lead-gap{ color:var(--accent); font-weight:600; }
   .section-label{ font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:14px; color:var(--muted); margin:0 0 2px; }
+
+  /* The scoreboard strip: the three numbers that actually carry the competitive pressure,
+     big enough to read from across the room, not buried in a list. */
+  .race-stats{ display:grid; grid-template-columns:1.7fr 1fr 1fr; gap:10px; margin-bottom:22px; }
+  .race-stat{ background:#140F0A; border:1px solid var(--line); border-radius:9px; padding:14px 16px; }
+  .race-stat-leader{ border-color:var(--accent); background:linear-gradient(135deg, var(--accent-dim), #140F0A 65%); display:flex; align-items:center; gap:12px; }
+  .race-stat-avatar{ width:42px; height:42px; border-radius:50%; overflow:hidden; flex-shrink:0; border:2px solid var(--accent); }
+  .race-stat-label{ font-size:11px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+  .race-stat-value{ font-size:15px; font-weight:700; color:var(--ink); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .race-stat-big{ font-family:"Bricolage Grotesque",sans-serif; font-weight:800; font-size:30px; color:var(--ink); margin-left:auto; flex-shrink:0; }
+  .race-stat:not(.race-stat-leader) .race-stat-big{ margin-top:6px; margin-left:0; }
+  .race-stat-of{ font-size:15px; color:var(--muted); font-weight:600; }
+  @media (max-width:640px){ .race-stats{ grid-template-columns:1fr 1fr; } .race-stat-leader{ grid-column:1 / -1; } }
 </style>
 </head>
 <body>
@@ -129,6 +145,7 @@ const root = document.getElementById('root');
 const KEY_STORE = 'desk_creators_admin_key';
 
 const ICON_CHEV = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+const ICON_CROWN = '<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M3 19h18l-1.7-9.6-4.3 3.3L12 6l-3 6.7-4.3-3.3L3 19z"/></svg>';
 
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function fmtMoney(n){ return '₹' + Math.round(n || 0).toLocaleString('en-IN'); }
@@ -186,21 +203,62 @@ function renderAvatar(name, email, px){
 
 // Raw submission counts for today, ranked. This is the real competition: the fairness-adjusted
 // effectiveness score below only settles once ads have run, but this moves all day long.
+// The point isn't just the list -- it's the gap. Everyone below #1 sees exactly how many more
+// they need today to take the lead, because that number is what actually pushes output up.
+function renderRaceStats(rows){
+  const leader = rows[0];
+  const leaderCount = leader.count;
+  const totalToday = rows.reduce((s, r) => s + r.count, 0);
+  return `<div class="race-stats">
+    <div class="race-stat race-stat-leader">
+      <span class="race-stat-avatar">${renderAvatar(leader.creatorName, leader.creatorEmail, 42)}</span>
+      <div style="min-width:0">
+        <div class="race-stat-label">In the lead</div>
+        <div class="race-stat-value">${esc(leader.creatorName)}</div>
+      </div>
+      <div class="race-stat-big">${leaderCount}</div>
+    </div>
+    <div class="race-stat">
+      <div class="race-stat-label">Team total today</div>
+      <div class="race-stat-big">${totalToday}</div>
+    </div>
+    <div class="race-stat">
+      <div class="race-stat-label">Active today</div>
+      <div class="race-stat-big">${rows.length}<span class="race-stat-of"> / 10</span></div>
+    </div>
+  </div>`;
+}
 function renderTodayBoard(rows){
   if (!rows || !rows.length) return '<div class="empty" style="padding:20px 0">Nobody has submitted yet today.</div>';
+  const leader = rows[0];
+  const leaderCount = leader.count;
   const max = Math.max(...rows.map((r) => r.count));
-  return rows.map((r, i) => {
+  const rowsHtml = rows.map((r, i) => {
     const pct = Math.max(6, Math.round((r.count / max) * 100));
     const lead = i === 0 ? ' lead' : '';
+    let gap;
+    if (i === 0) {
+      const marginOverSecond = rows.length > 1 ? leaderCount - rows[1].count : leaderCount;
+      gap = marginOverSecond > 0
+        ? `<div class="race-gap lead-gap">${marginOverSecond} clear of 2nd place</div>`
+        : `<div class="race-gap lead-gap">Tied at the top</div>`;
+    } else {
+      const behind = leaderCount - r.count;
+      gap = behind > 0
+        ? `<div class="race-gap">${behind} behind ${esc(leader.creatorName)}</div>`
+        : `<div class="race-gap lead-gap">Tied at the top</div>`;
+    }
     return `<div class="race-row${lead}">
-      <span class="race-rank">${i + 1}</span>
+      <span class="race-rank">${i === 0 ? ICON_CROWN : i + 1}</span>
       <span class="race-avatar">${renderAvatar(r.creatorName, r.creatorEmail, 38)}</span>
       <div class="race-main">
         <div class="race-top"><span class="race-name">${esc(r.creatorName)}</span><span class="race-count">${r.count}</span></div>
         <div class="race-track"><div class="race-fill" style="width:${pct}%"></div></div>
+        ${gap}
       </div>
     </div>`;
   }).join('');
+  return renderRaceStats(rows) + rowsHtml;
 }
 
 function gate(err){
