@@ -644,7 +644,7 @@
       "productPath": "",
       "expectText": ""
     },
-    "active": false,
+    "active": true,
     "contact": ""
   },
   {
@@ -1055,7 +1055,7 @@
       "productPath": "",
       "expectText": ""
     },
-    "active": false,
+    "active": true,
     "contact": ""
   },
   {
@@ -1232,7 +1232,7 @@
       "productPath": "",
       "expectText": ""
     },
-    "active": false,
+    "active": true,
     "contact": ""
   },
   {
