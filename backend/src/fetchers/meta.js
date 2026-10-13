@@ -178,6 +178,20 @@ function daysMap(rows, idKey) {
 const ACCOUNT_STATUS = { 1: 'Active', 2: 'Disabled', 3: 'Unsettled (payment due)', 7: 'Pending risk review', 8: 'Pending settlement', 9: 'In grace period', 100: 'Pending closure', 101: 'Closed', 201: 'Any active', 202: 'Any closed' };
 const budgetOf = (o) => (o?.daily_budget ? { dailyBudget: num(o.daily_budget) / 100 } : o?.lifetime_budget ? { lifetimeBudget: num(o.lifetime_budget) / 100 } : {});
 
+// Hourly top-up for the entity tree. fetchEntities only runs in the daily sync, so without this the
+// per-day tuples for today stay at whatever they were at 02:00 and every ad reads "No spend" all day.
+// Three small calls (campaign, ad set, ad level, today only) that are merged into the stored tree.
+export async function fetchTodayDays(client, today) {
+  const accountId = client.accounts.meta;
+  const ins = (level, idField) => (s, u) => insightsUrl(accountId, { level, time_increment: '1', fields: DAILY_FIELDS + ',' + idField, time_range: JSON.stringify({ since: s, until: u }) });
+  const [camp, set, ad] = await pool([
+    () => pagedRange(ins('campaign', 'campaign_id'), today, today),
+    () => pagedRange(ins('adset', 'adset_id'), today, today),
+    () => pagedRange(ins('ad', 'ad_id'), today, today),
+  ], 2);
+  return { campaign: daysMap(camp, 'campaign_id'), adset: daysMap(set, 'adset_id'), ad: daysMap(ad, 'ad_id') };
+}
+
 // Campaigns, ad sets and ads: 30 day totals, per-day tuples for the last ENTITY_DAYS days, statuses, budgets, issues.
 export async function fetchEntities(client, until) {
   const accountId = client.accounts.meta;

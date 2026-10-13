@@ -144,6 +144,15 @@ async function syncClient(store, client, { mode, days }) {
           ent.adsets = e.adsets; ent.ads = e.ads; ent.since = e.since; ent.until = e.until;
           ent.issues = e.issues; ent.account = e.account;
           ent.entitiesAt = { ...(ent.entitiesAt || {}), meta: nowIso() };
+        } else if (mode === 'hourly' && (ent.ads || []).length) {
+          // Keep today's per-day tuples fresh between daily runs. Failure here must not fail the sync.
+          try {
+            const t = await meta.fetchTodayDays(client, today);
+            const merge = (list, map) => { for (const x of list || []) { const d = map[x.id]; x.days = { ...(x.days || {}) }; if (d && d[today]) x.days[today] = d[today]; else if (x.days[today]) x.days[today] = [0, 0, 0, 0, 0, 0, 0]; } };
+            merge((ent.campaigns || []).filter((c) => c.platform === 'meta'), t.campaign);
+            merge(ent.adsets, t.adset);
+            merge(ent.ads, t.ad);
+          } catch (e) { log(`${client.id}/meta: today top-up skipped: ${(e.message || e).toString().slice(0, 120)}`); }
         }
       } else if (source === 'google') {
         const rows = await google.fetchDaily(client, since, today);
