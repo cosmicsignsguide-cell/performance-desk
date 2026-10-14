@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Garuda · Per4mance Guru</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%23141312'/%3E%3Cpath fill='%23F06445' d='M2.6 21.4l2.2-8.2.4-4.6C7 4.6 12 3.2 15.2 5.4c.8.6 1.1 1.4 1.2 2.2 2.2.2 4.6 1.4 5.6 3.6.2 1.4-.6 2.6-1.6 3-.4-1-1.4-1.6-2.8-1.8l-1.4 1.8c-.4 1.2-.4 2.4 0 3.6l1.3 3.7-5.5-2.5-4 3-.8-3.5z'/%3E%3Cpath fill='%23141312' d='M11.6 7.6l3.9.5-.6 1.6-3.1-.3z'/%3E%3C/svg%3E">
 <meta name="description" content="Per4mance Guru internal dashboard: every client's Meta, Google and Shopify numbers, creative ranking, funnel leakage and site checks in one place.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -129,7 +130,8 @@ a{color:var(--cyan)}
 .app-shell{position:relative;z-index:1;display:flex;min-height:100vh}
 .sidebar{width:240px;flex-shrink:0;padding:20px 14px;background:var(--rail);border-right:1px solid var(--line);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
 .brand{padding:6px 8px 14px}
-.brand .mark{font-size:13px;font-weight:700;letter-spacing:2px;color:var(--accent)}
+.brand .mark{font-size:13px;font-weight:700;letter-spacing:2px;color:var(--accent);display:flex;align-items:center;gap:8px}
+.brand .mark .eagle{width:22px;height:22px;flex-shrink:0}
 .brand .sub{font-size:10.5px;color:var(--faint);letter-spacing:1.5px;margin-top:3px;text-transform:none}
 .status-row{display:flex;align-items:center;gap:7px;padding:0 8px 14px;font-size:10.5px;font-weight:600;letter-spacing:.6px;color:var(--faint)}
 .status-row .dot{width:6px;height:6px;border-radius:50%;background:var(--idle);position:relative}
@@ -305,7 +307,7 @@ a{color:var(--cyan)}
 .rail-mark{transition:transform .2s cubic-bezier(.2,.8,.25,1)}
 .rail-mark{width:27px;height:27px;border-radius:8px;display:grid;place-items:center;font-size:13px;font-weight:900;letter-spacing:-.04em;
   background:var(--accent);color:#fff;box-shadow:none}
-.rail-name{font-size:13.5px;font-weight:800;letter-spacing:.005em;text-transform:none;line-height:1}
+.rail-name{text-align:left;font-size:13.5px;font-weight:800;letter-spacing:.005em;text-transform:none;line-height:1}
 .rail-name i{font-style:normal;color:var(--accent)}
 .rail-name u{display:block;text-decoration:none;font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:8px;font-weight:400;
   letter-spacing:.012em;color:var(--faint);margin-top:2px}
@@ -1415,7 +1417,7 @@ function topRail(){
   const email=LIVE?(fb.auth.currentUser?.email||''):'demo@per4mance.guru';
   const name=LIVE?(fb.auth.currentUser?.displayName||email.split('@')[0]):'Demo viewer';
   return '<header class="rail">'
-    +'<button class="rail-brand" data-act="nav" data-client="" title="Command Center"><span class="rail-mark disp">4</span><span class="rail-name">PER<i>4</i>MANCE<u>DESK</u></span></button>'
+    +'<button class="rail-brand" data-act="nav" data-client="" title="Command Center"><span class="rail-mark disp"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:19px;height:19px"><path fill="#fff" d="M2.6 21.4l2.2-8.2.4-4.6C7 4.6 12 3.2 15.2 5.4c.8.6 1.1 1.4 1.2 2.2 2.2.2 4.6 1.4 5.6 3.6.2 1.4-.6 2.6-1.6 3-.4-1-1.4-1.6-2.8-1.8l-1.4 1.8c-.4 1.2-.4 2.4 0 3.6l1.3 3.7-5.5-2.5-4 3-.8-3.5z"/><path fill="var(--accent)" d="M11.6 7.6l3.9.5-.6 1.6-3.1-.3z"/></svg></span><span class="rail-name">GARUDA<u>PER4MANCE GURU</u></span></button>'
     +'<div class="rail-live '+(LIVE?'on':'demo')+'"><span class="dot"></span>'
       +(LIVE?'<span>LIVE</span><span class="sep">/</span><span data-ago="'+esc(lastAt)+'">'+ago(lastAt)+'</span>':'<span>DEMO</span><span class="sep">/</span><span>sample data</span>')
       +(bad?'<span class="sep">/</span><span class="rail-bad">'+bad+' critical</span>':'')+'</div>'
@@ -1433,7 +1435,7 @@ function sidebar(){
   const q=state.q.trim().toLowerCase();
   const list=D.clients.filter(c=>!q||c.name.toLowerCase().includes(q)).sort((a,b)=>RANK[S[a.id].health]-RANK[S[b.id].health]||a.name.localeCompare(b.name));
   const bad=D.clients.filter(c=>S[c.id].health==='bad').length;
-  let h='<div class="brand"><div class="mark disp">GARUDA</div><div class="sub">Per4mance Guru</div></div>';
+  let h='<div class="brand"><div class="mark disp"><svg class="eagle" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M2.6 21.4l2.2-8.2.4-4.6C7 4.6 12 3.2 15.2 5.4c.8.6 1.1 1.4 1.2 2.2 2.2.2 4.6 1.4 5.6 3.6.2 1.4-.6 2.6-1.6 3-.4-1-1.4-1.6-2.8-1.8l-1.4 1.8c-.4 1.2-.4 2.4 0 3.6l1.3 3.7-5.5-2.5-4 3-.8-3.5z"/><path fill="var(--bg)" d="M11.6 7.6l3.9.5-.6 1.6-3.1-.3z"/></svg><span>GARUDA</span></div><div class="sub">Per4mance Guru</div></div>';
   const lastAt=D.lastRun?.hourly||D.lastRun?.daily||'';
   h+='<div class="status-row '+(LIVE?'on':'demo')+'"><span class="dot"></span>'+(LIVE?'<span>LIVE · updated </span><span data-ago="'+esc(lastAt)+'">'+ago(lastAt)+'</span>':'<span>DEMO · SAMPLE DATA</span>')+'</div>';
   h+='<div class="side-search">'+ICONS.search+'<input id="q" type="search" placeholder="Find a client" autocomplete="off" aria-label="Find a client"></div>';
@@ -2551,7 +2553,7 @@ async function syncNow(mode,clientId,days){
     toast('Sync finished, reloading data'); boot(true);
   }catch(e){ toast(mode==='daily'?'The page stopped waiting ('+e.message+'), but the refresh keeps running on the server. Reload in a few minutes.':'Sync failed: '+e.message,'warn'); }
 }
-function gate(msg,err){ root.innerHTML='<div class="gate"><div class="glass card"><div class="brand" style="padding:0 0 14px"><div class="mark disp">GARUDA</div><div class="sub">Per4mance Guru</div></div><h1 class="disp">Team sign-in</h1><p>'+msg+'</p><button class="btn btn-primary" style="width:100%;justify-content:center" data-act="signin">Sign in with Google</button>'+(err?'<div class="err">'+esc(err)+'</div>':'')+'</div></div>'; }
+function gate(msg,err){ root.innerHTML='<div class="gate"><div class="glass card"><div class="brand" style="padding:0 0 14px"><div class="mark disp"><svg class="eagle" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M2.6 21.4l2.2-8.2.4-4.6C7 4.6 12 3.2 15.2 5.4c.8.6 1.1 1.4 1.2 2.2 2.2.2 4.6 1.4 5.6 3.6.2 1.4-.6 2.6-1.6 3-.4-1-1.4-1.6-2.8-1.8l-1.4 1.8c-.4 1.2-.4 2.4 0 3.6l1.3 3.7-5.5-2.5-4 3-.8-3.5z"/><path fill="var(--bg)" d="M11.6 7.6l3.9.5-.6 1.6-3.1-.3z"/></svg><span>GARUDA</span></div><div class="sub">Per4mance Guru</div></div><h1 class="disp">Team sign-in</h1><p>'+msg+'</p><button class="btn btn-primary" style="width:100%;justify-content:center" data-act="signin">Sign in with Google</button>'+(err?'<div class="err">'+esc(err)+'</div>':'')+'</div></div>'; }
 // The hd hint tells Google to show only one workspace domain's accounts. Useful when the team is
 // entirely on that domain, wrong the moment a single outside address is allowed too, so it only
 // applies when allowedEmails is empty.
