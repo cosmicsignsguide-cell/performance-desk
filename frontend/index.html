@@ -2407,7 +2407,7 @@ function crThumb(e,c){
 function weeklyPanel(x){
   const c=x.c, list=(D.weekly||[]).filter(w=>w.clientId===c.id)
     .sort((a,b)=>(a.weekEnd<b.weekEnd?1:-1)).slice(0,8);
-  if(!list.length) return '<div class="glass-panel"><h2>Weekly reports</h2><div class="note">No weekly report yet. The backend builds one a week from this client\u2019s stored figures and the link lands here.</div></div>';
+  if(!list.length) return '<div class="glass-panel"><h2>Weekly reports</h2><div class="note">No weekly report yet. The backend builds one a week from this client\u2019s stored figures and the link lands here.</div>'+genBtn(c,false)+'</div>';
   let h='<div class="glass-panel"><h2>Weekly reports <span class="sub">built from the same figures on this page</span></h2><div class="data-table-wrap"><table class="dtable"><thead><tr><th>Week</th><th class="num">Spend</th><th class="num">'+(c.type==='ecom'?'Sales':'Enquiries')+'</th><th class="num">'+(c.type==='ecom'?'MER':'')+'</th><th>Report</th></tr></thead><tbody>';
   list.forEach(w=>{
     h+='<tr><td class="row-title">'+esc(shortRange(w.weekStart,w.weekEnd))+'<span class="sub">made '+ago(w.generatedAt)+'</span></td>'
@@ -2416,7 +2416,11 @@ function weeklyPanel(x){
       +'<td class="num">'+(c.type==='ecom'?fmtX(w.mer):'')+'</td>'
       +'<td><a class="btn small" href="'+esc(w.gammaUrl)+'" target="_blank" rel="noopener">Open deck</a></td></tr>';
   });
-  return h+'</tbody></table></div></div>';
+  return h+'</tbody></table></div>'+genBtn(c,true)+'</div>';
+}
+function genBtn(c,again){
+  if(!CFG.syncUrl) return '';
+  return '<div style="margin-top:14px"><button class="btn btn-primary" data-act="genreport" data-client="'+esc(c.id)+'" data-force="'+(again?'1':'')+'">'+(again?'Generate again for this week':'Generate report now')+'</button><span class="sub" style="margin-left:10px">Builds the deck from the figures already stored for last week. Takes about a minute and uses one Gamma credit.</span></div>';
 }
 function shortRange(a,b){ const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const f=s=>parseInt(s.slice(8),10)+' '+M[+s.slice(5,7)-1];
@@ -2526,6 +2530,7 @@ document.addEventListener('click',e=>{
   else if(act==='syncnow'){ syncNow(); }
   else if(act==='syncall'){ if(confirm('Refresh every client for the last 30 days? It takes a long time and uses a lot of Firestore reads.')) syncNow('daily','',30); }
   else if(act==='syncclient'){ syncNow('daily',el.dataset.client); }
+  else if(act==='genreport'){ genReport(el.dataset.client,el.dataset.force==='1',el); }
   else if(act==='signout'){ fb.auth.signOut().then(()=>location.reload()); }
   else if(act==='signin'){ signIn(); }
   else if(act==='theme'){ toggleTheme(); }
@@ -2552,6 +2557,25 @@ async function syncNow(mode,clientId,days){
     if(!r.ok) throw new Error('HTTP '+r.status);
     toast('Sync finished, reloading data'); boot(true);
   }catch(e){ toast(mode==='daily'?'The page stopped waiting ('+e.message+'), but the refresh keeps running on the server. Reload in a few minutes.':'Sync failed: '+e.message,'warn'); }
+}
+async function genReport(clientId,force,btn){
+  if(!CFG.syncUrl) return;
+  const u=fb&&fb.auth&&fb.auth.currentUser;
+  if(!u){ toast('Sign in first to generate a report','warn'); return; }
+  if(force&&!confirm('A report for this week already exists. Generate a new one? It uses another Gamma credit.')) return;
+  if(btn){ btn.disabled=true; btn.textContent='Generating, about a minute...'; }
+  toast('Building the weekly report. This takes about a minute, you can keep working.');
+  try{
+    const tok=await u.getIdToken();
+    const r=await fetch(CFG.syncUrl+(CFG.syncUrl.includes('?')?'&':'?')+'mode=weekly&client='+encodeURIComponent(clientId)+(force?'&force=1':''),{method:'POST',headers:{'Authorization':'Bearer '+tok}});
+    if(r.status===401) throw new Error('this account is not cleared to run syncs. Add it to DESK_ALLOWED_EMAILS on the API service.');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    let j={}; try{ j=await r.json(); }catch(e){}
+    if(j&&j.made===0&&!j.failed) toast(j.skipped?'Nothing to build: either this week\u2019s report already exists or the client had no spend or sales last week.':'No report was made.','warn');
+    else if(j&&j.failed) toast('The report failed to generate. Check the Gamma key and credits on the API service.','warn');
+    else toast('Report ready');
+    boot(true);
+  }catch(e){ toast('The page stopped waiting ('+e.message+'). If the report was started it will appear here in a few minutes, so reload then.','warn'); if(btn){ btn.disabled=false; btn.textContent='Generate report now'; } }
 }
 function gate(msg,err){ root.innerHTML='<div class="gate"><div class="glass card"><div class="brand" style="padding:0 0 14px"><div class="mark disp"><svg class="eagle" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M2.6 21.4l2.2-8.2.4-4.6C7 4.6 12 3.2 15.2 5.4c.8.6 1.1 1.4 1.2 2.2 2.2.2 4.6 1.4 5.6 3.6.2 1.4-.6 2.6-1.6 3-.4-1-1.4-1.6-2.8-1.8l-1.4 1.8c-.4 1.2-.4 2.4 0 3.6l1.3 3.7-5.5-2.5-4 3-.8-3.5z"/><path fill="var(--bg)" d="M11.6 7.6l3.9.5-.6 1.6-3.1-.3z"/></svg><span>GARUDA</span></div><div class="sub">Per4mance Guru</div></div><h1 class="disp">Team sign-in</h1><p>'+msg+'</p><button class="btn btn-primary" style="width:100%;justify-content:center" data-act="signin">Sign in with Google</button>'+(err?'<div class="err">'+esc(err)+'</div>':'')+'</div></div>'; }
 // The hd hint tells Google to show only one workspace domain's accounts. Useful when the team is
