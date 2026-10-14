@@ -1035,6 +1035,70 @@ body{font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:14px}
 .disp,.kpi-value,.brief-figs dd,.pt-kpi,.brief-lead,.page-head h1,.rkpi,.pm-v{font-family:"Bricolage Grotesque","Hanken Grotesk",sans-serif!important;letter-spacing:-.03em}
 .brief-lead{font-weight:500} .brief-lead b{font-weight:700}
 .brief-figs dd.disp,.kpi-value{font-weight:700}
+/* Garuda chatbot */
+#gcBubble{position:fixed;right:22px;bottom:22px;z-index:900;width:54px;height:54px;border-radius:50%;border:0;cursor:pointer;background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 8px 24px var(--accent-glow),0 2px 6px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;transition:transform .18s ease,box-shadow .18s ease}
+#gcBubble:hover{transform:translateY(-2px) scale(1.05)}
+#gcBubble svg{width:28px;height:28px}
+#gcBubble.hide{display:none}
+#gcPanel{position:fixed;right:22px;bottom:88px;z-index:901;width:420px;height:min(640px,calc(100vh - 120px));display:none;flex-direction:column;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.28);overflow:hidden}
+#gcPanel.open{display:flex;animation:gcIn .18s ease}
+#gcPanel.big{width:min(760px,calc(100vw - 44px));height:calc(100vh - 120px)}
+@keyframes gcIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+.gc-head{display:flex;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid var(--line);background:var(--panel)}
+.gc-head .gc-t{font-weight:700;font-size:13.5px;letter-spacing:.02em;display:flex;align-items:center;gap:7px;flex:1;min-width:0;white-space:nowrap}
+.gc-head .gc-mark{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;flex:none}
+.gc-head .gc-mark svg{width:15px;height:15px}
+.gc-head select{max-width:118px;font-size:11.5px;padding:5px 6px;border-radius:8px;border:1px solid var(--border);background:var(--panel-hover);color:var(--text)}
+.gc-ib{border:0;background:transparent;color:var(--dim);cursor:pointer;width:28px;height:28px;border-radius:8px;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center}
+.gc-ib:hover{background:var(--panel-hover);color:var(--text)}
+.gc-body{flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:12px;font-size:13px;line-height:1.5}
+.gc-msg{max-width:94%;word-wrap:break-word;overflow-wrap:anywhere}
+.gc-msg.u{align-self:flex-end;background:var(--accent);color:#fff;padding:8px 12px;border-radius:14px 14px 4px 14px;white-space:pre-wrap}
+.gc-msg.a{align-self:flex-start;background:var(--panel-hover);padding:10px 12px;border-radius:14px 14px 14px 4px;border:1px solid var(--line);position:relative;min-width:40px}
+.gc-msg.err{border-color:var(--accent-line);color:var(--accent-2)}
+.gc-msg h4{margin:8px 0 4px;font-size:13px}
+.gc-msg p{margin:0 0 7px}.gc-msg p:last-child{margin-bottom:0}
+.gc-msg ul,.gc-msg ol{margin:2px 0 7px;padding-left:18px}
+.gc-msg li{margin:2px 0}
+.gc-msg code{background:var(--line);padding:1px 5px;border-radius:5px;font-size:12px}
+.gc-msg pre{background:var(--line);padding:8px 10px;border-radius:8px;overflow-x:auto;font-size:12px;margin:4px 0 8px}
+.gc-tw{overflow-x:auto;margin:4px 0 8px}
+.gc-msg table{border-collapse:collapse;font-size:12px;min-width:100%}
+.gc-msg th,.gc-msg td{border-bottom:1px solid var(--line);padding:4px 8px;text-align:left;white-space:nowrap}
+.gc-msg th{color:var(--faint);font-weight:600}
+.gc-copy{position:absolute;top:4px;right:4px;opacity:0;border:0;background:var(--panel);color:var(--dim);border-radius:6px;font-size:11px;padding:2px 6px;cursor:pointer;border:1px solid var(--line)}
+.gc-msg.a:hover .gc-copy{opacity:1}
+.gc-ad{display:inline-flex;align-items:center;gap:6px;vertical-align:middle;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:2px 8px 2px 2px;margin:1px 2px;max-width:100%}
+.gc-ad img,.gc-ad i{width:30px;height:30px;border-radius:6px;object-fit:cover;background:var(--line);flex:none;display:block}
+.gc-ad span{font-size:11.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
+.gc-chart{margin:6px 0 8px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px}
+.gc-chart b{display:block;font-size:12px;margin-bottom:4px}
+.gc-chart svg{width:100%;height:auto;display:block}
+.gc-leg{display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--dim);margin-top:4px}
+.gc-leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px}
+.gc-dots{display:inline-flex;gap:4px;padding:4px 2px}
+.gc-dots i{width:6px;height:6px;border-radius:50%;background:var(--faint);animation:gcD 1s infinite ease-in-out}
+.gc-dots i:nth-child(2){animation-delay:.15s}.gc-dots i:nth-child(3){animation-delay:.3s}
+@keyframes gcD{0%,80%,100%{opacity:.25;transform:scale(.8)}40%{opacity:1;transform:scale(1.1)}}
+.gc-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.gc-chip{border:1px solid var(--accent-line);background:var(--accent-soft);color:var(--accent-2);border-radius:999px;padding:5px 10px;font-size:12px;cursor:pointer}
+.gc-chip:hover{background:var(--accent);color:#fff}
+.gc-hello{color:var(--dim);font-size:13px}
+.gc-foot{border-top:1px solid var(--line);padding:9px 10px;display:flex;gap:8px;align-items:flex-end;background:var(--panel)}
+.gc-foot textarea{flex:1;resize:none;border:1px solid var(--border);background:var(--panel-hover);color:var(--text);border-radius:12px;padding:8px 10px;font:inherit;font-size:13px;max-height:110px;min-height:36px;outline:none}
+.gc-foot textarea:focus{border-color:var(--accent-line)}
+.gc-send{border:0;background:var(--accent);color:#fff;border-radius:12px;height:36px;padding:0 14px;font-weight:700;cursor:pointer;font-size:13px}
+.gc-send:disabled{opacity:.5;cursor:default}
+.gc-notes{padding:12px;overflow-y:auto;flex:1;font-size:12.5px}
+.gc-notes p.s{color:var(--dim);margin:0 0 10px}
+.gc-note{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:8px;background:var(--panel-hover)}
+.gc-note b{display:block;font-size:12.5px}
+.gc-note div{color:var(--dim);white-space:pre-wrap;margin:3px 0;max-height:90px;overflow:auto}
+.gc-note button{border:0;background:transparent;color:var(--accent-2);cursor:pointer;font-size:11.5px;padding:0}
+.gc-notes input,.gc-notes textarea{width:100%;box-sizing:border-box;border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:9px;padding:7px 9px;font:inherit;font-size:12.5px;margin-bottom:6px}
+.gc-notes textarea{min-height:90px;resize:vertical}
+@media (max-width:600px){#gcPanel,#gcPanel.big{right:0;bottom:0;left:0;width:100%;height:calc(100vh - 40px);border-radius:16px 16px 0 0}#gcBubble{right:14px;bottom:14px}#gcBubble.hide-m{display:none}}
+@media print{#gcBubble,#gcPanel{display:none!important}}
 </style>
 </head>
 <body>
@@ -2611,7 +2675,7 @@ async function signIn(){
   }
 }
 async function boot(refresh){
-  if(!LIVE){ root.innerHTML='<div class="loading">Loading sample data…</div>'; D=await loadDemo(); readHash(); render(); return; }
+  if(!LIVE){ root.innerHTML='<div class="loading">Loading sample data…</div>'; D=await loadDemo(); readHash(); render(); chatMount(); return; }
   if(!fb){ root.innerHTML='<div class="loading">Loading…</div>'; try{ await initFirebase(); }catch(e){ root.innerHTML='<div class="loading">Could not load Firebase: '+esc(e.message)+'</div>'; return; }
     // A redirect sign-in lands back here. Its result is checked so a failure on the way back is
     // reported rather than showing a blank gate the user cannot explain.
@@ -2619,7 +2683,7 @@ async function boot(refresh){
     fb.auth.onAuthStateChanged(async(u)=>{ if(!u){ gate('Use your Per4mance Guru Google account.'); return; } if(!allowedEmail(u.email)){ await fb.auth.signOut(); gate('Use your Per4mance Guru Google account.','That Google account is not on the allowed list ('+u.email+').'); return; } boot(true); }); return; }
   root.innerHTML='<div class="loading">Loading data…</div>';
   try{ D=await loadLive(); }catch(e){ root.innerHTML='<div class="loading">Could not read data: '+esc(e.message)+'. Check Firestore rules and that the backend has run at least once.</div>'; return; }
-  readHash(); render(); if(refresh===true&&D) toast('Data refreshed');
+  readHash(); render(); chatMount(); if(refresh===true&&D) toast('Data refreshed');
   startLive();
 }
 
@@ -2658,6 +2722,166 @@ function startLive(){
   },60000);
 }
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) tickClock(); });
+/* ============================ GARUDA CHATBOT ============================ */
+// A floating assistant that answers from the same synced data this page shows. The browser sends
+// only the question, the chosen client and the recent turns; the server builds the data context,
+// checks the signed-in teammate's token, and the model is read-only (it cannot touch ad accounts).
+const GC={open:false,big:false,scope:'@auto',busy:false,msgs:[],view:'chat',mounted:false};
+const GC_EAGLE='<svg viewBox="0 0 24 24"><path fill="#fff" d="M2.6 21.4l2.2-8.2.4-4.6C7 4.6 12 3.2 15.2 5.4c.8.6 1.1 1.4 1.2 2.2 2.2.2 4.6 1.4 5.6 3.6.2 1.4-.6 2.6-1.6 3-.4-1-1.4-1.6-2.8-1.8l-1.4 1.8c-.4 1.2-.4 2.4 0 3.6l1.3 3.7-5.5-2.5-4 3-.8-3.5z"/><path fill="#F06445" d="M11.6 7.6l3.9.5-.6 1.6-3.1-.3z"/></svg>';
+const gcUrl=()=>String(CFG.syncUrl||'').replace(/\/sync(\?.*)?$/,'').replace(/\/$/,'');
+const gcScopeId=()=>GC.scope==='@auto'?(state.clientId||''):GC.scope;
+const gcKey=()=>'garuda.chat.'+(gcScopeId()||'all');
+const GC_CHART=['#F06445','#3B82F6','#10B981','#F59E0B','#8B5CF6','#EC4899','#14B8A6','#64748B'];
+function gcLoad(){ GC.msgs=[]; try{ const j=JSON.parse(localStorage.getItem(gcKey())||'[]'); const cut=Date.now()-14*864e5; GC.msgs=j.filter(m=>m&&m.t>cut&&(m.role==='user'||m.role==='assistant')).slice(-40); }catch(_){} }
+function gcSave(){ try{ localStorage.setItem(gcKey(),JSON.stringify(GC.msgs.slice(-40))); }catch(_){} }
+function gcInline(s){
+  s=esc(s);
+  s=s.replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
+  s=s.replace(/\[\[ad:([A-Za-z0-9_\-]+)\]\]/g,(m,id)=>gcAdCard(id));
+  return s;
+}
+function gcAdCard(id){
+  let ad=null; const cid=gcScopeId();
+  try{ const ents=(D&&D.entities)||{}; const keys=cid?[cid]:Object.keys(ents); for(const k of keys){ const a=((ents[k]||{}).ads||[]).find(x=>String(x.id)===id); if(a){ ad=a; break; } } }catch(_){}
+  if(!ad) return '';
+  const img=ad.thumb?'<img src="'+esc(ad.thumb)+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">':'<i></i>';
+  return '<span class="gc-ad">'+img+'<span>'+esc(ad.name||id)+'</span></span>';
+}
+function gcMd(src){
+  const lines=String(src||'').replace(/\r/g,'').split('\n'); let h='',i=0,list=null;
+  const close=()=>{ if(list){ h+='</'+list+'>'; list=null; } };
+  while(i<lines.length){
+    const L=lines[i];
+    if(/^```/.test(L)){ close(); let c=[]; i++; while(i<lines.length&&!/^```/.test(lines[i])){ c.push(lines[i]); i++; } i++; h+='<pre>'+esc(c.join('\n'))+'</pre>'; continue; }
+    if(/^\s*\|.*\|\s*$/.test(L)&&i+1<lines.length&&/^\s*\|[\s:\-|]+\|\s*$/.test(lines[i+1])){
+      close(); const cells=r=>r.trim().replace(/^\||\|$/g,'').split('|').map(x=>x.trim());
+      const hd=cells(L); i+=2; let rows=[]; while(i<lines.length&&/^\s*\|.*\|\s*$/.test(lines[i])){ rows.push(cells(lines[i])); i++; }
+      h+='<div class="gc-tw"><table><thead><tr>'+hd.map(x=>'<th>'+gcInline(x)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map(x=>'<td>'+gcInline(x)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>'; continue;
+    }
+    let m;
+    if((m=L.match(/^\s{0,3}#{1,4}\s+(.*)$/))){ close(); h+='<h4>'+gcInline(m[1])+'</h4>'; }
+    else if((m=L.match(/^\s*[-*•]\s+(.*)$/))){ if(list!=='ul'){ close(); h+='<ul>'; list='ul'; } h+='<li>'+gcInline(m[1])+'</li>'; }
+    else if((m=L.match(/^\s*\d+[.)]\s+(.*)$/))){ if(list!=='ol'){ close(); h+='<ol>'; list='ol'; } h+='<li>'+gcInline(m[1])+'</li>'; }
+    else if(!L.trim()){ close(); }
+    else { close(); h+='<p>'+gcInline(L)+'</p>'; }
+    i++;
+  }
+  close(); return h;
+}
+function gcChart(s){
+  const W=360,H=190,pad={l:38,r:8,t:8,b:30}; const iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
+  const n=s.labels.length; const col=k=>GC_CHART[k%GC_CHART.length];
+  const fmt=v=>{ const a=Math.abs(v); return a>=1e7?(v/1e7).toFixed(1)+'Cr':a>=1e5?(v/1e5).toFixed(1)+'L':a>=1e3?(v/1e3).toFixed(1)+'k':(Math.round(v*100)/100)+''; };
+  let svg='';
+  if(s.type==='pie'||s.type==='doughnut'){
+    const d=s.datasets[0].data.map(v=>Math.max(0,v)); const tot=d.reduce((a,b)=>a+b,0)||1; const cx=90,cy=90,r=80; let a0=-Math.PI/2;
+    svg='<svg viewBox="0 0 360 180">';
+    d.forEach((v,k)=>{ const a1=a0+v/tot*Math.PI*2; const x0=cx+r*Math.cos(a0),y0=cy+r*Math.sin(a0),x1=cx+r*Math.cos(a1),y1=cy+r*Math.sin(a1); const big=a1-a0>Math.PI?1:0;
+      svg+=d.length===1||v/tot>0.9999?'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+col(k)+'"/>':'<path d="M'+cx+' '+cy+'L'+x0+' '+y0+'A'+r+' '+r+' 0 '+big+' 1 '+x1+' '+y1+'Z" fill="'+col(k)+'"/>'; a0=a1; });
+    if(s.type==='doughnut') svg+='<circle cx="'+cx+'" cy="'+cy+'" r="44" fill="var(--panel)"/>';
+    svg+='</svg>';
+    return '<div class="gc-chart"><b>'+esc(s.title)+'</b>'+svg+'<div class="gc-leg">'+s.labels.map((l,k)=>'<span><i style="background:'+col(k)+'"></i>'+esc(l)+' '+Math.round(d[k]/tot*100)+'%</span>').join('')+'</div></div>';
+  }
+  const all=[].concat.apply([],s.datasets.map(d=>d.data)); let mx=Math.max.apply(null,all.concat([0])), mn=Math.min.apply(null,all.concat([0])); if(mx===mn) mx=mn+1;
+  const y=v=>pad.t+ih-(v-mn)/(mx-mn)*ih; const x=k=>pad.l+(s.type==='line'?(n===1?iw/2:k/(n-1)*iw):(k+.5)/n*iw);
+  svg='<svg viewBox="0 0 '+W+' '+H+'">';
+  for(let g=0;g<=4;g++){ const v=mn+(mx-mn)*g/4, yy=y(v); svg+='<line x1="'+pad.l+'" x2="'+(W-pad.r)+'" y1="'+yy+'" y2="'+yy+'" stroke="var(--line)"/><text x="'+(pad.l-4)+'" y="'+(yy+3)+'" font-size="9" text-anchor="end" fill="var(--faint)">'+fmt(v)+'</text>'; }
+  const step=Math.ceil(n/7);
+  s.labels.forEach((l,k)=>{ if(k%step===0) svg+='<text x="'+x(k)+'" y="'+(H-14)+'" font-size="9" text-anchor="middle" fill="var(--faint)">'+esc(l.length>9?l.slice(0,8)+'.':l)+'</text>'; });
+  const ds=s.datasets.length;
+  s.datasets.forEach((d,j)=>{
+    if(s.type==='line'){ svg+='<polyline fill="none" stroke="'+col(j)+'" stroke-width="2" points="'+d.data.map((v,k)=>x(k)+','+y(v)).join(' ')+'"/>'+d.data.map((v,k)=>'<circle cx="'+x(k)+'" cy="'+y(v)+'" r="2.5" fill="'+col(j)+'"/>').join(''); }
+    else { const bw=Math.max(3,iw/n*0.7/ds); d.data.forEach((v,k)=>{ const x0=x(k)-bw*ds/2+j*bw, y0=y(Math.max(v,0)), y1=y(Math.min(v,0)); svg+='<rect x="'+x0+'" y="'+y0+'" width="'+(bw-1)+'" height="'+Math.max(1,y1-y0)+'" rx="2" fill="'+col(j)+'"/>'; }); }
+  });
+  svg+='</svg>';
+  return '<div class="gc-chart"><b>'+esc(s.title)+'</b>'+svg+(ds>1?'<div class="gc-leg">'+s.datasets.map((d,j)=>'<span><i style="background:'+col(j)+'"></i>'+esc(d.label)+'</span>').join('')+'</div>':'')+'</div>';
+}
+function gcBlocksHtml(m){
+  if(m.role==='user') return esc(m.content);
+  const bl=m.blocks&&m.blocks.length?m.blocks:[{type:'text',content:m.content||''}];
+  return bl.map(b=>b.type==='chart'&&b.spec?gcChart(b.spec):gcMd(b.content)).join('');
+}
+function gcScopeName(){ const id=gcScopeId(); if(!id) return 'all clients'; const c=((D&&D.clients)||[]).find(x=>x.id===id); return c?c.name:id; }
+function gcSuggestions(){
+  return gcScopeId()
+    ?['Give me a quick health check','Which ads are fatiguing?','What should I do with budget this week?','Why did ROAS change vs last week?']
+    :['Which clients need attention today?','Who is overpacing or underpacing?','Top 3 risks across the portfolio','Which clients have broken tracking or sync errors?'];
+}
+function gcRender(){
+  const p=document.getElementById('gcPanel'); if(!p) return;
+  const clients=((D&&D.clients)||[]);
+  const opts='<option value="@auto"'+(GC.scope==='@auto'?' selected':'')+'>Follow page</option><option value=""'+(GC.scope===''?' selected':'')+'>All clients</option>'+clients.map(c=>'<option value="'+esc(c.id)+'"'+(GC.scope===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('');
+  let h='<div class="gc-head"><div class="gc-t"><span class="gc-mark">'+GC_EAGLE+'</span>Garuda AI</div><select id="gcScope" title="Which client the answers are about">'+opts+'</select><button class="gc-ib" data-gc="notes" title="Notes the assistant should always know for this client">\u270E</button><button class="gc-ib" data-gc="new" title="New chat">\u21BB</button><button class="gc-ib" data-gc="big" title="Bigger">\u2922</button><button class="gc-ib" data-gc="close" title="Close">\u2715</button></div>';
+  if(GC.view==='notes'){ p.innerHTML=h+'<div class="gc-notes" id="gcNotes"><p class="s">Loading…</p></div>'; gcNotes(); return; }
+  h+='<div class="gc-body" id="gcBody">';
+  if(!GC.msgs.length) h+='<div class="gc-hello">Ask anything about <b>'+esc(gcScopeName())+'</b>. I read the same synced numbers as this dashboard and I never change anything in an ad account.</div><div class="gc-chips">'+gcSuggestions().map(q=>'<button class="gc-chip" data-gc="ask" data-q="'+esc(q)+'">'+esc(q)+'</button>').join('')+'</div>';
+  GC.msgs.forEach((m,k)=>{ h+='<div class="gc-msg '+(m.role==='user'?'u':'a')+(m.err?' err':'')+'" data-i="'+k+'">'+gcBlocksHtml(m)+(m.role==='assistant'&&!m.err?'<button class="gc-copy" data-gc="copy" data-i="'+k+'">Copy</button>':'')+'</div>'; });
+  if(GC.busy) h+='<div class="gc-msg a"><span class="gc-dots"><i></i><i></i><i></i></span></div>';
+  h+='</div><div class="gc-foot"><textarea id="gcIn" rows="1" placeholder="Ask about spend, ROAS, creatives, pacing…" maxlength="2000"></textarea><button class="gc-send" data-gc="send"'+(GC.busy?' disabled':'')+'>Send</button></div>';
+  const keep=(document.getElementById('gcIn')||{}).value||'';
+  p.innerHTML=h; const ta=document.getElementById('gcIn'); if(ta){ ta.value=keep; if(GC.open&&!GC.busy&&window.innerWidth>600) ta.focus(); }
+  const b=document.getElementById('gcBody'); if(b) b.scrollTop=b.scrollHeight;
+}
+async function gcToken(){ if(window.__GARUDA_CHAT_TEST) return 'test'; const u=fb&&fb.auth&&fb.auth.currentUser; if(!u) throw new Error('Sign in first'); return u.getIdToken(); }
+async function gcSend(text){
+  text=String(text||'').trim(); if(!text||GC.busy) return;
+  if(GC.scope==='@auto'){ /* scope follows the page; reload that scope's history if it changed */ const k=gcKey(); if(GC.lastKey&&GC.lastKey!==k){ gcLoad(); } GC.lastKey=k; }
+  const hist=GC.msgs.filter(m=>!m.err).slice(-10).map(m=>({role:m.role,content:m.role==='user'?m.content:(m.content||'')}));
+  GC.msgs.push({role:'user',content:text,t:Date.now()}); GC.busy=true; const ta=document.getElementById('gcIn'); if(ta) ta.value=''; gcRender();
+  try{
+    const tok=await gcToken();
+    const r=await fetch(gcUrl()+'/chat',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({message:text,clientId:gcScopeId(),history:hist})});
+    let j=null; try{ j=await r.json(); }catch(_){}
+    if(!r.ok||!j||!j.ok) throw new Error((j&&j.error)||(r.status===401?'This account is not cleared to use the chatbot.':'The chatbot is unavailable (HTTP '+r.status+').'));
+    GC.msgs.push({role:'assistant',content:j.reply||'',blocks:j.blocks||[],t:Date.now()});
+  }catch(e){ GC.msgs.push({role:'assistant',content:String(e.message||e),err:true,t:Date.now()}); }
+  GC.busy=false; gcSave(); gcRender();
+}
+async function gcNotes(){
+  const box=document.getElementById('gcNotes'); if(!box) return; const cid=gcScopeId()||'*';
+  const nm=cid==='*'?'all clients':gcScopeName();
+  let rows=[]; let err='';
+  try{ const tok=await gcToken(); const r=await fetch(gcUrl()+'/chat/notes?client='+encodeURIComponent(cid),{headers:{'Authorization':'Bearer '+tok}}); if(!r.ok) throw new Error(await r.text()); rows=(await r.json()).filter(x=>x.enabled); }catch(e){ err=String(e.message||e); }
+  box.innerHTML='<p class="s">Notes for <b>'+esc(nm)+'</b>: things the assistant must always keep in mind (brand rules, targets, what has been tried, what to avoid). It reads these before every answer.</p>'+(err?'<p class="s" style="color:var(--accent-2)">'+esc(err)+'</p>':'')+
+    rows.map(n=>'<div class="gc-note"><b>'+esc(n.title)+'</b><div>'+esc(n.content)+'</div><button data-gc="delnote" data-id="'+esc(n.id)+'">Delete</button></div>').join('')+
+    '<input id="gcNT" placeholder="Title (e.g. Brand rules)" maxlength="120"><textarea id="gcNC" placeholder="What should the assistant know?" maxlength="6000"></textarea><button class="gc-send" data-gc="addnote">Save note</button> <button class="gc-chip" data-gc="back">Back to chat</button>';
+}
+async function gcNoteAct(act,id){
+  try{
+    const tok=await gcToken(); const h={'Authorization':'Bearer '+tok,'Content-Type':'application/json'};
+    if(act==='addnote'){ const t=document.getElementById('gcNT').value.trim(), c=document.getElementById('gcNC').value.trim(); if(!t||!c){ toast('Add a title and the note text','warn'); return; }
+      const r=await fetch(gcUrl()+'/chat/notes',{method:'POST',headers:h,body:JSON.stringify({clientId:gcScopeId()||'*',title:t,content:c})}); if(!r.ok) throw new Error(await r.text()); toast('Note saved'); }
+    else { const r=await fetch(gcUrl()+'/chat/notes/delete',{method:'POST',headers:h,body:JSON.stringify({id})}); if(!r.ok) throw new Error(await r.text()); toast('Note deleted'); }
+    gcNotes();
+  }catch(e){ toast('Could not save: '+String(e.message||e).slice(0,120),'warn'); }
+}
+function gcToggle(open){
+  GC.open=open===undefined?!GC.open:open; const p=document.getElementById('gcPanel'); if(!p) return;
+  p.classList.toggle('open',GC.open); p.classList.toggle('big',GC.big); const bb=document.getElementById('gcBubble'); if(bb) bb.classList.toggle('hide-m',GC.open);
+  if(GC.open){ const k=gcKey(); if(GC.lastKey!==k){ gcLoad(); GC.lastKey=k; } gcRender(); }
+}
+function chatMount(){
+  if(GC.mounted||!(CFG.syncUrl||window.__GARUDA_CHAT_TEST)) return; GC.mounted=true;
+  const b=document.createElement('button'); b.id='gcBubble'; b.title='Ask Garuda AI'; b.setAttribute('aria-label','Open the Garuda assistant'); b.innerHTML=GC_EAGLE; document.body.appendChild(b);
+  const p=document.createElement('div'); p.id='gcPanel'; p.setAttribute('role','dialog'); p.setAttribute('aria-label','Garuda assistant'); document.body.appendChild(p);
+  b.addEventListener('click',()=>gcToggle());
+  p.addEventListener('click',e=>{ const t=e.target.closest('[data-gc]'); if(!t) return; const a=t.dataset.gc;
+    if(a==='close') gcToggle(false);
+    else if(a==='big'){ GC.big=!GC.big; p.classList.toggle('big',GC.big); }
+    else if(a==='new'){ GC.msgs=[]; gcSave(); GC.view='chat'; gcRender(); }
+    else if(a==='send') gcSend((document.getElementById('gcIn')||{}).value);
+    else if(a==='ask') gcSend(t.dataset.q);
+    else if(a==='notes'){ GC.view='notes'; gcRender(); }
+    else if(a==='back'){ GC.view='chat'; gcRender(); }
+    else if(a==='addnote'||a==='delnote') gcNoteAct(a,t.dataset.id);
+    else if(a==='copy'){ const m=GC.msgs[+t.dataset.i]; if(m&&navigator.clipboard) navigator.clipboard.writeText(m.content||'').then(()=>{ t.textContent='Copied'; setTimeout(()=>{ t.textContent='Copy'; },1200); }).catch(()=>{}); }
+  });
+  p.addEventListener('change',e=>{ if(e.target.id==='gcScope'){ GC.scope=e.target.value; gcLoad(); GC.lastKey=gcKey(); gcRender(); } });
+  p.addEventListener('keydown',e=>{ if(e.target.id==='gcIn'&&e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); gcSend(e.target.value); } });
+  p.addEventListener('input',e=>{ if(e.target.id==='gcIn'){ e.target.style.height='auto'; e.target.style.height=Math.min(110,e.target.scrollHeight)+'px'; } });
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&GC.open) gcToggle(false); });
+}
+
 boot();
 })();
 </script>

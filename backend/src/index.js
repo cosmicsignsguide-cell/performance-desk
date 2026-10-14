@@ -22,6 +22,7 @@ import { weeklyReports } from './gamma.js';
 import { computeCreatorScores } from './creators.js';
 import { createUpload, listMine, listToday, istToday } from './creatorPortal.js';
 import { raise } from './alerts.js';
+import { handleChat, notesApi } from './chat/index.js';
 import { verifyShopify } from './verify.js';
 import Sample from './sample.cjs';
 
@@ -461,7 +462,8 @@ async function main() {
       }
 
       const isCreatorRoute = url.pathname.startsWith('/creator/');
-      if (!isCreatorRoute && !['/sync', '/run', '/links', '/rotate', '/creators', '/creators/today'].includes(url.pathname)) { res.writeHead(404); res.end('not found'); return; }
+      const isChatRoute = url.pathname === '/chat' || url.pathname.startsWith('/chat/');
+      if (!isCreatorRoute && !isChatRoute && !['/sync', '/run', '/links', '/rotate', '/creators', '/creators/today'].includes(url.pathname)) { res.writeHead(404); res.end('not found'); return; }
 
       // Two ways in, and only one of them may ever reach a browser.
       //
@@ -508,6 +510,31 @@ async function main() {
 
       if (!who) { res.writeHead(401); res.end('unauthorized'); return; }
       if (who !== 'sync key') log(`auth: ${url.pathname} requested by ${who}`);
+
+      // Garuda chatbot. Team members only (a signed-in teammate, never a shared key), read-only:
+      // it answers from the synced data and cannot touch an ad account.
+      if (isChatRoute) {
+        if (!who.includes('@')) { res.writeHead(403); res.end('sign in with your own account'); return; }
+        const isGet = req.method === 'GET';
+        if (!isGet && req.method !== 'POST') { res.writeHead(405); res.end('method not allowed'); return; }
+        let payload = {};
+        if (!isGet) {
+          let body = ''; let over = false;
+          await new Promise((resolve) => {
+            req.on('data', (c) => { body += c; if (body.length > 100000) { over = true; req.destroy(); } });
+            req.on('end', resolve); req.on('close', resolve);
+          });
+          if (over) { res.writeHead(413); res.end('too large'); return; }
+          try { payload = body ? JSON.parse(body) : {}; } catch { res.writeHead(400); res.end('bad json'); return; }
+        }
+        const out = url.pathname === '/chat' && !isGet
+          ? await handleChat(store, who, payload)
+          : url.pathname.startsWith('/chat/notes') ? await notesApi(store, who, req.method, url.pathname, url.searchParams, payload)
+          : { status: 404, body: 'not found' };
+        res.writeHead(out.status, { 'Content-Type': typeof out.body === 'string' ? 'text/plain' : 'application/json' });
+        res.end(typeof out.body === 'string' ? out.body : JSON.stringify(out.body));
+        return;
+      }
 
       // GET /links — every client's report URL, for pasting into an email. Behind the sync key.
       if (url.pathname === '/links') {
