@@ -1,4 +1,4 @@
-# Performance Desk
+# Garuda
 
 Internal dashboard for the Per4mance Guru performance marketing team. One place for every client's Meta Ads, Google Ads and Shopify numbers, creative ranking, funnel leakage, and a 30-minute site check that catches cart, checkout and tracking failures before the client does.
 
