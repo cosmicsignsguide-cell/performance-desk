@@ -436,6 +436,11 @@ a{color:var(--cyan)}
 .brief-figs dd{font-size:36px;font-weight:650;letter-spacing:-.04em;font-variant-numeric:tabular-nums;
   margin-top:16px;line-height:1;color:var(--text);transition:color .18s ease}
 .brief-figs>div:hover dd{color:#000}
+.brief-figs dd.src{font-size:10.5px;font-weight:500;letter-spacing:0;margin-top:9px;line-height:1.4;color:var(--faint);display:flex;flex-wrap:wrap;gap:4px 10px}
+.brief-figs dd.src .sc{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.brief-figs dd.src .sc b{color:var(--dim);font-weight:650;font-variant-numeric:tabular-nums}
+.brief-figs dd.src .sc i{width:7px;height:7px;border-radius:50%;flex:none;background:var(--faint)}
+.brief-figs dd.src i.meta{background:#1877F2}.brief-figs dd.src i.google{background:#F4B400}.brief-figs dd.src i.shop{background:#5E8E3E}.brief-figs dd.src i.ads{background:#8B5CF6}.brief-figs dd.src i.tgt{background:var(--accent)}.brief-figs dd.src i.site{background:#14B8A6}
 .brief-figs dd.hot{color:var(--red)} .brief-figs>div:hover dd.hot{color:var(--red)}
 .brief-figs dd.d{font-size:11.5px;font-weight:450;letter-spacing:0;margin-top:12px;padding-top:11px;
   border-top:1px solid var(--line);color:var(--faint);line-height:1.45}
@@ -2026,6 +2031,15 @@ function overviewView(){
   const totSpend=inCur.reduce((s,x)=>s+x.cur.spend,0), prevSpend=inCur.reduce((s,x)=>s+x.prev.spend,0);
   const ecom=inCur.filter(x=>x.c.type==='ecom'), lead=inCur.filter(x=>x.c.type==='lead');
   const eSpend=ecom.reduce((s,x)=>s+x.cur.spend,0), eRev=ecom.reduce((s,x)=>s+x.cur.revenue,0), eNet=ecom.reduce((s,x)=>s+x.cur.netSales,0), eShopSpend=ecom.filter(x=>x.cur.hasShop).reduce((s,x)=>s+x.cur.spend,0), eOrders=ecom.reduce((s,x)=>s+x.cur.salesCount,0), ePrevOrders=ecom.reduce((s,x)=>s+x.prev.salesCount,0);
+  // Where each headline figure comes from. Ad spend and platform revenue are split by the ad
+  // platform that reported them; orders say whether the store (Shopify) or the ad platform counted.
+  const winRows=x=>rowsIn(x.rows||[],D.today,spec);
+  const bySrc=(list,key)=>{ const o={meta:0,google:0}; list.forEach(x=>winRows(x).forEach(r=>{ if(o[r.platform]!==undefined) o[r.platform]+=r[key]||0; })); return o; };
+  const spendSrc=bySrc(inCur,'spend'), revSrc=bySrc(ecom,'revenue');
+  const ordShop=ecom.filter(x=>x.cur.hasShop).reduce((n,x)=>n+x.cur.salesCount,0), ordAds=ecom.filter(x=>!x.cur.hasShop).reduce((n,x)=>n+x.cur.salesCount,0);
+  const nShop=ecom.filter(x=>x.cur.hasShop).length, nAdsOnly=ecom.length-nShop;
+  const chip=(cls,label,val)=>'<span class="sc"><i class="'+cls+'"></i>'+label+(val?' <b>'+val+'</b>':'')+'</span>';
+  const srcRow=(chips,tip)=>'<dd class="src" title="'+esc(tip)+'">'+chips.join('')+'</dd>';
   const lSpend=lead.reduce((s,x)=>s+x.cur.spend,0), lLeads=lead.reduce((s,x)=>s+x.cur.leads,0), lPrev=lead.reduce((s,x)=>s+x.prev.leads,0);
   const onTarget=all.filter(x=>x.status==='good'||x.status==='neutral').length, off=all.filter(x=>x.health!=='good').length;
   const totalBudget=D.clients.filter(c=>(c.currency||'INR')===mainCur).reduce((s,c)=>s+(c.budget||0),0);
@@ -2077,11 +2091,16 @@ function overviewView(){
       +'<p class="brief-lead">'+verdict+'</p>'
       +'<p class="brief-sub">'+subs.join(' ')+'</p></div>'
     +'<dl class="brief-figs">'
-      +'<div><dt>Ad spend</dt><dd class="disp">'+fmtMoney(totSpend,c0)+'</dd><dd class="d">'+vs(totSpend,prevSpend)+' vs prev'+(outCur?' &middot; '+outCur+' account'+(outCur>1?'s':'')+' in another currency not counted':'')+'</dd></div>'
-      +'<div><dt>Blended ROAS</dt><dd class="disp">'+fmtX(eSpend?eRev/eSpend:0)+'</dd><dd class="d">'+fmtMoney(eRev,c0)+' back</dd></div>'
-      +'<div><dt>Orders</dt><dd class="disp">'+fmtNum(eOrders)+'</dd><dd class="d">'+vs(eOrders,ePrevOrders)+' vs prev</dd></div>'
-      +'<div><dt>On target</dt><dd class="disp">'+onTarget+'<span style="color:var(--faint);font-size:13px;font-weight:500"> / '+all.length+'</span></dd><dd class="d">'+pctOn+'% of the book</dd></div>'
-      +'<div><dt>Site checks</dt><dd class="disp'+(failing.length?' hot':'')+'">'+(failing.length||siteOk)+'</dd><dd class="d">'+(failing.length?'failing now':'passing')+'</dd></div>'
+      +'<div><dt>Ad spend</dt><dd class="disp">'+fmtMoney(totSpend,c0)+'</dd><dd class="d">'+vs(totSpend,prevSpend)+' vs prev'+(outCur?' &middot; '+outCur+' account'+(outCur>1?'s':'')+' in another currency not counted':'')+'</dd>'
+        +srcRow([chip('meta','Meta',fmtMoney(spendSrc.meta,c0)),chip('google','Google',fmtMoney(spendSrc.google,c0))],'Ad spend is what Meta Ads and Google Ads charged for this period, summed over every client billed in '+mainCur+'.')+'</div>'
+      +'<div><dt>Blended ROAS</dt><dd class="disp">'+fmtX(eSpend?eRev/eSpend:0)+'</dd><dd class="d">'+fmtMoney(eRev,c0)+' back</dd>'
+        +srcRow([chip('meta','Meta',fmtMoney(revSrc.meta,c0)),chip('google','Google',fmtMoney(revSrc.google,c0))],'Revenue the ad platforms report for purchases they drove (their own attribution), divided by spend. Ecom clients only. It is not the store total.')+'</div>'
+      +'<div><dt>Orders</dt><dd class="disp">'+fmtNum(eOrders)+'</dd><dd class="d">'+vs(eOrders,ePrevOrders)+' vs prev</dd>'
+        +srcRow([chip('shop','Shopify',fmtNum(ordShop)+(nShop?' ('+nShop+')':''))].concat(nAdsOnly?[chip('ads','Ad platforms',fmtNum(ordAds)+' ('+nAdsOnly+')')]:[]).concat(!nShop&&!nAdsOnly?[chip('shop','No ecom clients')]:[]),'Orders counted by the store itself (Shopify) for clients whose store is connected, and purchases reported by Meta or Google for clients with no store connected. Number in brackets is how many clients.')+'</div>'
+      +'<div><dt>On target</dt><dd class="disp">'+onTarget+'<span style="color:var(--faint);font-size:13px;font-weight:500"> / '+all.length+'</span></dd><dd class="d">'+pctOn+'% of the book</dd>'
+        +srcRow([chip('tgt','vs each client\u2019s own ROAS, CPL or CPI target')],'An account is on target when it meets the target saved for it in the client list. Accounts with no target set count as on target.')+'</div>'
+      +'<div><dt>Site checks</dt><dd class="disp'+(failing.length?' hot':'')+'">'+(failing.length||siteOk)+'</dd><dd class="d">'+(failing.length?'failing now':'passing')+'</dd>'
+        +srcRow([chip('site','Our own check of each client\u2019s site')],'Sitewatch loads each client site, product and checkout page and reports if one breaks.')+'</div>'
     +'</dl>'
     +'<div class="brief-sig"><span>We don’t run ads. <b>We drive results.</b></span><span>Per4mance Guru &middot; internal desk</span></div>'
   +'</section>';
