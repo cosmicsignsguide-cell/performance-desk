@@ -2371,9 +2371,9 @@ function clientView(x){
   }
   h+='</div>';
   h+=platformSplit(x);
-  if(x.flags.length) h+='<div class="section"><div class="section-head"><h2>What to fix</h2></div><div class="attn-list">'+groupFlags(x.flags).map(f=>attnItem(f.sev,groupMeta(f,''),f.text,'')).join('')+'</div></div>';
   h+='<div class="two">'+intradayPanel(x)+pacePanel(x)+'</div>';
   h+='<div class="section"><div class="glass-panel"><h2>Spend and '+kpiLabel(c)+' by day</h2><div class="legend"><span><i class="bar"></i>Spend</span><span><i class="line"></i>'+kpiLabel(c)+'</span><span><i class="tgt"></i>Target</span></div>'+trendChart(x)+'</div></div>';
+  if(x.flags.length) h+='<div class="section"><div class="section-head"><h2>What to fix</h2></div><div class="attn-list">'+groupFlags(x.flags).map(f=>attnItem(f.sev,groupMeta(f,''),f.text,'')).join('')+'</div></div>';
   if(isE&&x.cur.hasShop) h+=shopDaysPanel(x);
   if(isE) h+=sourcePanel(x);
   if(isE) h+=funnelPanel(x);
