@@ -1104,6 +1104,70 @@ body{font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:14px}
 .gc-notes textarea{min-height:90px;resize:vertical}
 @media (max-width:600px){#gcPanel,#gcPanel.big{right:0;bottom:0;left:0;width:100%;height:calc(100vh - 40px);border-radius:16px 16px 0 0}#gcBubble{right:14px;bottom:14px}#gcBubble.hide-m{display:none}}
 @media print{#gcBubble,#gcPanel{display:none!important}}
+/* Client drawer */
+.cd-bd{position:fixed;inset:0;background:rgba(0,0,0,.42);backdrop-filter:blur(2px);z-index:940;opacity:0;pointer-events:none;transition:opacity .2s}
+.cd-bd.open{opacity:1;pointer-events:auto}
+.cd{position:fixed;top:0;right:0;bottom:0;width:min(560px,100vw);background:var(--bg-2,var(--panel));color:var(--text);border-left:1px solid var(--border);box-shadow:-24px 0 60px rgba(0,0,0,.32);z-index:950;display:flex;flex-direction:column;transform:translateX(102%);transition:transform .26s cubic-bezier(.2,.8,.25,1)}
+.cd.open{transform:none}.cd.wide{width:min(900px,100vw)}
+.cd-lock{overflow:hidden}
+.cd-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.cd-id{display:flex;align-items:center;gap:12px;min-width:0}.cd-id>div{min-width:0}
+.cd-mono{flex:none;transform:scale(1.1)}
+.cd-name{font-size:19px;font-weight:700;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cd-sub{font-size:12px;color:var(--faint);margin-top:2px}
+.cd-hr{display:flex;align-items:center;gap:6px;flex:none}
+.cd-rng{display:flex;gap:2px;background:var(--panel-hover);border-radius:9px;padding:2px}
+.cd-rng button{border:0;background:transparent;color:var(--dim);font-size:11.5px;font-weight:600;padding:5px 9px;border-radius:7px;cursor:pointer}
+.cd-rng button.on{background:var(--accent);color:#fff}
+.cd-ib{border:0;background:transparent;color:var(--dim);width:30px;height:30px;border-radius:8px;font-size:18px;cursor:pointer}.cd-ib:hover{background:var(--panel-hover);color:var(--text)}
+.cd-body{flex:1;overflow-y:auto;padding:16px 18px 24px;display:flex;flex-direction:column;gap:18px}
+.cd-v{border-radius:14px;padding:16px 18px;border:1px solid var(--border);background:var(--panel-hover)}
+.cd-v.bad{border-color:rgba(255,90,90,.45);background:rgba(255,90,90,.08)}.cd-v.warn{border-color:rgba(255,185,61,.45);background:rgba(255,185,61,.08)}.cd-v.good{border-color:rgba(52,211,161,.4);background:rgba(52,211,161,.07)}
+.cd-v1{font-size:21px;font-weight:700;letter-spacing:-.02em}
+.cd-v.bad .cd-v1{color:var(--red,#ff5a5a)}.cd-v.warn .cd-v1{color:#e0a020}.cd-v.good .cd-v1{color:var(--green,#34d3a1)}
+.cd-v2{font-size:13.5px;color:var(--dim);margin-top:5px;line-height:1.5}.cd-v2 b{color:var(--text)}
+.cd-v3{display:flex;gap:9px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-size:13px;line-height:1.5;align-items:flex-start}
+.cd-v3 i,.cd-fl i{flex:none;width:9px;height:9px;border-radius:50%;margin-top:6px;background:var(--faint)}
+.cd-v3 i.bad,.cd-fl.bad i{background:#ff5a5a}.cd-v3 i.warn,.cd-fl.warn i{background:#f4b400}.cd-v3 i.good{background:#34d3a1}.cd-fl.info i{background:#60a5fa}
+.cd-s h3{font-size:13px;font-weight:700;margin:0 0 10px;letter-spacing:.01em;display:flex;align-items:baseline;gap:8px}
+.cd-s h3 em{font-style:normal;font-weight:500;color:var(--faint);font-size:11.5px}
+.cd-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.cd.wide .cd-grid{grid-template-columns:repeat(4,1fr)}
+.cd-k{border:1px solid var(--line);background:var(--panel);border-radius:11px;padding:11px 13px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.cd-k span{font-size:11.5px;color:var(--faint)}.cd-k b{font-size:21px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.cd-k u{text-decoration:none;font-size:11px;color:var(--faint);min-height:14px}
+.cd-fun{display:flex;align-items:stretch;gap:4px;overflow-x:auto;padding-bottom:2px}
+.cd-f{flex:1 1 0;min-width:78px;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:9px 8px;text-align:center;display:flex;flex-direction:column;gap:3px}
+.cd-f span{font-size:10.5px;color:var(--faint)}.cd-f b{font-size:16px;font-variant-numeric:tabular-nums}.cd-f u{text-decoration:none;font-size:10px;color:var(--accent)}
+.cd-arr{align-self:center;color:var(--faint);font-style:normal;flex:none}
+.cd-split{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--line);gap:2px}
+.cd-split i{display:block}.cd-split i.meta,.cd-dot.meta{background:#1877F2}.cd-split i.google,.cd-dot.google{background:#F4B400}
+.cd-pl{display:grid;gap:8px;margin-top:11px;font-size:13px}
+.cd-pl>div{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.cd-pl em{font-style:normal;color:var(--faint)}.cd-pl u{text-decoration:none;color:var(--faint);font-size:12px;margin-left:auto}
+.cd-dot{width:9px;height:9px;border-radius:50%;flex:none}
+.cd-bar{position:relative;height:10px;border-radius:99px;background:var(--line)}
+.cd-bar i{display:block;height:100%;border-radius:99px;background:var(--accent)}.cd-bar b{position:absolute;top:-4px;width:2px;height:18px;background:var(--text);opacity:.55}
+.cd-budn{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--dim);margin-top:9px}.cd-budn b{color:var(--text)}
+.cd-hint{font-size:12.5px;margin-top:8px;color:var(--dim)}
+.cd-list{display:grid;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}
+.cd-row{display:flex;align-items:center;gap:11px;padding:10px 12px;border-bottom:1px solid var(--line)}.cd-row:last-child{border-bottom:0}
+.cd-th{flex:none;width:38px;height:38px;border-radius:8px;background:var(--line);overflow:hidden}.cd-th img{width:100%;height:100%;object-fit:cover;display:block}
+.cd-th:empty{display:none}
+.cd-rn{flex:1;min-width:0;font-size:12.5px;font-weight:600;display:flex;flex-direction:column;gap:3px}
+.cd-rn{overflow:hidden;text-overflow:ellipsis}
+.cd-rn em{font-style:normal;font-size:10.5px;font-weight:700;color:var(--faint);align-self:flex-start;padding:1px 7px;border-radius:99px;background:var(--panel-hover)}
+.cd-rn em.good{color:#1f9d74;background:rgba(52,211,161,.14)}.cd-rn em.bad{color:#e04848;background:rgba(255,90,90,.14)}.cd-rn em.warn{color:#b98200;background:rgba(244,180,0,.16)}.cd-rn em.accent{color:var(--accent)}
+.cd-rv{flex:none;text-align:right;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;gap:2px}.cd-rv u{text-decoration:none;font-weight:500;font-size:11px;color:var(--faint)}
+.cd-flags{display:grid;gap:8px}.cd-fl{display:flex;gap:9px;font-size:12.5px;line-height:1.5;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.cd-fl span em{display:block;font-style:normal;color:var(--faint);font-size:11px;margin-top:2px}
+.cd-srcs{display:flex;flex-wrap:wrap;gap:8px}
+.cd-src{display:inline-flex;align-items:center;gap:7px;font-size:12px;padding:6px 10px;border-radius:99px;border:1px solid var(--line);background:var(--panel)}
+.cd-src i{width:8px;height:8px;border-radius:50%;background:var(--faint)}.cd-src.ok i{background:#34d3a1}.cd-src.bad i{background:#ff5a5a}.cd-src.warn i{background:#f4b400}
+.cd-src em{font-style:normal;color:var(--faint)}
+.cd-f2{display:flex;gap:10px;padding:12px 18px;border-top:1px solid var(--line);background:var(--panel)}
+.cd-btn{flex:1;border:0;border-radius:11px;padding:11px 14px;font-weight:700;font-size:13px;cursor:pointer;background:var(--accent);color:#fff}
+.cd-btn.ghost{background:var(--panel-hover);color:var(--text);border:1px solid var(--border)}
+.cd .pf-chart{margin:0}
+@media (max-width:600px){.cd-h{flex-wrap:wrap}.cd-hr{width:100%;justify-content:space-between}.cd-name{font-size:17px}.cd{width:100vw}.cd-grid{grid-template-columns:repeat(2,1fr)}.cd-hr .cd-ib:nth-of-type(1){display:none}.cd-rng button{padding:5px 7px}}
+@media print{.cd,.cd-bd{display:none!important}}
 </style>
 </head>
 <body>
@@ -1752,7 +1816,7 @@ function portfolioTiles(all0,spec0){
     +[['roas','ROAS vs target'],['spend','Spend vs budget']].map(m=>'<button data-act="plmode" data-m="'+m[0]+'" class="'+(pmode===m[0]?'on':'')+'">'+m[1]+'</button>').join('')+'</span><span class="seg tiny plseg">'
     +['7d','14d','30d','MTD'].map(r=>'<button data-act="plrange" data-r="'+r+'" class="'+(pr===r?'on':'')+'">'+r+'</button>').join('')+'</span></span></div>'
     +skyline(rows,pmode)
-    +(pmode==='spend'?'<div class="plist-key"><span class="k good"><i></i>'+n('good')+' within 10% of plan</span><span class="k warn"><i></i>'+n('warn')+' 10 to 20% off (over or under)</span><span class="k bad"><i></i>'+n('bad')+' more than 20% off</span><span class="k none"><i></i>'+n('none')+' no budget</span>':'<div class="plist-key"><span class="k good"><i></i>'+n('good')+' on target or within 10%</span><span class="k warn"><i></i>'+n('warn')+' 10 to 20% behind</span><span class="k bad"><i></i>'+n('bad')+' more than 20% behind</span><span class="k none"><i></i>'+n('none')+' no target</span>')+'<span class="k pl-note">'+esc(spec.label)+' &middot; hover or tap a client for its card</span></div>'
+    +(pmode==='spend'?'<div class="plist-key"><span class="k good"><i></i>'+n('good')+' within 10% of plan</span><span class="k warn"><i></i>'+n('warn')+' 10 to 20% off (over or under)</span><span class="k bad"><i></i>'+n('bad')+' more than 20% off</span><span class="k none"><i></i>'+n('none')+' no budget</span>':'<div class="plist-key"><span class="k good"><i></i>'+n('good')+' on target or within 10%</span><span class="k warn"><i></i>'+n('warn')+' 10 to 20% behind</span><span class="k bad"><i></i>'+n('bad')+' more than 20% behind</span><span class="k none"><i></i>'+n('none')+' no target</span>')+'<span class="k pl-note">'+esc(spec.label)+' &middot; hover for a quick card, click for full details</span></div>'
     +'<div class="plist glow"><div class="plist-h"><span></span>'+th('name','Client')+th('dev','Position','',1)+th('kpi',rows.every(o=>o.x.c.type==='ecom')?'ROAS':'KPI')+th('dev',pmode==='spend'?'vs plan':'vs target','r')+th('spend','Spend','r')+'</div>';
   rows.forEach(o=>{ const x=o.x, c=x.c, t=kpiTarget(c);
     h+='<button class="prow '+o.r.tone+'" data-pl="'+esc(c.id)+'" type="button">'
@@ -1852,7 +1916,7 @@ function plCardHTML(o){
   document.addEventListener('mouseout',e=>{ const r=e.target.closest&&e.target.closest('.prow,.sky-col'); if(!r) return; clearTimeout(tShow);
     if(!pinned && !(e.relatedTarget&&e.relatedTarget.closest&&(e.relatedTarget.closest('.prow,.sky-col')||e.relatedTarget.closest('.pflyout')))) hideSoon(); });
   document.addEventListener('click',e=>{ const r=e.target.closest&&e.target.closest('.prow,.sky-col');
-    if(r){ open(r.dataset.pl,true); return; }
+    if(r){ close(); if(window.__cdOpen) window.__cdOpen(r.dataset.pl); return; }
     if(panel&&panel.classList.contains('open')&&!e.target.closest('.pflyout')) close(); });
   document.addEventListener('keydown',e=>{ if(e.key==='Escape') close(); });
   document.addEventListener('keydown',e=>{ if(e.key!=='ArrowDown'&&e.key!=='ArrowUp') return; const r=e.target.closest&&e.target.closest('.prow'); if(!r) return;
@@ -1883,8 +1947,113 @@ function plCardHTML(o){
     draw(); timer=setInterval(()=>{ page++; draw(); },10000);
     if(el.requestFullscreen) el.requestFullscreen().catch(()=>{});
   };
-  window.__plRefresh=function(){ if(!panel||!shown) return; const o=window.__pl&&window.__pl[shown]; if(o) panel.innerHTML=plCardHTML(o); else close(); };
+  window.__plRefresh=function(){ if(window.__cdRefresh) window.__cdRefresh(); if(!panel||!shown) return; const o=window.__pl&&window.__pl[shown]; if(o) panel.innerHTML=plCardHTML(o); else close(); };
 })();
+/* ============================ CLIENT DRAWER ============================ */
+// Click a client in the portfolio and this opens: one plain page, top to bottom, that answers
+// "how is this client doing and why" without leaving the overview. Same numbers as the rest of the
+// dashboard (it calls summarize()), just laid out in the order a person asks the questions.
+(function(){
+  let el=null, bd=null, cid=null, rng=null;
+  const RNG=[['7d','7 days'],['14d','14 days'],['30d','30 days'],['MTD','This month']];
+  function ensure(){
+    if(el) return;
+    bd=document.createElement('div'); bd.className='cd-bd'; document.body.appendChild(bd);
+    el=document.createElement('aside'); el.className='cd'; el.setAttribute('role','dialog'); el.setAttribute('aria-label','Client details'); document.body.appendChild(el);
+    bd.addEventListener('click',close);
+    el.addEventListener('click',e=>{ const t=e.target.closest('[data-cd]'); if(!t) return; const a=t.dataset.cd;
+      if(a==='close') close();
+      else if(a==='range'){ rng=t.dataset.r; draw(); }
+      else if(a==='go'){ const id=cid; close(); if(typeof go==='function') go(id); }
+      else if(a==='ask'){ const id=cid; close(); if(window.__gcAskFor) window.__gcAskFor(id); }
+      else if(a==='wide'){ el.classList.toggle('wide'); } });
+    document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&el.classList.contains('open')) close(); });
+  }
+  function close(){ if(!el) return; el.classList.remove('open'); bd.classList.remove('open'); document.body.classList.remove('cd-lock'); cid=null; }
+  const sec=(t,sub,body,cls)=>'<section class="cd-s'+(cls?' '+cls:'')+'"><h3>'+t+(sub?'<em>'+sub+'</em>':'')+'</h3>'+body+'</section>';
+  const sum=(rows,k)=>rows.reduce((s,r)=>s+(r[k]||0),0);
+  function chip(label,state,txt){ return '<span class="cd-src '+state+'"><i></i><b>'+label+'</b>'+(txt?'<em>'+esc(txt)+'</em>':'')+'</span>'; }
+  function health(x){
+    const c=x.c, a=c.accounts||{}, sy=x.sync||{}, out=[];
+    const src=[['meta','Meta',!!a.meta],['google','Google',!!a.google],['shopify','Shopify',!!(a.shopify&&a.shopify.shop)],['ga4','Analytics',!!a.ga4]].filter(s=>c.type==='ecom'||s[0]==='meta'||s[0]==='google');
+    src.forEach(s=>{ const v=sy[s[0]];
+      if(c.sample){ out.push(chip(s[1],'ok','sample data')); return; }
+      if(!s[2]) out.push(chip(s[1],'off','not connected'));
+      else if(!v) out.push(chip(s[1],'off','no sync yet'));
+      else if(v.mode==='waiting') out.push(chip(s[1],'warn','waiting for access'));
+      else if(v.ok===false) out.push(chip(s[1],'bad','sync failed'));
+      else out.push(chip(s[1],'ok','synced '+ago(v.at))); });
+    if(x.sw) out.push(chip('Website',x.sw.ok===false?'bad':'ok',x.sw.ok===false?'a check is failing':'all checks passing'));
+    return out.join('');
+  }
+  function draw(){
+    const o=(window.__pl&&window.__pl[cid]); const c0=D.clients.find(k=>k.id===cid); if(!c0) return close();
+    const pr=rng||state.plRange||'7d', spec=rangeSpec(pr,D.today);
+    const x=summarize(D,c0,pr), c=x.c, isE=c.type==='ecom', app=isApp(c), t=kpiTarget(c);
+    const r=(state.plMode==='spend'?spendRule(x,spec):targetRule(x));
+    const cur=x.cur, prv=x.prev, tone=r.tone;
+    const kpiName=kpiLabel(c), res=isE?cur.salesCount:app?cur.installs:cur.leads, resP=isE?prv.salesCount:app?prv.installs:prv.leads, resLab=isE?'Orders':app?'Installs':'Leads';
+    const cell=(l,v,d,tip)=>'<div class="cd-k" title="'+esc(tip||'')+'"><span>'+l+'</span><b>'+v+'</b><u>'+(d||'')+'</u></div>';
+    let h='';
+    // header
+    h+='<header class="cd-h"><div class="cd-id"><span class="cd-mono">'+monogram(c)+'</span><div><div class="cd-name">'+esc(c.name.replace(' (sample)',''))+'</div><div class="cd-sub">'+typeLabel(c)+' &middot; '+esc(pfLabel(c))+(c.am?' &middot; '+esc(c.am):'')+'</div></div></div>'
+      +'<div class="cd-hr"><span class="cd-rng">'+RNG.map(a=>'<button data-cd="range" data-r="'+a[0]+'" class="'+(pr===a[0]?'on':'')+'">'+a[1]+'</button>').join('')+'</span><button class="cd-ib" data-cd="wide" title="Wider" aria-label="Wider">⤢</button><button class="cd-ib" data-cd="close" aria-label="Close">&times;</button></div></header>';
+    h+='<div class="cd-body">';
+    // 1. verdict
+    const top=x.flags.find(f=>f.sev==='bad')||x.flags.find(f=>f.sev==='warn')||x.flags[0];
+    h+='<section class="cd-v '+tone+'"><div class="cd-v1">'+esc(cap(r.word||'No target set'))+'</div>'
+      +'<div class="cd-v2">'+(t?kpiName+' <b>'+kpiFmt(c,x.kpi)+'</b> against a target of <b>'+kpiFmt(c,t)+'</b>':'No '+kpiName+' target is saved for this client yet')+', '+esc(spec.label)+'.</div>'
+      +(top?'<div class="cd-v3"><i class="'+top.sev+'"></i><span><b>Start here:</b> '+esc(String(top.text).slice(0,160))+'</span></div>':'<div class="cd-v3 ok"><i class="good"></i><span>Nothing is flagged on this account.</span></div>')+'</section>';
+    // 2. numbers
+    h+=sec('The numbers','vs the '+esc(spec.prevLabel||'previous period'),'<div class="cd-grid">'
+      +cell('Ad spend',fmtMoney(cur.spend,c),vs(cur.spend,prv.spend,true),'What Meta and Google charged.')
+      +(isE?cell(cur.hasShop?'Store sales':'Revenue',fmtMoney(cur.hasShop?cur.sales:cur.revenue,c),vs(cur.hasShop?cur.sales:cur.revenue,cur.hasShop?prv.sales:prv.revenue),cur.hasShop?'Net sales counted by Shopify.':'Revenue reported by the ad platforms.'):cell(resLab,fmtNum(res),vs(res,resP),''))
+      +cell(kpiName,kpiFmt(c,x.kpi),vs(x.kpi,kpiOf(c,prv),!isE), isE?'Platform reported revenue divided by ad spend.':'Spend divided by the result.')
+      +(isE?cell('Orders',fmtNum(res),vs(res,resP),cur.hasShop?'Counted by Shopify.':'Reported by the ad platforms.'):cell('Clicks',fmtNum(cur.clicks),vs(cur.clicks,prv.clicks)))
+      +(isE?cell('Cost per order',isFinite(cur.cpa)?fmtMoney(cur.cpa,c):'n/a',vs(cur.cpa,prv.cpa,true),'Ad spend divided by orders.'):cell('Click rate',cur.ctr?cur.ctr.toFixed(2)+'%':'n/a',vs(cur.ctr,prv.ctr)))
+      +(isE?cell('Avg order value',cur.aov?fmtMoney(cur.aov,c):'n/a',vs(cur.aov,prv.aov),''):cell('Cost per 1000 views',cur.cpm?fmtMoney(cur.cpm,c):'n/a',vs(cur.cpm,prv.cpm,true)))
+      +(isE&&cur.mer!=null?cell('Store sales for every 1 spent',cur.mer.toFixed(2)+'x',vs(cur.mer,prv.mer),'Shopify net sales divided by ad spend (MER).'):cell('Click rate',cur.ctr?cur.ctr.toFixed(2)+'%':'n/a',vs(cur.ctr,prv.ctr)))
+      +(isE?cell('Click rate',cur.ctr?cur.ctr.toFixed(2)+'%':'n/a',vs(cur.ctr,prv.ctr)):cell('Cost per 1000 views',cur.cpm?fmtMoney(cur.cpm,c):'n/a',vs(cur.cpm,prv.cpm,true)))
+      +'</div>');
+    // 3. funnel
+    const steps=isE?[['Saw the ad',cur.impressions],['Clicked',cur.clicks],['Viewed the page',cur.lpv],['Added to cart',cur.atc],['Started checkout',cur.ic],['Ordered',res]]:app?[['Saw the ad',cur.impressions],['Clicked',cur.clicks],['Installed',cur.installs]]:[['Saw the ad',cur.impressions],['Clicked',cur.clicks],['Became a lead',cur.leads]];
+    const fs=steps.filter((s,i)=>i<2||s[1]>0); let prevN=null;
+    h+=sec('From ad to sale',isE?'ad platform events, orders from '+(cur.hasShop?'Shopify':'the ad platform'):'',
+      '<div class="cd-fun">'+fs.map((s,i)=>{ const p=prevN&&prevN>0?Math.round(s[1]/prevN*1000)/10:null; prevN=s[1]; return '<div class="cd-f"><span>'+s[0]+'</span><b>'+fmtNum(s[1])+'</b><u>'+(i===0?'&nbsp;':(p==null?'':(p>999?'':p+'% of previous')))+'</u></div>'; }).join('<i class="cd-arr">›</i>')+'</div>');
+    // 4. channels
+    const win=rowsIn(x.rows,D.today,spec); const pl=['meta','google'].map(k=>{ const rr=win.filter(q=>q.platform===k); return {k,name:k==='meta'?'Meta':'Google',spend:sum(rr,'spend'),rev:sum(rr,'revenue'),n:isE?sum(rr,'purchases'):app?sum(rr,'installs'):sum(rr,'leads')}; }).filter(p=>p.spend>0);
+    const tsp=pl.reduce((s,p)=>s+p.spend,0)||1;
+    if(pl.length) h+=sec('Where the money went','Meta vs Google','<div class="cd-split">'+pl.map(p=>'<i class="'+p.k+'" style="flex:'+p.spend+'"></i>').join('')+'</div>'
+      +'<div class="cd-pl">'+pl.map(p=>'<div><span class="cd-dot '+p.k+'"></span><b>'+p.name+'</b> '+fmtMoney(p.spend,c)+' <em>'+Math.round(p.spend/tsp*100)+'%</em><u>'+(isE?'ROAS '+(p.spend?(p.rev/p.spend).toFixed(2)+'x':'n/a')+' &middot; '+fmtNum(p.n)+' purchases':(p.n?fmtMoney(p.spend/p.n,c)+' per '+(app?'install':'lead')+' &middot; '+fmtNum(p.n)+' '+(app?'installs':'leads'):'no results'))+'</u></div>').join('')+'</div>');
+    // 5. trend
+    h+=sec('Last 14 days','',plChart(x));
+    // 6. budget
+    if(c.budget){ const dom=parseInt(D.today.slice(8),10), dim=new Date(parseInt(D.today.slice(0,4)),parseInt(D.today.slice(5,7)),0).getDate(); const sp=x.mtd.spend, pctB=Math.min(100,sp/c.budget*100), mark=dom/dim*100, proj=x.projected, pj=proj/c.budget;
+      h+=sec('Monthly budget','',
+        '<div class="cd-bud"><div class="cd-bar"><i style="width:'+pctB.toFixed(1)+'%"></i><b style="left:'+mark.toFixed(1)+'%" title="Where the month is today"></b></div>'
+        +'<div class="cd-budn"><span><b>'+fmtMoney(sp,c)+'</b> spent of '+fmtMoney(c.budget,c)+'</span><span>Month ends near <b>'+fmtMoney(proj,c)+'</b> ('+Math.round(pj*100)+'% of budget)</span></div>'
+        +'<div class="cd-hint">'+(pj>1.1?'On this pace the account overspends. Confirm the extra spend is approved.':pj<0.8&&dom>7?'Underspending. Scale what works, or note why the budget is being held.':'Pacing is on plan.')+'</div></div>'); }
+    // 7. what is working
+    const ads=(x.ads||[]).filter(a=>a.spend>0).sort((a,b)=>b.spend-a.spend).slice(0,5);
+    const aroas=a=>a.spend?a.revenue/a.spend:0, aunit=a=>app?(a.installs?a.spend/a.installs:null):(a.leads?a.spend/a.leads:null);
+    if(ads.length) h+=sec('Top ads','last 30 days, by spend','<div class="cd-list">'+ads.map(a=>'<div class="cd-row"><span class="cd-th">'+(a.thumb?'<img src="'+esc(a.thumb)+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">':'')+'</span>'
+      +'<span class="cd-rn">'+esc(a.name)+'<em class="'+a.tone+'">'+esc(a.status)+'</em></span><span class="cd-rv">'+fmtMoney(a.spend,c)+'<u>'+(isE?'ROAS '+aroas(a).toFixed(2)+'x':(aunit(a)!=null?fmtMoney(aunit(a),c)+' per '+(app?'install':'lead'):'no results'))+'</u></span></div>').join('')+'</div>');
+    const camps=((x.ent.campaigns)||[]).filter(k=>k.spend>0).sort((a,b)=>b.spend-a.spend).slice(0,5);
+    if(camps.length) h+=sec('Top campaigns','last 30 days, by spend','<div class="cd-list">'+camps.map(k=>'<div class="cd-row"><span class="cd-rn">'+esc(k.name)+'<em>'+esc(k.platform==='google'?'Google':'Meta')+'</em></span><span class="cd-rv">'+fmtMoney(k.spend,c)+'<u>'+(isE?'ROAS '+(k.spend?(k.revenue/k.spend).toFixed(2)+'x':'n/a'):(k.leads?fmtMoney(k.spend/k.leads,c)+' per lead':'no results'))+'</u></span></div>').join('')+'</div>');
+    const prods=isE?((x.ent.products)||[]).slice().sort((a,b)=>(b.revenue||0)-(a.revenue||0)).slice(0,5):[];
+    if(prods.length&&prods.some(p=>p.revenue>0)) h+=sec('Best selling products','last 30 days','<div class="cd-list">'+prods.map(p=>'<div class="cd-row"><span class="cd-th">'+(p.image?'<img src="'+esc(p.image)+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">':'')+'</span><span class="cd-rn">'+esc(p.title)+(p.inventory!=null&&p.inventory<=5?'<em class="bad">'+(p.inventory<=0?'out of stock':p.inventory+' left')+'</em>':'')+'</span><span class="cd-rv">'+fmtMoney(p.revenue,c)+'<u>'+fmtNum(p.units||0)+' sold</u></span></div>').join('')+'</div>');
+    // 8. flags
+    if(x.flags.length) h+=sec('Needs attention',x.flags.length+' open','<div class="cd-flags">'+x.flags.slice(0,8).map(f=>'<div class="cd-fl '+f.sev+'"><i></i><span>'+esc(String(f.text).slice(0,200))+(f.meta?'<em>'+esc(String(f.meta).slice(0,90))+'</em>':'')+'</span></div>').join('')+'</div>');
+    // 9. health
+    h+=sec('Where this data comes from','',  '<div class="cd-srcs">'+health(x)+'</div>');
+    h+='</div><footer class="cd-f2">'+((CFG.syncUrl||window.__GARUDA_CHAT_TEST)?'<button class="cd-btn ghost" data-cd="ask">Ask Garuda about this client</button>':'')+'<button class="cd-btn" data-cd="go">Open full client page &rarr;</button></footer>';
+    const sc=el.querySelector('.cd-body'), top0=sc?sc.scrollTop:0;
+    el.className='cd open '+tone+(el.classList.contains('wide')?' wide':''); el.innerHTML=h; const nb=el.querySelector('.cd-body'); if(nb) nb.scrollTop=top0;
+  }
+  window.__cdOpen=function(id){ ensure(); if(cid!==id) rng=null; cid=id; bd.classList.add('open'); document.body.classList.add('cd-lock'); draw(); };
+  window.__cdRefresh=function(){ if(cid&&el&&el.classList.contains('open')) draw(); };
+})();
+
 function portfolioMap(list,spec){
   const pts=list.filter(x=>kpiTarget(x.c));
   if(pts.length<2) return '<div class="section"><div class="glass-panel"><h2>Portfolio map</h2><div class="note">The map needs at least two accounts with a target set. Add budgets and targets in clients.json.</div></div></div>';
@@ -2879,6 +3048,7 @@ function gcToggle(open){
   p.classList.toggle('open',GC.open); p.classList.toggle('big',GC.big); const bb=document.getElementById('gcBubble'); if(bb) bb.classList.toggle('hide-m',GC.open);
   if(GC.open){ const k=gcKey(); if(GC.lastKey!==k){ gcLoad(); GC.lastKey=k; } gcRender(); }
 }
+window.__gcAskFor=function(id){ chatMount(); GC.scope=id; GC.view='chat'; gcLoad(); GC.lastKey=gcKey(); gcToggle(true); };
 function chatMount(){
   if(GC.mounted||!(CFG.syncUrl||window.__GARUDA_CHAT_TEST)) return; GC.mounted=true;
   const b=document.createElement('button'); b.id='gcBubble'; b.title='Ask Garuda AI'; b.setAttribute('aria-label','Open the Garuda assistant'); b.innerHTML=GC_EAGLE; document.body.appendChild(b);
