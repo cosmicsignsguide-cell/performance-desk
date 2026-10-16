@@ -1167,6 +1167,18 @@ body{font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:14px}
 .cd-btn.ghost{background:var(--panel-hover);color:var(--text);border:1px solid var(--border)}
 .cd .pf-chart{margin:0}
 @media (max-width:600px){.cd-h{flex-wrap:wrap}.cd-hr{width:100%;justify-content:space-between}.cd-name{font-size:17px}.cd{width:100vw}.cd-grid{grid-template-columns:repeat(2,1fr)}.cd-hr .cd-ib:nth-of-type(1){display:none}.cd-rng button{padding:5px 7px}}
+
+.cd{width:100vw!important;border-left:0}
+.cd.wide{width:100vw!important}
+.cd-h{padding:14px clamp(16px,4vw,48px)}
+.cd-body{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:20px;align-content:start;grid-auto-flow:dense;padding:22px clamp(16px,4vw,48px) 36px;max-width:1280px;margin:0 auto;width:100%;box-sizing:border-box}
+.cd-body>section{grid-column:span 12;min-width:0}
+.cd-body>section.half{grid-column:span 6}
+.cd-grid{grid-template-columns:repeat(4,1fr)!important}
+.cd-f2{padding:12px clamp(16px,4vw,48px);justify-content:center}
+.cd-f2 .cd-btn{flex:0 1 320px}
+.cd [data-cd="wide"]{display:none}
+@media (max-width:900px){.cd-body>section.half{grid-column:span 12}.cd-grid{grid-template-columns:repeat(2,1fr)!important}}
 @media print{.cd,.cd-bd{display:none!important}}
 </style>
 </head>
@@ -2024,28 +2036,28 @@ function plCardHTML(o){
     const win=rowsIn(x.rows,D.today,spec); const pl=['meta','google'].map(k=>{ const rr=win.filter(q=>q.platform===k); return {k,name:k==='meta'?'Meta':'Google',spend:sum(rr,'spend'),rev:sum(rr,'revenue'),n:isE?sum(rr,'purchases'):app?sum(rr,'installs'):sum(rr,'leads')}; }).filter(p=>p.spend>0);
     const tsp=pl.reduce((s,p)=>s+p.spend,0)||1;
     if(pl.length) h+=sec('Where the money went','Meta vs Google','<div class="cd-split">'+pl.map(p=>'<i class="'+p.k+'" style="flex:'+p.spend+'"></i>').join('')+'</div>'
-      +'<div class="cd-pl">'+pl.map(p=>'<div><span class="cd-dot '+p.k+'"></span><b>'+p.name+'</b> '+fmtMoney(p.spend,c)+' <em>'+Math.round(p.spend/tsp*100)+'%</em><u>'+(isE?'ROAS '+(p.spend?(p.rev/p.spend).toFixed(2)+'x':'n/a')+' &middot; '+fmtNum(p.n)+' purchases':(p.n?fmtMoney(p.spend/p.n,c)+' per '+(app?'install':'lead')+' &middot; '+fmtNum(p.n)+' '+(app?'installs':'leads'):'no results'))+'</u></div>').join('')+'</div>');
+      +'<div class="cd-pl">'+pl.map(p=>'<div><span class="cd-dot '+p.k+'"></span><b>'+p.name+'</b> '+fmtMoney(p.spend,c)+' <em>'+Math.round(p.spend/tsp*100)+'%</em><u>'+(isE?'ROAS '+(p.spend?(p.rev/p.spend).toFixed(2)+'x':'n/a')+' &middot; '+fmtNum(p.n)+' purchases':(p.n?fmtMoney(p.spend/p.n,c)+' per '+(app?'install':'lead')+' &middot; '+fmtNum(p.n)+' '+(app?'installs':'leads'):'no results'))+'</u></div>').join('')+'</div>','half');
     // 5. trend
-    h+=sec('Last 14 days','',plChart(x));
+    h+=sec('Last 14 days','',plChart(x),'half');
     // 6. budget
     if(c.budget){ const dom=parseInt(D.today.slice(8),10), dim=new Date(parseInt(D.today.slice(0,4)),parseInt(D.today.slice(5,7)),0).getDate(); const sp=x.mtd.spend, pctB=Math.min(100,sp/c.budget*100), mark=dom/dim*100, proj=x.projected, pj=proj/c.budget;
       h+=sec('Monthly budget','',
         '<div class="cd-bud"><div class="cd-bar"><i style="width:'+pctB.toFixed(1)+'%"></i><b style="left:'+mark.toFixed(1)+'%" title="Where the month is today"></b></div>'
         +'<div class="cd-budn"><span><b>'+fmtMoney(sp,c)+'</b> spent of '+fmtMoney(c.budget,c)+'</span><span>Month ends near <b>'+fmtMoney(proj,c)+'</b> ('+Math.round(pj*100)+'% of budget)</span></div>'
-        +'<div class="cd-hint">'+(pj>1.1?'On this pace the account overspends. Confirm the extra spend is approved.':pj<0.8&&dom>7?'Underspending. Scale what works, or note why the budget is being held.':'Pacing is on plan.')+'</div></div>'); }
+        +'<div class="cd-hint">'+(pj>1.1?'On this pace the account overspends. Confirm the extra spend is approved.':pj<0.8&&dom>7?'Underspending. Scale what works, or note why the budget is being held.':'Pacing is on plan.')+'</div></div>','half'); }
     // 7. what is working
     const ads=(x.ads||[]).filter(a=>a.spend>0).sort((a,b)=>b.spend-a.spend).slice(0,5);
     const aroas=a=>a.spend?a.revenue/a.spend:0, aunit=a=>app?(a.installs?a.spend/a.installs:null):(a.leads?a.spend/a.leads:null);
     if(ads.length) h+=sec('Top ads','last 30 days, by spend','<div class="cd-list">'+ads.map(a=>'<div class="cd-row"><span class="cd-th">'+(a.thumb?'<img src="'+esc(a.thumb)+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">':'')+'</span>'
-      +'<span class="cd-rn">'+esc(a.name)+'<em class="'+a.tone+'">'+esc(a.status)+'</em></span><span class="cd-rv">'+fmtMoney(a.spend,c)+'<u>'+(isE?'ROAS '+aroas(a).toFixed(2)+'x':(aunit(a)!=null?fmtMoney(aunit(a),c)+' per '+(app?'install':'lead'):'no results'))+'</u></span></div>').join('')+'</div>');
+      +'<span class="cd-rn">'+esc(a.name)+'<em class="'+a.tone+'">'+esc(a.status)+'</em></span><span class="cd-rv">'+fmtMoney(a.spend,c)+'<u>'+(isE?'ROAS '+aroas(a).toFixed(2)+'x':(aunit(a)!=null?fmtMoney(aunit(a),c)+' per '+(app?'install':'lead'):'no results'))+'</u></span></div>').join('')+'</div>','half');
     const camps=((x.ent.campaigns)||[]).filter(k=>k.spend>0).sort((a,b)=>b.spend-a.spend).slice(0,5);
-    if(camps.length) h+=sec('Top campaigns','last 30 days, by spend','<div class="cd-list">'+camps.map(k=>'<div class="cd-row"><span class="cd-rn">'+esc(k.name)+'<em>'+esc(k.platform==='google'?'Google':'Meta')+'</em></span><span class="cd-rv">'+fmtMoney(k.spend,c)+'<u>'+(isE?'ROAS '+(k.spend?(k.revenue/k.spend).toFixed(2)+'x':'n/a'):(k.leads?fmtMoney(k.spend/k.leads,c)+' per lead':'no results'))+'</u></span></div>').join('')+'</div>');
+    if(camps.length) h+=sec('Top campaigns','last 30 days, by spend','<div class="cd-list">'+camps.map(k=>'<div class="cd-row"><span class="cd-rn">'+esc(k.name)+'<em>'+esc(k.platform==='google'?'Google':'Meta')+'</em></span><span class="cd-rv">'+fmtMoney(k.spend,c)+'<u>'+(isE?'ROAS '+(k.spend?(k.revenue/k.spend).toFixed(2)+'x':'n/a'):(k.leads?fmtMoney(k.spend/k.leads,c)+' per lead':'no results'))+'</u></span></div>').join('')+'</div>','half');
     const prods=isE?((x.ent.products)||[]).slice().sort((a,b)=>(b.revenue||0)-(a.revenue||0)).slice(0,5):[];
-    if(prods.length&&prods.some(p=>p.revenue>0)) h+=sec('Best selling products','last 30 days','<div class="cd-list">'+prods.map(p=>'<div class="cd-row"><span class="cd-th">'+(p.image?'<img src="'+esc(p.image)+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">':'')+'</span><span class="cd-rn">'+esc(p.title)+(p.inventory!=null&&p.inventory<=5?'<em class="bad">'+(p.inventory<=0?'out of stock':p.inventory+' left')+'</em>':'')+'</span><span class="cd-rv">'+fmtMoney(p.revenue,c)+'<u>'+fmtNum(p.units||0)+' sold</u></span></div>').join('')+'</div>');
+    if(prods.length&&prods.some(p=>p.revenue>0)) h+=sec('Best selling products','last 30 days','<div class="cd-list">'+prods.map(p=>'<div class="cd-row"><span class="cd-th">'+(p.image?'<img src="'+esc(p.image)+'" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">':'')+'</span><span class="cd-rn">'+esc(p.title)+(p.inventory!=null&&p.inventory<=5?'<em class="bad">'+(p.inventory<=0?'out of stock':p.inventory+' left')+'</em>':'')+'</span><span class="cd-rv">'+fmtMoney(p.revenue,c)+'<u>'+fmtNum(p.units||0)+' sold</u></span></div>').join('')+'</div>','half');
     // 8. flags
-    if(x.flags.length) h+=sec('Needs attention',x.flags.length+' open','<div class="cd-flags">'+x.flags.slice(0,8).map(f=>'<div class="cd-fl '+f.sev+'"><i></i><span>'+esc(String(f.text).slice(0,200))+(f.meta?'<em>'+esc(String(f.meta).slice(0,90))+'</em>':'')+'</span></div>').join('')+'</div>');
+    if(x.flags.length) h+=sec('Needs attention',x.flags.length+' open','<div class="cd-flags">'+x.flags.slice(0,8).map(f=>'<div class="cd-fl '+f.sev+'"><i></i><span>'+esc(String(f.text).slice(0,200))+(f.meta?'<em>'+esc(String(f.meta).slice(0,90))+'</em>':'')+'</span></div>').join('')+'</div>','half');
     // 9. health
-    h+=sec('Where this data comes from','',  '<div class="cd-srcs">'+health(x)+'</div>');
+    h+=sec('Where this data comes from','',  '<div class="cd-srcs">'+health(x)+'</div>','half');
     h+='</div><footer class="cd-f2">'+((CFG.syncUrl||window.__GARUDA_CHAT_TEST)?'<button class="cd-btn ghost" data-cd="ask">Ask Garuda about this client</button>':'')+'<button class="cd-btn" data-cd="go">Open full client page &rarr;</button></footer>';
     const sc=el.querySelector('.cd-body'), top0=sc?sc.scrollTop:0;
     el.className='cd open '+tone+(el.classList.contains('wide')?' wide':''); el.innerHTML=h; const nb=el.querySelector('.cd-body'); if(nb) nb.scrollTop=top0;
