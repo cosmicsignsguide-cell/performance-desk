@@ -784,6 +784,10 @@ svg.chart{width:100%;height:auto;display:block}
 .chart.big text.mark{font-size:11.5px;fill:var(--text);font-weight:600}
 
 .kpi-card.clickable{cursor:pointer}
+.kpi-src{display:flex;flex-wrap:wrap;gap:3px 10px;margin:2px 0 8px;font-size:10.5px;font-weight:500;color:var(--faint);line-height:1.3}
+.kpi-src span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.kpi-src i{width:7px;height:7px;border-radius:50%;flex:none;background:var(--faint)}
+.kpi-src i.meta{background:#1877F2}.kpi-src i.google{background:#F4B400}.kpi-src i.shop{background:#5E8E3E}
 .kpi-card.clickable::after{content:"";position:absolute;top:13px;right:13px;width:14px;height:14px;opacity:0;transition:opacity .18s;background:no-repeat center/12px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2378849C' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M15 3h6v6M10 14L21 3M21 14v7H3V3h7'/%3E%3C/svg%3E")}
 .kpi-card.clickable:hover::after,.kpi-card.clickable:focus-visible::after{opacity:1}
 .kpi-card.clickable:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -2336,38 +2340,45 @@ function clientView(x){
   h+='<div class="toolbar">'+rangeBar()+'<select class="mobile-pick" id="mobilePick"><option value="">All clients</option>'+D.clients.map(k=>'<option value="'+k.id+'">'+esc(k.name)+'</option>').join('')+'</select><div class="grow"></div>'+(LIVE&&CFG.syncUrl?'<button class="btn btn-ghost btn-small" data-act="syncnow">'+ICONS.refresh+' Sync now</button>':'')+'<button class="btn btn-ghost btn-small" data-act="clientlink">'+ICONS.copy+' Client dashboard link</button><button class="btn btn-primary btn-small" data-act="update">'+ICONS.copy+' Copy client update</button></div>';
   if(!x.hasData) return h+noDataPanel(x);
   const V=(cur,prev,inv)=>vs(cur,prev,inv)+' vs '+spec.prevLabel;
+  // Where each card's number comes from: which ad platforms actually spent in this range, and whether Shopify is connected.
+  const _cr=rowsIn(x.rows,D.today,spec);
+  const _ap=ADS.filter(pf=>_cr.some(r=>r.platform===pf&&(r.spend||r.impressions)));
+  const _adsChips=_ap.length?_ap.map(pf=>[pf,pf==='meta'?'Meta':'Google']):[['none','No ad data']];
+  const _shopChips=a.hasShop?[['shop','Shopify']]:[['none','Shopify not connected']];
+  const ks=(k,html)=>{ const ch=k==='A'?_adsChips:k==='S'?_shopChips:(a.hasShop?_adsChips.concat(_shopChips):_adsChips);
+    return html.replace('</div><div class="kpi-value','</div><div class="kpi-src" title="Where this number comes from">'+ch.map(c=>'<span><i class="'+c[0]+'"></i>'+c[1]+'</span>').join('')+'</div><div class="kpi-value'); };
   h+='<div class="kpi-grid six">';
   if(isE){
     const noSpend=!a.spend;
     const mine=r=>r.clientId===c.id, ads=r=>mine(r)&&ADS.includes(r.platform), shop=r=>mine(r)&&r.platform==='shopify';
-    h+=kpi(ICONS.spend,'Ad spend, '+spec.label,fmtMoney(a.spend,c),noSpend?'no spend in this period':V(a.spend,p.spend),'',null,series14(ads,m=>m.spend),'money')
-      +kpi(ICONS.trend,'Platform ROAS',noSpend?'--':fmtX(a.roas),noSpend?'needs spend to compute':V(a.roas,p.roas),noSpend?'':x.status,['Target',fmtX(kpiTarget(c))],series14(ads,m=>m.spend?m.revenue/m.spend:0),'x')
-      +(a.hasShop?kpi(ICONS.bag,'Orders, Shopify',fmtNum(a.orders),V(a.orders,p.orders),'',['Platforms claim',pct(a.coverage)],series14(shop,m=>m.orders),'num')
-                 :kpi(ICONS.bag,'Purchases, platform',fmtNum(a.purchases),V(a.purchases,p.purchases),'warn',['Shopify','not connected'],series14(ads,m=>m.purchases),'num'))
-      +(a.hasShop?kpi(ICONS.target,'Total sales, incl. GST',fmtMoney(a.sales,c),V(a.sales,p.sales),'',['Net \u00b7 MER',fmtMoney(a.netSales,c)+(noSpend?'':' \u00b7 '+fmtX(a.mer))],series14(shop,m=>Math.max(m.totalSales||0,m.netSales||0)),'money')
-                 :kpi(ICONS.target,'Platform revenue',fmtMoney(a.revenue,c),V(a.revenue,p.revenue),'',null,series14(ads,m=>m.revenue),'money'))
-      +kpi(ICONS.users,'CPA',noSpend?'--':fmtMoney(a.cpa,c),'AOV '+fmtMoney(a.aov,c),'',['CAC',a.cac?fmtMoney(a.cac,c):'--'],series14(mine,m=>{const n=a.hasShop?m.orders:m.purchases; return n?m.spend/n:0;}),'money')
-      +(a.hasShop?kpi(ICONS.cart,'Abandoned checkouts',fmtNum(a.abandoned),fmtNum(a.checkoutsStarted)+' checkouts started','',['Completed',fmtPct(a.checkoutsStarted?a.orders/a.checkoutsStarted*100:null)],series14(shop,m=>Math.max(0,(m.checkoutsStarted||0)-(m.orders||0))),'num')
-                 :kpi(ICONS.cart,'CTR',fmtPct(a.ctr),'','',['CPM',fmtMoney(a.cpm,c)]));
+    h+=ks('A',kpi(ICONS.spend,'Ad spend, '+spec.label,fmtMoney(a.spend,c),noSpend?'no spend in this period':V(a.spend,p.spend),'',null,series14(ads,m=>m.spend),'money'))
+      +ks('A',kpi(ICONS.trend,'Platform ROAS',noSpend?'--':fmtX(a.roas),noSpend?'needs spend to compute':V(a.roas,p.roas),noSpend?'':x.status,['Target',fmtX(kpiTarget(c))],series14(ads,m=>m.spend?m.revenue/m.spend:0),'x'))
+      +(a.hasShop?ks('S',kpi(ICONS.bag,'Orders, Shopify',fmtNum(a.orders),V(a.orders,p.orders),'',['Platforms claim',pct(a.coverage)],series14(shop,m=>m.orders),'num'))
+                 :ks('A',kpi(ICONS.bag,'Purchases, platform',fmtNum(a.purchases),V(a.purchases,p.purchases),'warn',['Shopify','not connected'],series14(ads,m=>m.purchases),'num')))
+      +(a.hasShop?ks('S',kpi(ICONS.target,'Total sales, incl. GST',fmtMoney(a.sales,c),V(a.sales,p.sales),'',['Net \u00b7 MER',fmtMoney(a.netSales,c)+(noSpend?'':' \u00b7 '+fmtX(a.mer))],series14(shop,m=>Math.max(m.totalSales||0,m.netSales||0)),'money'))
+                 :ks('A',kpi(ICONS.target,'Platform revenue',fmtMoney(a.revenue,c),V(a.revenue,p.revenue),'',null,series14(ads,m=>m.revenue),'money')))
+      +ks('C',kpi(ICONS.users,'CPA',noSpend?'--':fmtMoney(a.cpa,c),'AOV '+fmtMoney(a.aov,c),'',['CAC',a.cac?fmtMoney(a.cac,c):'--'],series14(mine,m=>{const n=a.hasShop?m.orders:m.purchases; return n?m.spend/n:0;}),'money'))
+      +(a.hasShop?ks('S',kpi(ICONS.cart,'Abandoned checkouts',fmtNum(a.abandoned),fmtNum(a.checkoutsStarted)+' checkouts started','',['Completed',fmtPct(a.checkoutsStarted?a.orders/a.checkoutsStarted*100:null)],series14(shop,m=>Math.max(0,(m.checkoutsStarted||0)-(m.orders||0))),'num'))
+                 :ks('A',kpi(ICONS.cart,'CTR',fmtPct(a.ctr),'','',['CPM',fmtMoney(a.cpm,c)])));
   } else if(isApp(c)){
     // An app client's outcome is the install, and after that whatever people spend inside the app.
     // Meta reports in-app purchase value under the same omni_purchase key a web store uses, so the
     // revenue side needs no special handling; only the install side was missing.
     const noSpendA=!a.spend, mine=r=>r.clientId===c.id, ads=r=>mine(r)&&ADS.includes(r.platform);
-    h+=kpi(ICONS.spend,'Ad spend, '+spec.label,fmtMoney(a.spend,c),noSpendA?'no spend in this period':V(a.spend,p.spend),'',null,series14(ads,m=>m.spend),'money')
-      +kpi(ICONS.users,'Installs',fmtNum(a.installs),V(a.installs,p.installs),'',null,series14(ads,m=>m.installs),'num')
-      +kpi(ICONS.target,'Cost per install',noSpendA?'--':fmtMoney(a.cpi,c),noSpendA?'needs spend to compute':V(a.cpi,p.cpi,true),noSpendA?'':x.status,['Target',kpiTarget(c)?fmtMoney(kpiTarget(c),c):'no target'],series14(ads,m=>m.installs?m.spend/m.installs:0),'money')
-      +kpi(ICONS.bag,'In-app purchases',fmtNum(a.purchases),a.purchases?V(a.purchases,p.purchases):'none reported yet','',['Install to purchase',fmtPct(a.installs?a.purchases/a.installs*100:null)],series14(ads,m=>m.purchases),'num')
-      +kpi(ICONS.trend,'In-app revenue',fmtMoney(a.revenue,c),a.revenue?V(a.revenue,p.revenue):'needs in-app purchase tracking','',['ROAS',a.spend&&a.revenue?fmtX(a.roas):'--'],series14(ads,m=>m.revenue),'money')
-      +kpi(ICONS.shield,'Click to install',fmtPct(a.installCvr),fmtNum(a.clicks)+' clicks','',['CPC',fmtMoney(a.cpc,c)]);
+    h+=ks('A',kpi(ICONS.spend,'Ad spend, '+spec.label,fmtMoney(a.spend,c),noSpendA?'no spend in this period':V(a.spend,p.spend),'',null,series14(ads,m=>m.spend),'money'))
+      +ks('A',kpi(ICONS.users,'Installs',fmtNum(a.installs),V(a.installs,p.installs),'',null,series14(ads,m=>m.installs),'num'))
+      +ks('A',kpi(ICONS.target,'Cost per install',noSpendA?'--':fmtMoney(a.cpi,c),noSpendA?'needs spend to compute':V(a.cpi,p.cpi,true),noSpendA?'':x.status,['Target',kpiTarget(c)?fmtMoney(kpiTarget(c),c):'no target'],series14(ads,m=>m.installs?m.spend/m.installs:0),'money'))
+      +ks('A',kpi(ICONS.bag,'In-app purchases',fmtNum(a.purchases),a.purchases?V(a.purchases,p.purchases):'none reported yet','',['Install to purchase',fmtPct(a.installs?a.purchases/a.installs*100:null)],series14(ads,m=>m.purchases),'num'))
+      +ks('A',kpi(ICONS.trend,'In-app revenue',fmtMoney(a.revenue,c),a.revenue?V(a.revenue,p.revenue):'needs in-app purchase tracking','',['ROAS',a.spend&&a.revenue?fmtX(a.roas):'--'],series14(ads,m=>m.revenue),'money'))
+      +ks('A',kpi(ICONS.shield,'Click to install',fmtPct(a.installCvr),fmtNum(a.clicks)+' clicks','',['CPC',fmtMoney(a.cpc,c)]));
   } else {
     const noSpendL=!a.spend;
-    h+=kpi(ICONS.spend,'Ad spend, '+spec.label,fmtMoney(a.spend,c),noSpendL?'no spend in this period':V(a.spend,p.spend))
-      +kpi(ICONS.users,'Leads',fmtNum(a.leads),V(a.leads,p.leads))
-      +kpi(ICONS.target,'CPL',noSpendL?'--':fmtMoney(a.cpl,c),noSpendL?'needs spend to compute':V(a.cpl,p.cpl,true),noSpendL?'':x.status,['Target',fmtMoney(kpiTarget(c),c)])
-      +kpi(ICONS.trend,'Landing page CVR',fmtPct(a.lpcvr),fmtNum(a.clicks)+' clicks','',['CPC',fmtMoney(a.cpc,c)])
-      +kpi(ICONS.bag,'CTR',fmtPct(a.ctr),'','',['CPM',fmtMoney(a.cpm,c)])
-      +kpi(ICONS.shield,'Impressions',fmtNum(a.impressions),'');
+    h+=ks('A',kpi(ICONS.spend,'Ad spend, '+spec.label,fmtMoney(a.spend,c),noSpendL?'no spend in this period':V(a.spend,p.spend)))
+      +ks('A',kpi(ICONS.users,'Leads',fmtNum(a.leads),V(a.leads,p.leads)))
+      +ks('A',kpi(ICONS.target,'CPL',noSpendL?'--':fmtMoney(a.cpl,c),noSpendL?'needs spend to compute':V(a.cpl,p.cpl,true),noSpendL?'':x.status,['Target',fmtMoney(kpiTarget(c),c)]))
+      +ks('A',kpi(ICONS.trend,'Landing page CVR',fmtPct(a.lpcvr),fmtNum(a.clicks)+' clicks','',['CPC',fmtMoney(a.cpc,c)]))
+      +ks('A',kpi(ICONS.bag,'CTR',fmtPct(a.ctr),'','',['CPM',fmtMoney(a.cpm,c)]))
+      +ks('A',kpi(ICONS.shield,'Impressions',fmtNum(a.impressions),''));
   }
   h+='</div>';
   h+=platformSplit(x);
