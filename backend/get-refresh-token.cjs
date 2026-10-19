@@ -1,11 +1,11 @@
 // One-time helper: get a Google Ads API refresh token.
 // Needs Node 18 or newer.
-// Usage:  node get-refresh-token.js CLIENT_ID CLIENT_SECRET
+// Usage:  node get-refresh-token.cjs CLIENT_ID CLIENT_SECRET
 // Then open the printed URL, log in with the Google account that has MCC access, click Allow.
 
 const [, , CLIENT_ID, CLIENT_SECRET] = process.argv;
 if (!CLIENT_ID || !CLIENT_SECRET) {
-  console.log('Usage: node get-refresh-token.js CLIENT_ID CLIENT_SECRET');
+  console.log('Usage: node get-refresh-token.cjs CLIENT_ID CLIENT_SECRET');
   process.exit(1);
 }
 

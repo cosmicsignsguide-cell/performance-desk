@@ -23,7 +23,7 @@ Site Watch (headless browser, every 30 min) ─► Firestore + Slack alerts
 | `backend/src/alerts.js` | Slack webhook + optional generic webhook, 6 hour cooldown per client per alert type |
 | `backend/src/sample.cjs` | Sample data generator, shared with the dashboard's demo mode |
 | `backend/clients.json` | Client registry: accounts, budget, target, site url. Edit + redeploy = client added |
-| `backend/get-refresh-token.js` | One-time helper to get the Google OAuth refresh token |
+| `backend/get-refresh-token.cjs` | One-time helper to get the Google OAuth refresh token |
 | `backend/shopify-install.js` | One-time helper per store: installs the Dev Dashboard app and prints its permanent Admin API token |
 | `frontend/index.html` | The dashboard. Runs in demo mode until `config.js` exists |
 | `frontend/config.example.js` | Copy to `config.js` with the Firebase web config |
@@ -89,7 +89,7 @@ Edit `backend/clients.json`. For the first client fill `name`, `type`, `budget`,
 | `GOOGLE_ADS_DEVELOPER_TOKEN` | MCC, Tools and Settings, API Center. Needs Basic access (apply from the same page if it says Test) |
 | `GOOGLE_ADS_LOGIN_CUSTOMER_ID` | The MCC id, digits only |
 | `GOOGLE_OAUTH_CLIENT_ID` / `SECRET` | Google Cloud, APIs and Services, Credentials, OAuth client, type Desktop app. Enable "Google Ads API" and "Google Analytics Data API" in the Library first |
-| `GOOGLE_OAUTH_REFRESH_TOKEN` | `node backend/get-refresh-token.js CLIENT_ID CLIENT_SECRET`, open the URL, log in with the account that is on the MCC |
+| `GOOGLE_OAUTH_REFRESH_TOKEN` | `node backend/get-refresh-token.cjs CLIENT_ID CLIENT_SECRET`, open the URL, log in with the account that is on the MCC |
 | `SHOPIFY_TOKEN_CLIENT_ONE` | Since Jan 2026 Shopify no longer creates custom apps inside the store admin. Make the app once in the Dev Dashboard (dev.shopify.com): Create app, name `Per4mance Desk`, App URL `http://localhost:53683/`, Redirect URL `http://localhost:53683/callback`, Admin API scopes `read_orders read_products read_inventory read_customers`, request Protected customer data access (orders + customers), Release a version, Distribution: Custom, enter the store domain. Then `node backend/shopify-install.js CLIENT_ID CLIENT_SECRET store.myshopify.com`, open the URL, log in to the store, Install. The printed token is permanent. Same app, one install per store. Variable name must match `accounts.shopify.tokenEnv` in clients.json |
 | `SLACK_WEBHOOK_URL` | api.slack.com/apps, create app, Incoming Webhooks on, add to `#desk-alerts` |
 | `DESK_ALLOWED_DOMAINS` | Comma list of email domains allowed to press Sync. Defaults to `per4mance.guru` |
