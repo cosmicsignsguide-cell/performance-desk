@@ -1,13 +1,16 @@
 # Keeps the dashboard fresh without anyone pressing Sync.
-#   every 30 minutes : hourly sync (today and yesterday, ad spend and Shopify)
-#   once a night     : daily sync (restates the last 7 days, refreshes ads), then the API checks
-#                      the stored Shopify figures against Shopify and flags any mismatch
+#   three times a day: full daily sync (restates the last 7 days, refreshes ads and orders), at
+#                      08:05, 14:05 and 19:05 IST. Kept to three runs so a private repo stays inside
+#                      the 2000 free Actions minutes a month; the old every-30-minutes hourly run
+#                      used them all up and every run after that was refused to start.
+#   in between       : press Sync now on the dashboard, or run this workflow by hand.
 # The only secret needed is DESK_SYNC_KEY (the same value as on the desk-api service).
 name: desk-sync
 on:
   schedule:
-    - cron: "*/30 * * * *"
-    - cron: "30 20 * * *"   # 02:00 IST
+    - cron: "35 2 * * *"    # 08:05 IST
+    - cron: "35 8 * * *"    # 14:05 IST
+    - cron: "35 13 * * *"   # 19:05 IST
   workflow_dispatch:
     inputs:
       mode:
@@ -20,7 +23,7 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - name: Run sync
         env:
@@ -32,11 +35,11 @@ jobs:
         run: |
           if [ -z "$DESK_SYNC_KEY" ]; then echo "DESK_SYNC_KEY secret is not set"; exit 1; fi
           MODE="${MODE_IN:-hourly}"
-          if [ "$SCHEDULE" = "30 20 * * *" ]; then MODE=daily; fi
+          if [ -n "$SCHEDULE" ]; then MODE=daily; fi
           echo "mode=$MODE"
           # The API may be asleep on the free plan. Wake it first and give it a minute.
           curl -sS --max-time 90 "$API/health" || true
-          code=$(curl -sS -o out.txt -w "%{http_code}" --max-time 2400 -X POST -H "Authorization: Bearer $DESK_SYNC_KEY" "$API/sync?mode=$MODE${CLIENT_IN:+&client=$CLIENT_IN}")
+          code=$(curl -sS -o out.txt -w "%{http_code}" --max-time 1700 -X POST -H "Authorization: Bearer $DESK_SYNC_KEY" "$API/sync?mode=$MODE${CLIENT_IN:+&client=$CLIENT_IN}")
           cat out.txt; echo
           # 409 means the same mode is still running from the last tick, which is fine.
           if [ "$code" != "200" ] && [ "$code" != "409" ]; then echo "sync failed with HTTP $code"; exit 1; fi
