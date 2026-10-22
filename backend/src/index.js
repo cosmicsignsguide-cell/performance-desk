@@ -23,7 +23,7 @@ import { computeCreatorScores } from './creators.js';
 import { createUpload, listMine, listToday, istToday } from './creatorPortal.js';
 import { raise } from './alerts.js';
 import { handleChat, notesApi } from './chat/index.js';
-import { verifyShopify } from './verify.js';
+import { verifyShopify, verifyMeta } from './verify.js';
 import Sample from './sample.cjs';
 
 const SAMPLE_FALLBACK = /^(1|true|yes)$/i.test(process.env.DESK_SAMPLE_FALLBACK || '');
@@ -319,6 +319,11 @@ async function main() {
       if (mode === 'verify') {
         const r = await verifyShopify(store, clients, { only: String(url.searchParams.get('client') || '').trim().toLowerCase() });
         await store.merge('meta', 'lastRun', { verify: nowIso(), verifySummary: `${r.clean} clean, ${r.mismatched} mismatched, ${r.skipped} skipped` });
+        return { mode, ...r };
+      }
+      if (mode === 'verifymeta') {
+        const r = await verifyMeta(store, clients, { only: String(url.searchParams.get('client') || '').trim().toLowerCase() });
+        await store.merge('meta', 'lastRun', { verifyMeta: nowIso(), verifyMetaSummary: `${r.clean} clean, ${r.mismatched} mismatched, ${r.skipped} skipped`, verifyMetaProblems: r.problems.slice(0, 60) });
         return { mode, ...r };
       }
       if (mode === 'weekly') {
@@ -650,7 +655,7 @@ async function main() {
       }
 
       const asked = url.searchParams.get('mode');
-      const mode = ['daily', 'hourly', 'sitewatch', 'weekly', 'verify', 'creators'].includes(asked) ? asked : 'hourly';
+      const mode = ['daily', 'hourly', 'sitewatch', 'weekly', 'verify', 'verifymeta', 'creators'].includes(asked) ? asked : 'hourly';
       // ?days=N restates N days of history instead of the usual 7. Ignored for hourly and
       // sitewatch, which have nothing to restate.
       const days = mode === 'daily' ? parseInt(url.searchParams.get('days') || '', 10) : NaN;
