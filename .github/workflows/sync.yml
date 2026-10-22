@@ -18,11 +18,14 @@ on:
       client:
         description: "optional client id (one client only, short request)"
         default: ""
+      days:
+        description: "daily mode only: restate this many past days (e.g. 90)"
+        default: ""
 
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 150
     steps:
       - name: Run sync
         env:
@@ -31,6 +34,7 @@ jobs:
           SCHEDULE: ${{ github.event.schedule }}
           MODE_IN: ${{ github.event.inputs.mode }}
           CLIENT_IN: ${{ github.event.inputs.client }}
+          DAYS_IN: ${{ github.event.inputs.days }}
         run: |
           if [ -z "$DESK_SYNC_KEY" ]; then echo "DESK_SYNC_KEY secret is not set"; exit 1; fi
           MODE="${MODE_IN:-hourly}"
@@ -38,7 +42,7 @@ jobs:
           echo "mode=$MODE"
           # The API may be asleep on the free plan. Wake it first and give it a minute.
           curl -sS --max-time 90 "$API/health" || true
-          code=$(curl -sS -o out.txt -w "%{http_code}" --max-time 2400 -X POST -H "Authorization: Bearer $DESK_SYNC_KEY" "$API/sync?mode=$MODE${CLIENT_IN:+&client=$CLIENT_IN}")
+          code=$(curl -sS -o out.txt -w "%{http_code}" --max-time 8400 -X POST -H "Authorization: Bearer $DESK_SYNC_KEY" "$API/sync?mode=$MODE${CLIENT_IN:+&client=$CLIENT_IN}${DAYS_IN:+&days=$DAYS_IN}")
           cat out.txt; echo
           # 409 means the same mode is still running from the last tick, which is fine.
           if [ "$code" != "200" ] && [ "$code" != "409" ]; then echo "sync failed with HTTP $code"; exit 1; fi
