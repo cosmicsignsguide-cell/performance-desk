@@ -47,9 +47,14 @@ const DAILY_FIELDS = 'spend,impressions,clicks,actions,action_values';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const RATE_CODES = [4, 17, 32, 613, 80000, 80004];
 const MAX_WAIT_MS = 5 * 60 * 1000;
-let cooldownUntil = 0;
+// Cooldown is kept per ad account. Meta throttles accounts one by one, so a single throttled
+// account (a 90 day restate on a busy store, say) must not freeze every other client behind it.
+const cooldowns = new Map();
+const keyOf = (url) => (String(url).match(/\/act_(\d+)/) || [])[1] || 'global';
+const cdUntil = (k) => cooldowns.get(k) || 0;
+const hold = (k, t) => cooldowns.set(k, Math.max(cdUntil(k), t));
 
-function readUsage(headers) {
+function readUsage(headers, k) {
   const raw = headers.get('x-business-use-case-usage') || headers.get('x-ad-account-usage') || headers.get('x-app-usage');
   if (!raw) return;
   let parsed; try { parsed = JSON.parse(raw); } catch { return; }
@@ -58,21 +63,22 @@ function readUsage(headers) {
     if (!u || typeof u !== 'object') continue;
     const pct = Math.max(num(u.call_count), num(u.total_cputime), num(u.total_time));
     const regain = num(u.estimated_time_to_regain_access);
-    if (regain > 0) cooldownUntil = Math.max(cooldownUntil, Date.now() + Math.min(regain * 60000, MAX_WAIT_MS));
-    else if (pct >= 90) cooldownUntil = Math.max(cooldownUntil, Date.now() + 60000);
-    else if (pct >= 75) cooldownUntil = Math.max(cooldownUntil, Date.now() + 15000);
+    if (regain > 0) hold(k, Date.now() + Math.min(regain * 60000, MAX_WAIT_MS));
+    else if (pct >= 90) hold(k, Date.now() + 60000);
+    else if (pct >= 75) hold(k, Date.now() + 15000);
   }
 }
 
 async function metaGet(url) {
+  const k = keyOf(url);
   for (let attempt = 0; ; attempt++) {
-    const wait = cooldownUntil - Date.now();
-    if (wait > 0) { log(`meta: pacing, waiting ${Math.ceil(wait / 1000)}s`); await sleep(wait); }
+    const wait = cdUntil(k) - Date.now();
+    if (wait > 0) { log(`meta: pacing act_${k}, waiting ${Math.ceil(wait / 1000)}s`); await sleep(wait); }
     let r, text;
     try { r = await fetch(url); text = await r.text(); }
     catch (e) { if (attempt >= 3) throw e; await sleep(3000 * (attempt + 1)); continue; }
     let body; try { body = JSON.parse(text); } catch { body = { raw: text }; }
-    readUsage(r.headers);
+    readUsage(r.headers, k);
     if (r.ok) return body;
     const err = body?.error || {};
     const msg = err.message || String(body.raw || text).slice(0, 300);
@@ -80,7 +86,7 @@ async function metaGet(url) {
     if (rateLimited && attempt < 3) {
       const backoff = Math.min([45000, 90000, 180000][attempt], MAX_WAIT_MS);
       log(`meta: rate limited (code ${err.code || r.status}), waiting ${backoff / 1000}s`);
-      cooldownUntil = Math.max(cooldownUntil, Date.now() + backoff);
+      hold(k, Date.now() + backoff);
       continue;
     }
     if (r.status >= 500 && !TOO_MUCH.test(msg) && attempt < 3) { await sleep(3000 * (attempt + 1)); continue; }
