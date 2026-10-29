@@ -187,7 +187,7 @@
       const set = adsets[k % Math.max(1, adsets.length)];
       const isVideo = pick[1] === 'Video' || pick[1] === 'UGC';
       const daysLive = 2 + Math.floor(rnd() * 44);
-      defs.push({ id: `${client.id}-a${k}`, name: pick[0], format: pick[1], isVideo, adsetId: set?.id, adsetName: set?.name, campaignId: set?.campaignId, campaignName: set?.campaignName, status: set?.status || 'ACTIVE', issues: [], createdDate: addDays(endDate, -daysLive), daysLive, freq: r2(1.3 + rnd() * 2.4), hookRate: isVideo ? r2(22 + rnd() * 20) : null, holdRate: isVideo ? r2(8 + rnd() * 14) : null, ctrTrend: r2(0.75 + rnd() * 0.45), cpmTrend: r2(0.92 + rnd() * 0.3), w: 0.3 + rnd() * 1.4, e: 0.6 + rnd() * 0.8, ctrMul: 0.8 + rnd() * 0.5, thumb: '' });
+      defs.push({ id: `${client.id}-a${k}`, name: pick[0], format: pick[1], isVideo, adsetId: set?.id, adsetName: set?.name, campaignId: set?.campaignId, campaignName: set?.campaignName, status: set?.status || 'ACTIVE', issues: [], createdDate: addDays(endDate, -daysLive), daysLive, freq: r2(1.3 + rnd() * 2.4), hookRate: isVideo ? r2(22 + rnd() * 20) : null, holdRate: isVideo ? r2(8 + rnd() * 14) : null, ctrTrend: r2(0.75 + rnd() * 0.45), cpmTrend: r2(0.92 + rnd() * 0.3), w: 0.3 + rnd() * 1.4, e: 0.6 + rnd() * 0.8, ctrMul: 0.8 + rnd() * 0.5, thumb: '', previewUrl: k % 4 === 3 ? '' : `https://fb.me/sample-${k}` });
     }
     if (p.fatigue && defs[0]) Object.assign(defs[0], { freq: 3.9, ctrTrend: 0.66, cpmTrend: 1.31, daysLive: 40, createdDate: addDays(endDate, -40), w: 1.9 });
     if (client.id === 'sample-lead' && defs[1]) Object.assign(defs[1], { freq: 4.2, ctrTrend: 0.71, cpmTrend: 1.28, daysLive: 33, createdDate: addDays(endDate, -33) });

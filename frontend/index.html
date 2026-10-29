@@ -706,6 +706,17 @@ td.call{min-width:300px;white-space:normal} td.call .sub{max-width:none}
 .crcard:hover .crwatch,.crwatch:focus-visible{opacity:1;transform:none}
 @media (hover:none){.crwatch{opacity:1;transform:none}}
 .crcall{position:absolute;right:8px;top:8px;z-index:2;box-shadow:0 4px 12px -4px rgba(0,0,0,.6)}
+/* The call badge sits on top of the thumbnail, so it is solid with white text: the soft tints the
+   rest of the page uses vanish against a bright creative. */
+.chip.crcall{color:#fff;font-size:13px;padding:4px 11px;border:1.5px solid rgba(255,255,255,.85)}
+.chip.crcall.good{background:#1F8A4C} .chip.crcall.accent{background:#2563EB} .chip.crcall.warn{background:#D97706} .chip.crcall.bad{background:#DC2626} .chip.crcall.neutral{background:#57534E}
+.crcalls{margin-top:2px}
+.callchip i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.callchip.good i{background:#1F8A4C} .callchip.accent i{background:#2563EB} .callchip.warn i{background:#D97706} .callchip.bad i{background:#DC2626} .callchip.neutral i{background:#78716C}
+.crfoot{display:flex;justify-content:flex-end;margin-top:auto;padding-top:6px;border-top:1px solid var(--border)}
+.crshare{appearance:none;font:inherit;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer}
+.crshare:hover:not(:disabled){border-color:var(--accent-line);color:var(--accent,#FF5A1F)}
+.crshare:disabled{opacity:.55;cursor:default}
 .crbody{padding:11px 12px 13px;display:flex;flex-direction:column;gap:6px;min-height:0}
 .crname{font-weight:600;font-size:13.5px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .crbody .crset{display:block;font-size:12.5px;font-weight:400;line-height:1.3;color:var(--faint,#7f8f96);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-3px}
@@ -1496,7 +1507,7 @@ const ICONS={
 
 /* ============================== STATE / RENDER =========================== */
 let D=null, S={};
-const state={plRange:'7d',plSort:{key:'dev',dir:'asc'},view:'overview',clientId:null,range:'today',tab:'campaigns',crf:'spending',cmpf:'all',crView:'grid',q:'',ovView:'table',showInfo:false,expanded:new Set(),sort:{overview:{key:'health',dir:'asc'},campaigns:{key:'spend',dir:'desc'},ads:{key:'spend',dir:'desc'},products:{key:'revenue',dir:'desc'},orders:{key:'at',dir:'desc'}}};
+const state={plRange:'7d',plSort:{key:'dev',dir:'asc'},view:'overview',clientId:null,range:'today',tab:'campaigns',crf:'spending',crcall:'',cmpf:'all',crView:'grid',q:'',ovView:'table',showInfo:false,expanded:new Set(),sort:{overview:{key:'health',dir:'asc'},campaigns:{key:'spend',dir:'desc'},ads:{key:'spend',dir:'desc'},products:{key:'revenue',dir:'desc'},orders:{key:'at',dir:'desc'}}};
 const root=document.getElementById('root');
 function readHash(){ const m=location.hash.match(/^#c\/([a-z0-9-]+)/); if(m&&D&&D.clients.some(c=>c.id===m[1])){state.view='client';state.clientId=m[1]} else {state.view='overview';state.clientId=null} }
 function go(id){ if(id){location.hash='#c/'+id} else { try{history.replaceState(null,'',location.href.split('#')[0])}catch(e){location.hash=''} readHash(); render(); window.scrollTo(0,0); } }
@@ -2809,13 +2820,13 @@ function entityTable(x){
   if(tab==='products'){ rows=(ent.products||[]).map(e=>({e,m:{}})); title='Products <span class="sub">last 30 days · stock from Shopify</span>';
     cols=[{key:'title',label:'Product',f:r=>'<td class="row-title"><span class="adname">'+(r.e.image?'<img class="thumb" src="'+esc(r.e.image)+'" alt="">':'')+'<span>'+esc(r.e.title)+(r.e.price?'<span class="sub">'+fmtMoney(r.e.price,c)+'</span>':'')+'</span></span></td>',v:r=>r.e.title},{key:'revenue',label:'Revenue',num:1,f:r=>fmtMoney(r.e.revenue,c),v:r=>r.e.revenue},{key:'units',label:'Units',num:1,f:r=>fmtNum(r.e.units),v:r=>r.e.units},{key:'units7',label:'Units, 7d',num:1,f:r=>fmtNum(r.e.units7),v:r=>r.e.units7},{key:'orders',label:'Orders',num:1,f:r=>fmtNum(r.e.orders),v:r=>r.e.orders},{key:'inventory',label:'Stock',num:1,f:r=>r.e.inventory==null?'<span class="faint">n/a</span>':fmtNum(r.e.inventory),v:r=>r.e.inventory==null?-1:r.e.inventory},{key:'days',label:'Days of stock',f:r=>stockChip(r.e),v:r=>{const pd=(r.e.units7||0)/7; return r.e.inventory==null||!pd?9999:r.e.inventory/pd}}];
     empty='No Shopify product data yet. Connect the store token to see best sellers and stock.'; note='Revenue is line-item value before discounts. Days of stock = current inventory divided by the last 7 days sales rate.';
-  } else { rows=(x.ads||[]).map(e=>({e,m:entRange(e,spec)})).filter(r=>crMatch(r,state.crf)); const adTotal=rows.reduce((s,r)=>s+r.m.spend,0); title='Creatives <span class="sub">spend, CTR and results for '+spec.label+' · hook, hold, frequency and the call use the last 30 days</span>';
+  } else { rows=(x.ads||[]).map(e=>({e,m:entRange(e,spec)})).filter(r=>crMatch(r,state.crf)); x._callBar=crCallBar(rows); if(state.crcall) rows=rows.filter(r=>crCallOf(r)===state.crcall); const adTotal=rows.reduce((s,r)=>s+r.m.spend,0); title='Creatives <span class="sub">spend, CTR and results for '+spec.label+' · hook, hold, frequency and the call use the last 30 days</span>';
     cols=[{key:'name',label:'Creative',f:r=>'<td class="row-title"><span class="adname">'+crThumb(r.e,c)+'<span>'+esc(r.e.name)+'<span class="sub">'+esc(r.e.adsetName||'')+'</span></span></span></td>',v:r=>r.e.name},{key:'format',label:'Format',f:r=>'<td>'+esc(r.e.format||'')+'</td>',v:r=>r.e.format||''},{key:'spend',label:'Spend',num:1,f:r=>fmtMoney(r.m.spend,c)+' <span class="faint">'+pct(adTotal?r.m.spend/adTotal:0)+'</span>',v:r=>r.m.spend},{key:'hookRate',label:'Hook',num:1,f:r=>r.e.hookRate==null?'<span class="faint">static</span>':fmtPct(r.e.hookRate),v:r=>r.e.hookRate==null?-1:r.e.hookRate},{key:'holdRate',label:'Hold',num:1,f:r=>r.e.holdRate==null?'<span class="faint">static</span>':fmtPct(r.e.holdRate),v:r=>r.e.holdRate==null?-1:r.e.holdRate},{key:'ctr',label:'CTR',num:1,f:r=>fmtPct(r.m.ctr)+(r.e.ctrTrend?' <span class="delta '+(r.e.ctrTrend<0.9?'down':(r.e.ctrTrend>1.05?'up':'flat'))+'" title="last 7 days vs the 7 before">'+(r.e.ctrTrend>=1?'+':'')+Math.round((r.e.ctrTrend-1)*100)+'%</span>':''),v:r=>r.m.ctr},{key:res,label:cap(res),num:1,f:r=>fmtNum(r.m[res]),v:r=>r.m[res]},kpiCol,{key:'freq',label:'Freq',num:1,f:r=>((r.e.last7&&r.e.last7.freq)||r.e.freq||0).toFixed(1),v:r=>(r.e.last7&&r.e.last7.freq)||r.e.freq||0},{key:'daysLive',label:'Days',num:1,f:r=>r.e.daysLive==null?'<span class="faint">n/a</span>':r.e.daysLive,v:r=>r.e.daysLive||0},{key:'status',label:'Call',f:r=>'<td class="call"><span class="chip '+r.e.tone+'">'+r.e.status+'</span><span class="sub">'+esc(r.e.why)+'</span></td>',v:r=>({Pause:0,Fatiguing:1,Watch:2,Testing:3,Steady:4,Scale:5}[r.e.status]??-1)}];
     empty=state.crf==='all'?'No Meta creatives yet.':'No creatives in this group. Try another filter above.'; note='Hook = 3 second plays / impressions. Hold = ThruPlays / 3 second plays. Fatiguing = frequency past 3.2 with CTR falling 15%+ and CPM rising 12%+ in the same week.';
   }
   const so=state.sort[tab]; const sorted=rows.slice().sort((a,b)=>{ const col=cols.find(cl=>cl.key===so.key)||cols[0]; let va=col.v(a),vb=col.v(b); if(typeof va==='number'&&!isFinite(va)) va=so.dir==='asc'?Infinity:-Infinity; if(typeof vb==='number'&&!isFinite(vb)) vb=so.dir==='asc'?Infinity:-Infinity; if(typeof va==='string') return so.dir==='asc'?va.localeCompare(vb):vb.localeCompare(va); return so.dir==='asc'?va-vb:vb-va; });
   if(tab==='ads'&&state.crView!=='table') return creativeGrid(x,sorted,kpiCol,title,note,empty);
-  let h='<div class="glass-panel"><h2>'+title+crChips(x)+'</h2><div class="data-table-wrap"><table class="dtable">'+thead(cols,tab)+'<tbody>';
+  let h='<div class="glass-panel"><h2>'+title+crChips(x)+'</h2>'+(tab==='ads'?x._callBar||'':'')+'<div class="data-table-wrap"><table class="dtable">'+thead(cols,tab)+'<tbody>';
   if(!sorted.length) h+='<tr><td colspan="'+cols.length+'" class="faint">'+empty+'</td></tr>';
   sorted.forEach(r=>{h+='<tr>'+cols.map(cl=>{const v=String(cl.f(r));return v.startsWith('<td')?v:'<td class="'+(cl.num?'num':'')+'">'+v+'</td>'}).join('')+'</tr>'});
   return h+'</tbody></table></div>'+(note?'<div class="note">'+note+'</div>':'')+'</div>';
@@ -2850,7 +2861,7 @@ function creativeGrid(x,rows,kpiCol,title,note,empty){
   const c=x.c, isE=c.type==='ecom', res=isE?'purchases':isApp(c)?'installs':'leads', resLab=isE?'Orders':isApp(c)?'Installs':'Leads', so=state.sort.ads;
   const sorts=[['spend','Spend'],[kpiCol.key,kpiCol.label],['ctr','CTR'],['hookRate','Hook'],['status','Call']];
   let h='<div class="glass-panel"><h2>'+title+crChips(x)+'</h2>';
-  h+='<div class="crsort"><span>Sort by</span>'+sorts.map(k=>'<button class="crchip'+(so.key===k[0]?' on':'')+'" data-act="sort" data-table="ads" data-key="'+k[0]+'">'+k[1]+(so.key===k[0]?(so.dir==='asc'?' \u2191':' \u2193'):'')+'</button>').join('')+'</div>';
+  h+=(x._callBar||'')+'<div class="crsort"><span>Sort by</span>'+sorts.map(k=>'<button class="crchip'+(so.key===k[0]?' on':'')+'" data-act="sort" data-table="ads" data-key="'+k[0]+'">'+k[1]+(so.key===k[0]?(so.dir==='asc'?' \u2191':' \u2193'):'')+'</button>').join('')+'</div>';
   if(!rows.length) return h+'<div class="note">'+empty+'</div></div>';
   h+='<div class="crgrid">'+rows.map(r=>{ const e=r.e, m=r.m, hook=e.hookRate==null?'':fmtPct(e.hookRate), idle=!(m.spend>0), tone=idle?'neutral':(e.tone||'neutral'), callTxt=idle?'No spend':(e.status||''), why=idle?'No spend in '+x.spec.label+'. Pick 7d or 14d above to judge this creative.':(e.why||''), na='<span class="faint">n/a</span>';
     const img=e.thumb?'<img src="'+esc(e.thumb)+'" alt="" loading="lazy" onerror="this.style.display=\'none\'">':'';
@@ -2859,8 +2870,40 @@ function creativeGrid(x,rows,kpiCol,title,note,empty){
       +'<div class="crbody"><div class="crname" title="'+esc(e.name)+'">'+esc(e.name)+'</div><div class="sub crset">'+esc(e.adsetName||'')+'</div>'
       +'<dl class="crstats"><div><dt>Spend</dt><dd>'+fmtMoney(m.spend,c)+'</dd></div><div><dt>'+kpiCol.label+'</dt><dd>'+(idle?na:kpiCol.f({e:e,m:m}))+'</dd></div>'
       +'<div><dt>CTR</dt><dd>'+(idle?na:fmtPct(m.ctr))+'</dd></div><div><dt>'+(hook?'Hook':resLab)+'</dt><dd>'+(hook||fmtNum(m[res]))+'</dd></div></dl>'
-      +'<p class="crwhy" title="'+esc(why)+'">'+esc(why)+'</p></div></article>'; }).join('')+'</div>';
+      +'<p class="crwhy" title="'+esc(why)+'">'+esc(why)+'</p>'
+      +'<div class="crfoot">'+(crShareUrl(e)?'<button type="button" class="crshare" data-act="crshare" data-ad="'+esc(e.id)+'" aria-label="Share this creative">'+SHARE_ICON+'Share</button>':'<button type="button" class="crshare" disabled title="Meta gave no public link for this ad">'+SHARE_ICON+'No link to share</button>')+'</div></div></article>'; }).join('')+'</div>';
   return h+(note?'<div class="note">'+note+'</div>':'')+'</div>';
+}
+// The call on every creative, as a row of filter chips with counts, so each tag the dashboard
+// gives (Scale, Steady, Watch, Fatiguing, Pause, Testing, No spend) is visible at a glance and
+// one click narrows the grid or the table to it. Counts follow the Spending / Running filter.
+const CALLS=[['Scale','good'],['Steady','accent'],['Watch','warn'],['Fatiguing','warn'],['Pause','bad'],['Testing','neutral'],['No spend','neutral']];
+function crCallOf(r){ return r.m&&r.m.spend>0?(r.e.status||'Other'):'No spend'; }
+function crCallBar(rows){
+  const n={}, tone={}; rows.forEach(r=>{ const k=crCallOf(r); n[k]=(n[k]||0)+1; if(!tone[k]) tone[k]=r.m&&r.m.spend>0&&r.e.tone||'neutral'; });
+  const known=CALLS.map(k=>k[0]), extra=Object.keys(n).filter(k=>!known.includes(k)).map(k=>[k,tone[k]]);
+  const list=CALLS.concat(extra).filter(k=>n[k[0]]||state.crcall===k[0]);
+  if(!list.length) return '';
+  return '<div class="crsort crcalls"><span>Call</span><button class="crchip'+(!state.crcall?' on':'')+'" data-act="crcall" data-call="">All '+rows.length+'</button>'
+    +list.map(k=>'<button class="crchip callchip '+k[1]+(state.crcall===k[0]?' on':'')+'" data-act="crcall" data-call="'+esc(k[0])+'"><i></i>'+esc(k[0])+' '+(n[k[0]]||0)+'</button>').join('')+'</div>';
+}
+// What "Share" hands over: Meta's shareable ad preview first (anyone with the link sees the ad as
+// it runs, no login), then the Instagram post, then the Facebook post. Name and link only, never
+// spend or ROAS, so it is safe to send to a client, a designer or a creator.
+function crShareUrl(e){
+  if(e.previewUrl&&/^https:\/\//.test(e.previewUrl)) return e.previewUrl;
+  if(e.igUrl) return e.igUrl;
+  if(e.fbPost){ const [pg,po]=e.fbPost.split('_'); return 'https://www.facebook.com/'+pg+'/posts/'+po; }
+  return '';
+}
+const SHARE_ICON='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>';
+async function crShare(adId){
+  let ad=null; for(const k in (D.entities||{})){ const f=((D.entities[k]||{}).ads||[]).find(a=>a&&a.id===adId); if(f){ ad=f; break; } }
+  if(!ad) return; const url=crShareUrl(ad); if(!url){ toast('No public link for this ad','warn'); return; }
+  const title=ad.name||'Creative';
+  if(navigator.share){ try{ await navigator.share({title,text:title,url}); return; }catch(err){ if(err&&err.name==='AbortError') return; } }
+  try{ await navigator.clipboard.writeText(title+'\n'+url); toast('Link copied. Paste it in WhatsApp, Slack or mail.'); }
+  catch(err){ window.prompt('Copy this link',url); }
 }
 function crEmbed(adId){
   let ad=null; for(const k in (D.entities||{})){ const f=((D.entities[k]||{}).ads||[]).find(a=>a&&a.id===adId); if(f){ ad=f; break; } }
@@ -2982,6 +3025,8 @@ document.addEventListener('click',e=>{
   else if(act==='tab'){ state.tab=el.dataset.tab; render(); }
   else if(act==='srcpf'){ state.srcPf=el.dataset.pf; render(); }
   else if(act==='srcreload'){ delete SRC[el.dataset.client]; render(); }
+  else if(act==='crcall'){ state.crcall=el.dataset.call||''; render(); }
+  else if(act==='crshare'){ crShare(el.dataset.ad); }
   else if(act==='cmpf'){ state.cmpf=el.dataset.f; render(); }
   else if(act==='crf'){ if(!el.disabled){ state.crf=el.dataset.crf; render(); } }
   else if(act==='crembed'){ crEmbed(el.dataset.ad); }
