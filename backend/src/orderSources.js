@@ -64,8 +64,15 @@ export function classifyOrder(o) {
   const fromAttr = utmFromAttributes(o.customAttributes);
   const fromUrl = { source: lp.get('utm_source'), medium: lp.get('utm_medium'), campaign: lp.get('utm_campaign'), term: lp.get('utm_term'), content: lp.get('utm_content') };
   const pick = (k) => clean(fromVisit[k]) || clean(fromAttr[k]) || clean(fromUrl[k]) || '';
-  let s = lc(pick('source')), m = lc(pick('medium'));
-  const ca = pick('campaign'), te = pick('term'), co = pick('content');
+  const rawSource = pick('source');
+  let s = lc(rawSource), m = lc(pick('medium'));
+  let ca = pick('campaign');
+  const te = pick('term'), co = pick('content');
+  // A URL template filled the wrong way round (seen on live accounts): utm_source carries the
+  // campaign name, "PG | HP | ABO | Testing | 17.09.26". A pipe never appears in a real source
+  // name, only in an agency campaign name, so this is a paid Meta campaign with its name in the
+  // source field. Read it as that, keep the raw value as the campaign.
+  const nameInSource = rawSource.includes('|');
   const has = (k) => lp.has(k) || paramsOf(referrer).has(k);
   const gclid = has('gclid') || has('gbraid') || has('wbraid') || has('gad_source');
   const srsltid = has('srsltid');
@@ -92,13 +99,20 @@ export function classifyOrder(o) {
   }
 
   let p = 'Other', c = 'Other referral';
-  if (META_SRC.test(s) || refHost.match(/(facebook|instagram|fb)\.com$/) || fbclid) {
+  // Meta organic only when nothing on the visit looks like an ad: no click ID, no campaign, and a
+  // medium that is empty or plainly organic. Anything else from Meta is an ad, however the URL
+  // template happened to fill the fields (an ad name in utm_medium is still an ad).
+  const ORGANIC_MED = /^(|social|organic|referral|bio|profile|story|post|link_in_bio|igshopping)$/;
+  if (nameInSource && !gclid) {
+    p = 'Meta'; c = 'Meta Ads (paid)'; ca = rawSource;
+    s = 'meta (campaign name in source)';
+  } else if (META_SRC.test(s) || refHost.match(/(facebook|instagram|fb)\.com$/) || fbclid) {
     p = 'Meta';
-    c = (PAID_MED.test(m) || fbclid || /^\d{6,}$/.test(ca)) ? 'Meta Ads (paid)' : 'Meta organic';
+    c = (fbclid || PAID_MED.test(m) || /^\d{6,}$/.test(ca) || ca || !ORGANIC_MED.test(m)) ? 'Meta Ads (paid)' : 'Meta organic';
   } else if (GOOGLE_SRC.test(s) || /(^|\.)google\.[a-z.]+$/.test(refHost) || gclid || srsltid) {
     p = 'Google';
     if (m === 'product_sync' || (srsltid && !gclid && !PAID_MED.test(m))) c = 'Google free listings';
-    else if (PAID_MED.test(m) || gclid) c = 'Google Ads (paid)';
+    else if (PAID_MED.test(m) || gclid || /^\d{8,}$/.test(ca)) c = 'Google Ads (paid)';
     else if (/youtube|yt/.test(s)) c = 'YouTube';
     else c = 'Google organic search';
   } else if (s === 'direct' || s === '(direct)') {

@@ -189,6 +189,13 @@ async function syncClient(store, client, { mode, days }) {
         const { rows, recentOrders, orderDays } = await shopify.fetchDaily(client, since, today);
         await writeDaily(store, rows);
         if (orderDays) await writeOrderDays(store, client, since, today, orderDays, (x) => ({ g: (x?.g || []).flat(), gw: 12, test: x?.test || { n: 0, v: 0 }, cancelled: x?.cancelled || { n: 0, v: 0 } }));
+        // On a backfill, one line per day of what the order sources came to, so a run can be checked
+        // against Shopify or an export without opening the dashboard. Private service log only.
+        if (orderDays && backfill) for (const d of Object.keys(orderDays).sort()) {
+          const g = orderDays[d].g || []; const by = { Meta: 0, Google: 0, Other: 0 }, ch = {};
+          for (const r of g) { by[r[0]] += r[8]; ch[r[1]] = (ch[r[1]] || 0) + r[8]; }
+          log(`${client.id}/sources ${d}: G${by.Google} M${by.Meta} O${by.Other} test ${orderDays[d].test.n} cancelled ${orderDays[d].cancelled.n} | ${Object.entries(ch).map(([k, v]) => k + ' ' + v).join(', ')}`);
+        }
         ent.recentOrders = recentOrders;
         if (mode === 'daily' && entitiesDue(ent, source)) { ent.products = await shopify.fetchProducts(client, untilFull); ent.entitiesAt = { ...(ent.entitiesAt || {}), shopify: nowIso() }; }
       } else if (source === 'ga4') {
