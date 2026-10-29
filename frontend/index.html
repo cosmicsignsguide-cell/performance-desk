@@ -704,7 +704,7 @@ td.call{min-width:300px;white-space:normal} td.call .sub{max-width:none}
 .crmodal{position:fixed;inset:0;z-index:9999;background:rgba(5,9,12,.82);display:flex;align-items:center;justify-content:center;padding:16px}
 .crmbox{background:var(--panel,#0f1a21);border:1px solid var(--border);border-radius:16px;width:min(420px,100%);max-height:94vh;overflow:auto;padding:14px}
 .crmhead{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;font-weight:700;font-size:14px}
-.crmhead button{background:none;border:0;color:inherit;font-size:20px;cursor:pointer;line-height:1}
+.crmhead button{background:none;border:1px solid transparent;color:inherit;font-size:22px;cursor:pointer;line-height:1;padding:4px 10px;border-radius:8px;flex:none} .crmhead button:hover{border-color:var(--border);background:var(--panel-hover)}
 .crmbox iframe{width:100%;height:min(640px,70vh);border:0;border-radius:10px;background:#000}
 .crmtabs{display:flex;gap:6px;margin-bottom:10px}
 .crmnote{font-size:13px;color:var(--faint);margin-top:10px;line-height:1.5}
@@ -1741,7 +1741,7 @@ function metricModal(id){
   [[hi,'high'],[lo,'low']].forEach(([i,k])=>{ if(v[i]===undefined) return;
     dots+='<circle r="3.4" cx="'+X(i).toFixed(1)+'" cy="'+Y(v[i]).toFixed(1)+'" fill="'+st+'"/>'
       +'<text class="mark" x="'+X(i).toFixed(1)+'" y="'+(Y(v[i])+(k==='high'?-11:17)).toFixed(1)+'" text-anchor="middle">'+fmtMetric(v[i],m.fmt)+'</text>'; });
-  const html='<div class="modal" data-act="closemodal"><div class="box wide" onclick="event.stopPropagation()">'
+  const html='<div class="modal" data-act="closemodal"><div class="box wide">'
     +'<div class="mx-head"><div><div class="mh-eyebrow">Last 14 days</div><h2>'+esc(m.label)+'</h2></div>'
       +'<div class="mx-now"><b class="disp">'+m.value+'</b><span class="mh-eyebrow">'+esc(rangeSpec(state.range,D.today).label)+'</span></div></div>'
     +'<svg class="chart big" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(m.label)+', last 14 days">'+g_
@@ -2929,14 +2929,18 @@ function crEmbed(adId){
   const m=document.createElement('div'); m.id='crmodal'; m.className='crmodal'; m.dataset.act='crclose';
   const link=ad.previewUrl?'<a href="'+esc(ad.previewUrl)+'" target="_blank" rel="noopener noreferrer">Open on Meta</a>':'';
   const tabs=(ig&&fb)?'<div class="crmtabs"><button class="crchip on" data-src="ig">Instagram</button><button class="crchip" data-src="fb">Facebook</button></div>':'';
-  m.innerHTML='<div class="crmbox" onclick="event.stopPropagation()"><div class="crmhead"><span>'+esc(ad.name)+'</span><button data-act="crclose" aria-label="Close">\u00d7</button></div>'+tabs
+  m.innerHTML='<div class="crmbox"><div class="crmhead"><span>'+esc(ad.name)+'</span><button data-act="crclose" aria-label="Close">\u00d7</button></div>'+tabs
     +'<iframe id="crframe" allow="autoplay; encrypted-media; fullscreen" allowfullscreen referrerpolicy="origin-when-cross-origin"></iframe>'
     +'<div class="crmnote">Blank or "unavailable"? Dark ads (not posted publicly) cannot be embedded. '+link+'</div></div>';
   document.body.appendChild(m);
+  // The browser Back button closes the player instead of leaving the client page.
+  try{ history.pushState({crmodal:1},''); }catch(err){}
   const f=m.querySelector('#crframe'); f.src=ig||fb;
   m.querySelectorAll('.crmtabs button').forEach(b=>b.onclick=()=>{ m.querySelectorAll('.crmtabs button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); f.src=b.dataset.src==='ig'?ig:fb; });
 }
-document.addEventListener('keydown',ev=>{ if(ev.key==='Escape'){ const m=document.getElementById('crmodal'); if(m) m.remove(); } });
+function crClose(){ const m=document.getElementById('crmodal'); if(!m) return; m.remove(); if(history.state&&history.state.crmodal){ try{ history.back(); }catch(err){} } }
+window.addEventListener('popstate',()=>{ const m=document.getElementById('crmodal'); if(m) m.remove(); });
+document.addEventListener('keydown',ev=>{ if(ev.key==='Escape'){ if(document.getElementById('crmodal')) crClose(); else { const md=document.querySelector('.modal'); if(md) md.remove(); } } });
 function crThumb(e,c){
   const tok=(D.reportTokens||{})[c.id]||'';
   const img=e.thumb?'<img class="thumb" src="'+esc(e.thumb)+'" alt="" loading="lazy">':'<span class="thumb ph">'+esc((e.format||'?').slice(0,3))+'</span>';
@@ -3031,6 +3035,10 @@ cmdk.addEventListener('click',e=>{ if(e.target===cmdk) closeCmdk(); });
 /* events */
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el) return; const act=el.dataset.act;
+  // A modal's backdrop carries the close action, so a click anywhere inside the box would bubble
+  // up to it. Only a click on the backdrop itself closes; the box used to stop propagation for
+  // this, which also swallowed its own Close button.
+  if((act==='closemodal'||act==='crclose')&&(el.classList.contains('modal')||el.classList.contains('crmodal'))&&e.target!==el) return;
   if(act==='nav'){ e.preventDefault(); go(el.dataset.client||null); }
   else if(act==='range'){ state.range=el.dataset.range; render(); }
   else if(act==='wall'){ if(window.__wallOpen) window.__wallOpen(); }
@@ -3045,7 +3053,7 @@ document.addEventListener('click',e=>{
   else if(act==='cmpf'){ state.cmpf=el.dataset.f; render(); }
   else if(act==='crf'){ if(!el.disabled){ state.crf=el.dataset.crf; render(); } }
   else if(act==='crembed'){ crEmbed(el.dataset.ad); }
-  else if(act==='crclose'){ const m=document.getElementById('crmodal'); if(m) m.remove(); }
+  else if(act==='crclose'){ crClose(); }
   else if(act==='crview'){ state.crView=el.dataset.v==='table'?'table':'grid'; render(); }
   else if(act==='play'){
     // Swapped in place rather than opened in a modal: the row's numbers stay next to the video,
