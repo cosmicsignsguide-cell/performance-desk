@@ -182,6 +182,20 @@ export function buildSourceFeed(docs, { internal = false, clean = (n) => n, clie
       for (let i = 0; i + 2 < a.length; i += 3) { const id = String(a[i]), name = String(a[i + 1] || ''); idx[p].byId.set(id, name); if (name) idx[p].byName.set(normName(name), id); }
     }
   }
+  // A short UTM name ("pg_search_recliner") against the full campaign name ("PG | Search | Recliner |
+  // Max Conv | 25/03"): tie them only when every word of the UTM value is in exactly ONE campaign name
+  // of that platform. Two candidates means it is ambiguous, and an ambiguous match is left unmatched.
+  const tokCache = new Map();
+  const tokenMatch = (p, ca) => {
+    const want = normName(ca).split(' ').filter((t) => t.length > 1 && !/^\d{1,2}$/.test(t));
+    if (want.length < 2) return '';
+    const key = p + '|' + want.join(' ');
+    if (tokCache.has(key)) return tokCache.get(key);
+    let hit = '', count = 0;
+    for (const [id, name] of idx[p].byId) { const have = new Set(normName(name).split(' ')); if (want.every((t) => have.has(t))) { hit = id; count += 1; } }
+    const out = count === 1 ? hit : '';
+    tokCache.set(key, out); return out;
+  };
   const label = (p, id, raw) => {
     if (internal) return id ? `${idx[p].byId.get(id) || raw}` : (raw || '(no campaign tag)');
     if (id) return clean(idx[p].byId.get(id) || raw, clientName, 'campaign');
@@ -191,7 +205,7 @@ export function buildSourceFeed(docs, { internal = false, clean = (n) => n, clie
   };
   const keyOf = (p, c, ca) => {
     if (idx[p]) {
-      const id = idx[p].byId.has(String(ca)) ? String(ca) : idx[p].byName.get(normName(ca));
+      const id = idx[p].byId.has(String(ca)) ? String(ca) : (idx[p].byName.get(normName(ca)) || tokenMatch(p, ca));
       if (id) { const k = `${p}:${id}`; if (!camps[k]) camps[k] = { p, c: p === 'Meta' ? 'Meta Ads (paid)' : 'Google Ads (paid)', name: label(p, id, ca), id: internal ? id : undefined }; return k; }
     }
     const k = `${p}:${c}:${normName(ca)}`;
