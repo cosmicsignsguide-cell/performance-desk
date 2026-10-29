@@ -35,13 +35,41 @@ export async function fetchDaily(client, since, until) {
     SELECT segments.date, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value
     FROM customer WHERE segments.date BETWEEN '${since}' AND '${until}'`);
   const isE = client.type !== 'lead';
+  const funnel = isE ? await funnelByDay(client, since, until) : {};
   return rows.map((r) => {
     const row = emptyDaily(client.id, r.segments.date, 'google');
     row.spend = round(micros(r.metrics.costMicros)); row.impressions = num(r.metrics.impressions); row.clicks = num(r.metrics.clicks);
     const conv = num(r.metrics.conversions);
     if (isE) { row.purchases = Math.round(conv); row.revenue = round(num(r.metrics.conversionsValue)); } else { row.leads = Math.round(conv); }
+    // Explicit zeros on days without funnel actions, so a merge never leaves a stale count behind.
+    if (isE) Object.assign(row, { gLpv: 0, gAtc: 0, gIc: 0 }, funnel[r.segments.date] || {});
     return row;
   });
+}
+
+// The Google side of the funnel. Google Ads has no landing page view metric of its own, so these
+// come from the account's conversion actions by category (page view, add to cart, begin checkout),
+// counted with all_conversions because those steps are normally set as secondary actions and
+// never show in "conversions". Kept in their own fields (gLpv, gAtc, gIc) so they never mix with
+// Meta's pixel counts in lpv/atc/ic. An account with no such actions just reports zeros, and the
+// dashboard says so instead of guessing.
+async function funnelByDay(client, since, until) {
+  try {
+    const rows = await gaql(client.accounts.google, `
+      SELECT segments.date, segments.conversion_action_category, metrics.all_conversions
+      FROM customer WHERE segments.date BETWEEN '${since}' AND '${until}'`);
+    const key = { PAGE_VIEW: 'gLpv', ADD_TO_CART: 'gAtc', BEGIN_CHECKOUT: 'gIc' };
+    const out = {};
+    for (const r of rows) {
+      const k = key[r.segments.conversionActionCategory]; if (!k) continue;
+      const d = (out[r.segments.date] = out[r.segments.date] || { gLpv: 0, gAtc: 0, gIc: 0 });
+      d[k] += Math.round(num(r.metrics.allConversions));
+    }
+    return out;
+  } catch (e) {
+    log(`google ${client.id}: funnel actions unavailable (${String(e.message || e).slice(0, 120)})`);
+    return {};
+  }
 }
 
 // Spend per campaign per day, for the Order sources view (see meta.fetchCampaignSpend).

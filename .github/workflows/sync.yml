@@ -42,7 +42,11 @@ jobs:
           echo "mode=$MODE"
           # The API may be asleep on the free plan. Wake it first and give it a minute.
           curl -sS --max-time 90 "$API/health" || true
-          code=$(curl -sS -o out.txt -w "%{http_code}" --max-time 8400 -X POST -H "Authorization: Bearer $DESK_SYNC_KEY" "$API/sync?mode=$MODE${CLIENT_IN:+&client=$CLIENT_IN}${DAYS_IN:+&days=$DAYS_IN}")
+          # A long backfill (days set) can outlast the host's request limit (about 15 min), which
+          # answers 502 while the run is still going. Those go to /run, which starts the run in the
+          # background and answers 202 at once; the result is in the desk-api logs.
+          ROUTE=sync; if [ -n "$DAYS_IN" ]; then ROUTE=run; fi
+          code=$(curl -sS -o out.txt -w "%{http_code}" --max-time 8400 -X POST -H "Authorization: Bearer $DESK_SYNC_KEY" "$API/$ROUTE?mode=$MODE${CLIENT_IN:+&client=$CLIENT_IN}${DAYS_IN:+&days=$DAYS_IN}")
           cat out.txt; echo
           # 409 means the same mode is still running from the last tick, which is fine.
-          if [ "$code" != "200" ] && [ "$code" != "409" ]; then echo "sync failed with HTTP $code"; exit 1; fi
+          if [ "$code" != "200" ] && [ "$code" != "202" ] && [ "$code" != "409" ]; then echo "sync failed with HTTP $code"; exit 1; fi

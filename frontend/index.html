@@ -741,7 +741,10 @@ svg.chart{width:100%;height:auto;display:block}
 .fstage{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px 18px;min-width:0}
 .fstage .l{font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:11px;text-transform:none;letter-spacing:.012em;color:var(--faint);font-weight:500} .fstage .v{font-size:25px;font-weight:650;letter-spacing:-.03em;margin:9px 0 6px} .fstage .r{font-size:13px;color:var(--faint)} .fstage .r b{font-weight:600;color:var(--text)}
 .fstage.leak{border-color:var(--accent-line);background:var(--accent-soft)}
-.frow{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:14px} .frow h3{font-size:14px;font-weight:700}
+.frow{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:14px} .frow h3{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
+.funnel.five{grid-template-columns:repeat(5,minmax(0,1fr))}
+.fdot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none} .fdot.shop{background:#5E8E3E} .fdot.meta{background:#0866FF} .fdot.google{background:#E3A008}
+.fstage.fcvr{background:var(--surface,var(--bg));border-style:dashed}
 .ordsum{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px;font-size:13.5px;color:var(--dim)} .ordsum b{font-weight:700;color:var(--text)}
 /* Where the orders actually came from, as the store recorded it. One row per source, bar width
    is that source's share, so the eye gets the mix before it reads a single number. */
@@ -828,7 +831,7 @@ textarea.upd{width:100%;min-height:240px;border:1px solid var(--border);border-r
   .mobile-pick{display:block}
   .main{padding:18px 16px 60px}
   .kpi-grid,.kpi-grid.six{grid-template-columns:repeat(2,1fr)}
-  .funnel{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .funnel,.funnel.five{grid-template-columns:repeat(2,minmax(0,1fr))} .funnel.five .fcvr{grid-column:1/-1}
   .mh-num{font-size:46px}.ribbon{height:64px}
 }
 @media (prefers-reduced-motion:reduce){.toast,.toast.fadeout{animation:none}.project-card{transition:none}}
@@ -1371,7 +1374,7 @@ function window_(today,spec){ const end=addDays(today,-spec.offset); return {sta
 function rowsIn(rows,today,spec){ const w=window_(today,spec); return rows.filter(r=>r.date>=w.start&&r.date<=w.end); }
 function daysIn(days,today,spec){ const w=window_(today,spec); const o={spend:0,impressions:0,clicks:0,purchases:0,revenue:0,leads:0,installs:0}; for(const d in days){ if(d>=w.start&&d<=w.end){ const t=days[d]; o.spend+=t[0]||0; o.impressions+=t[1]||0; o.clicks+=t[2]||0; o.purchases+=t[3]||0; o.revenue+=t[4]||0; o.leads+=t[5]||0; o.installs+=t[6]||0; } } return o; }
 const ADS=['meta','google'];
-const SUMS=['spend','impressions','clicks','purchases','revenue','leads','lpv','atc','ic','orders','grossSales','netSales','totalSales','taxes','shSessions','shAtc','shReached','refunds','newCustomerOrders','units','checkoutsStarted','installs','sessions','srcMeta','srcGoogle','srcDirect','srcOther','srcUnknown','srcNone','ga4Atc','ga4Checkouts','ga4Purchases'];
+const SUMS=['spend','impressions','clicks','purchases','revenue','leads','lpv','atc','ic','orders','grossSales','netSales','totalSales','taxes','shSessions','shAtc','shReached','refunds','newCustomerOrders','units','checkoutsStarted','installs','sessions','srcMeta','srcGoogle','srcDirect','srcOther','srcUnknown','srcNone','ga4Atc','ga4Checkouts','ga4Purchases','gLpv','gAtc','gIc'];
 function agg(rows){ const o={}; SUMS.forEach(k=>o[k]=0); let hasShop=false,hasGa=false; rows.forEach(r=>{ SUMS.forEach(k=>{o[k]+=r[k]||0}); if(r.platform==='shopify') hasShop=true; if(r.platform==='ga4') hasGa=true; }); o.hasShop=hasShop; o.hasGa=hasGa; return derive(o); }
 function derive(o){
   o.ctr=o.impressions?o.clicks/o.impressions*100:0; o.cpm=o.impressions?o.spend/o.impressions*1000:0; o.cpc=o.clicks?o.spend/o.clicks:Infinity;
@@ -2582,21 +2585,57 @@ function shopDaysPanel(x){
   return '<div class="section"><details class="glass-panel"><summary style="cursor:pointer;font-weight:700">Shopify by day, as stored <span class="sub">last 14 days, to compare with Shopify Analytics</span></summary><div class="tablewrap"><table class="dtable"><thead><tr><th>Date</th><th class="num">Orders</th><th class="num">Net sales</th><th class="num">GST</th><th class="num">Total sales</th></tr></thead><tbody>'+tr+'</tbody><tfoot><tr><td>Sum</td><td class="num">'+fmtNum(o)+'</td><td class="num">'+fmtMoney(t,c)+'</td><td class="num">'+fmtMoney(g,c)+'</td><td class="num">'+fmtMoney(n,c)+'</td></tr></tfoot></table></div></details></div>';
 }
 function funnelPanel(x){
-  const c=x.c, a=x.cur, p=x.prev, spec=x.spec;
-  const stage=(l,v,rate,rateLabel,prevRate)=>{ const leak=isFinite(rate)&&isFinite(prevRate)&&prevRate>0&&rate<prevRate*0.75&&v>=10; return '<div class="fstage'+(leak?' leak':'')+'"><div class="l">'+l+'</div><div class="v disp">'+fmtNum(v)+'</div><div class="r">'+(rate===null?'':'<b>'+fmtPct(rate)+'</b> '+rateLabel+(isFinite(prevRate)&&prevRate?' <span class="'+(rate<prevRate*0.9?'delta down':rate>prevRate*1.1?'delta up':'')+'">(prev '+fmtPct(prevRate)+')</span>':''))+'</div></div>'; };
-  let h='<div class="section"><div class="glass-panel"><h2>Funnel and leakage <span class="sub">'+spec.label+'</span></h2><div class="note" style="margin-top:0">Store funnel falls and pixel funnel holds = site or checkout problem. Pixel falls and store holds = tracking problem. Both fall = traffic quality. Red outline = a stage rate down 25%+ against '+spec.prevLabel+'.</div>';
-  h+='<div class="frow"><h3>Store funnel</h3><span class="faint small">'+(a.hasGa?'Sessions and add to cart from GA4, checkouts and orders from Shopify':a.hasShop&&a.shSessions>0?'Sessions, add to cart and checkout from Shopify analytics, orders from Shopify':a.hasShop?'Checkouts and orders from Shopify. Sessions appear after the next daily sync':'Connect Shopify to see the store funnel')+'</span></div>';
-  if(a.hasShop||a.hasGa){
-    const useSh=!a.hasGa&&a.hasShop&&a.shSessions>0;
-    const s1=useSh?a.shSessions:a.sessions, s2=useSh?a.shAtc:(a.hasGa?a.ga4Atc:null), s3=useSh?a.shReached:(a.hasShop?a.checkoutsStarted:a.ga4Checkouts), s4=a.hasShop?a.orders:a.ga4Purchases;
-    const p1=useSh?p.shSessions:p.sessions, p2=useSh?p.shAtc:(p.hasGa?p.ga4Atc:null), p3=useSh?p.shReached:(p.hasShop?p.checkoutsStarted:p.ga4Checkouts), p4=p.hasShop?p.orders:p.ga4Purchases;
-    const have=a.hasGa||useSh;
-    const na=(l)=>'<div class="fstage"><div class="l">'+l+'</div><div class="v faint">n/a</div><div class="r">needs GA4 or Shopify reports</div></div>';
-    h+='<div class="funnel">'+(have?stage('Sessions',s1,null):na('Sessions'))+(have?stage('Add to cart',s2,s1?s2/s1*100:null,'of sessions',p1?p2/p1*100:null):na('Add to cart'))+stage(useSh?'Reached checkout':'Checkouts started',s3,s2?s3/s2*100:null,'of add to carts',p2?p3/p2*100:null)+stage('Orders',s4,s3?s4/s3*100:null,'of checkouts',p3?p4/p3*100:null)+'</div>'; }
-  h+='<div class="frow"><h3>Meta pixel funnel</h3><span class="faint small">Ads traffic only, as Meta reports it</span></div>';
-  const m1=a.lpv,m2=a.atc,m3=a.ic,m4=a.purchases, q1=p.lpv,q2=p.atc,q3=p.ic,q4=p.purchases;
-  h+='<div class="funnel">'+stage('Landing page views',m1,a.clicks?m1/a.clicks*100:null,'of clicks',p.clicks?q1/p.clicks*100:null)+stage('Add to cart',m2,m1?m2/m1*100:null,'of LPV',q1?q2/q1*100:null)+stage('Checkout started',m3,m2?m3/m2*100:null,'of ATC',q2?q3/q2*100:null)+stage('Purchases',m4,m3?m4/m3*100:null,'of checkouts',q3?q4/q3*100:null)+'</div>';
-  if(a.hasShop) h+='<div class="note">Attribution coverage: platforms report '+fmtNum(a.purchases)+' purchases against '+fmtNum(a.orders)+' Shopify orders ('+pct(a.coverage)+'). A sudden drop here with steady orders means pixel or CAPI broke, not sales.</div>';
+  // Three funnels side by side, one row each: the store as Shopify counts it, then Meta and Google
+  // as each platform counts its own ads traffic. Same five cards per row so a broken step lines up
+  // across the three. Shopify's checkout card uses orders plus abandoned checkouts, not the
+  // analytics "reached checkout" sessions, because stores on a third-party checkout (GoKwik,
+  // Shiprocket and the like) never reach Shopify's checkout and that count sits near zero.
+  const c=x.c, spec=x.spec;
+  const cw=window_(D.today,spec), pw=spec.prev?window_(D.today,spec.prev):null;
+  const sel=(w,pf)=>w?agg(x.rows.filter(r=>r.date>=w.start&&r.date<=w.end&&pf(r))):agg([]);
+  const isM=r=>r.platform==='meta', isG=r=>r.platform==='google', isS=r=>r.platform==='shopify', isGa=r=>r.platform==='ga4';
+  const C={m:sel(cw,isM),g:sel(cw,isG),s:sel(cw,isS),ga:sel(cw,isGa)}, P={m:sel(pw,isM),g:sel(pw,isG),s:sel(pw,isS),ga:sel(pw,isGa)};
+  const div=(n,d)=>d?n/d*100:null;
+  const tone=(rate,prev)=>isFinite(prev)&&prev?(rate<prev*0.9?'delta down':rate>prev*1.1?'delta up':''):'';
+  const stage=(l,v,rate,rateLabel,prevRate,emptyNote)=>{
+    if(v==null) return '<div class="fstage"><div class="l">'+l+'</div><div class="v faint">n/a</div><div class="r">'+(emptyNote||'')+'</div></div>';
+    const leak=rate!=null&&isFinite(rate)&&isFinite(prevRate)&&prevRate>0&&rate<prevRate*0.75&&v>=10;
+    return '<div class="fstage'+(leak?' leak':'')+'"><div class="l">'+l+'</div><div class="v disp">'+fmtNum(v)+'</div><div class="r">'+(rate==null?(emptyNote||''):'<b>'+fmtPct(rate)+'</b> '+rateLabel+(isFinite(prevRate)&&prevRate?' <span class="'+tone(rate,prevRate)+'">(prev '+fmtPct(prevRate)+')</span>':''))+'</div></div>'; };
+  const cvrCard=(rate,prevRate,how)=>{
+    if(rate==null) return '<div class="fstage fcvr"><div class="l">Conversion rate</div><div class="v faint">n/a</div><div class="r">'+how+'</div></div>';
+    const leak=isFinite(prevRate)&&prevRate>0&&rate<prevRate*0.75;
+    return '<div class="fstage fcvr'+(leak?' leak':'')+'"><div class="l">Conversion rate</div><div class="v disp">'+fmtPct(rate)+'</div><div class="r">'+how+(isFinite(prevRate)&&prevRate?' <span class="'+tone(rate,prevRate)+'">(prev '+fmtPct(prevRate)+')</span>':'')+'</div></div>'; };
+  const head=(cls,title,note)=>'<div class="frow"><h3><i class="fdot '+cls+'"></i>'+title+'</h3><span class="faint small">'+note+'</span></div>';
+  let h='<div class="section"><div class="glass-panel"><h2>Funnel and leakage <span class="sub">'+spec.label+'</span></h2><div class="note" style="margin-top:0">Shopify falls and Meta or Google holds = site or checkout problem. A platform falls and Shopify holds = tracking problem. All fall = traffic quality. Red outline = a step rate down 25%+ against '+spec.prevLabel+'.</div>';
+
+  // Shopify
+  const s=C.s, ps=P.s, hasShop=s.hasShop||ps.hasShop;
+  const sess=(o,ga)=>o.shSessions||ga.sessions||0, atcOf=(o,ga)=>o.shSessions?o.shAtc:(ga.ga4Atc||0);
+  const s1=sess(s,C.ga), s2=atcOf(s,C.ga), s3=s.checkoutsStarted||0, s4=s.orders||0;
+  const q1=sess(ps,P.ga), q2=atcOf(ps,P.ga), q3=ps.checkoutsStarted||0, q4=ps.orders||0;
+  h+=head('shop','Shopify',!hasShop?'Connect Shopify to see the store funnel':s.shSessions?'Sessions and add to cart from Shopify analytics, checkouts and orders from Shopify':C.ga.sessions?'Sessions and add to cart from GA4, checkouts and orders from Shopify':'Checkouts and orders from Shopify. Sessions appear after the next daily sync');
+  if(hasShop){
+    const noSess='needs Shopify analytics or GA4';
+    h+='<div class="funnel five">'+stage('Sessions',s1||null,null,'',null,s1?'':noSess)+stage('Add to cart',s1?s2:null,div(s2,s1),'of sessions',div(q2,q1),noSess)+stage('Checkouts',s3,div(s3,s2),'of add to carts',div(q3,q2),'orders plus abandoned checkouts')+stage('Purchases',s4,div(s4,s3),'of checkouts',div(q4,q3))+cvrCard(div(s4,s1),div(q4,q1),s1?'orders ÷ sessions':noSess)+'</div>';
+  }
+
+  // Meta
+  const m=C.m, pm=P.m;
+  h+=head('meta','Meta','Ads traffic only, as Meta reports it');
+  h+='<div class="funnel five">'+stage('Landing page views',m.lpv,div(m.lpv,m.clicks),'of clicks',div(pm.lpv,pm.clicks))+stage('Add to cart',m.atc,div(m.atc,m.lpv),'of LPV',div(pm.atc,pm.lpv))+stage('Checkouts',m.ic,div(m.ic,m.atc),'of ATC',div(pm.ic,pm.atc))+stage('Purchases',m.purchases,div(m.purchases,m.ic),'of checkouts',div(pm.purchases,pm.ic))+cvrCard(div(m.purchases,m.lpv),div(pm.purchases,pm.lpv),'purchases ÷ landing page views')+'</div>';
+
+  // Google
+  const g=C.g, pg=P.g, gHasLpv=g.gLpv>0||pg.gLpv>0, gHasSteps=gHasLpv||g.gAtc>0||g.gIc>0||pg.gAtc>0||pg.gIc>0;
+  if(g.spend||pg.spend){
+    h+=head('google','Google','Ads traffic only, as Google Ads reports it'+(gHasSteps?'':'. No add to cart or checkout conversion actions in this account yet'));
+    const gTop=gHasLpv?g.gLpv:g.clicks, pTop=gHasLpv?pg.gLpv:pg.clicks, topLbl=gHasLpv?'of LPV':'of clicks';
+    h+='<div class="funnel five">'+(gHasLpv?stage('Landing page views',g.gLpv,div(g.gLpv,g.clicks),'of clicks',div(pg.gLpv,pg.clicks)):stage('Landing page views',g.clicks,null,'',null,'clicks shown, Google Ads has no page view action set'))+
+      stage('Add to cart',g.gAtc>0||pg.gAtc>0?g.gAtc:null,div(g.gAtc,gTop),topLbl,div(pg.gAtc,pTop),'no add to cart action in Google Ads')+
+      stage('Checkouts',g.gIc>0||pg.gIc>0?g.gIc:null,div(g.gIc,g.gAtc),'of ATC',div(pg.gIc,pg.gAtc),'no begin checkout action in Google Ads')+
+      stage('Purchases',g.purchases,g.gIc?div(g.purchases,g.gIc):null,'of checkouts',div(pg.purchases,pg.gIc),'Google Ads conversions')+
+      cvrCard(div(g.purchases,gTop),div(pg.purchases,pTop),'purchases ÷ '+(gHasLpv?'landing page views':'clicks'))+'</div>';
+  }
+  if(hasShop){ const pur=m.purchases+g.purchases; h+='<div class="note">Attribution coverage: Meta and Google report '+fmtNum(pur)+' purchases against '+fmtNum(s4)+' Shopify orders ('+(s4?pct(pur/s4):'--')+'). The two platforms can both claim the same order. A sudden drop here with steady orders means a pixel, CAPI or conversion tag broke, not sales.</div>'; }
   return h+'</div></div>';
 }
 // Where the orders came from, taken off the store's own record of each order's first visit rather
