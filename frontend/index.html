@@ -745,6 +745,9 @@ svg.chart{width:100%;height:auto;display:block}
 .funnel.five{grid-template-columns:repeat(5,minmax(0,1fr))}
 .fdot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none} .fdot.shop{background:#5E8E3E} .fdot.meta{background:#0866FF} .fdot.google{background:#E3A008}
 .fstage.fcvr{background:var(--surface,var(--bg));border-style:dashed}
+.funnel.f-shop .fstage{background:#EEF7EC} .funnel.f-meta .fstage{background:#EEF4FF} .funnel.f-google .fstage{background:#FFF7E3}
+:root[data-theme="dark"] .funnel.f-shop .fstage{background:rgba(94,142,62,.14)} :root[data-theme="dark"] .funnel.f-meta .fstage{background:rgba(24,119,242,.12)} :root[data-theme="dark"] .funnel.f-google .fstage{background:rgba(226,180,74,.11)}
+.funnel .fstage.leak,:root[data-theme="dark"] .funnel .fstage.leak{border-color:var(--accent-line);background:var(--accent-soft)}
 .ordsum{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px;font-size:13.5px;color:var(--dim)} .ordsum b{font-weight:700;color:var(--text)}
 /* Where the orders actually came from, as the store recorded it. One row per source, bar width
    is that source's share, so the eye gets the mix before it reads a single number. */
@@ -2616,20 +2619,20 @@ function funnelPanel(x){
   h+=head('shop','Shopify',!hasShop?'Connect Shopify to see the store funnel':s.shSessions?'Sessions and add to cart from Shopify analytics, checkouts and orders from Shopify':C.ga.sessions?'Sessions and add to cart from GA4, checkouts and orders from Shopify':'Checkouts and orders from Shopify. Sessions appear after the next daily sync');
   if(hasShop){
     const noSess='needs Shopify analytics or GA4';
-    h+='<div class="funnel five">'+stage('Sessions',s1||null,null,'',null,s1?'':noSess)+stage('Add to cart',s1?s2:null,div(s2,s1),'of sessions',div(q2,q1),noSess)+stage('Checkouts',s3,div(s3,s2),'of add to carts',div(q3,q2),'orders plus abandoned checkouts')+stage('Purchases',s4,div(s4,s3),'of checkouts',div(q4,q3))+cvrCard(div(s4,s1),div(q4,q1),s1?'orders ÷ sessions':noSess)+'</div>';
+    h+='<div class="funnel five f-shop">'+stage('Sessions',s1||null,null,'',null,s1?'':noSess)+stage('Add to cart',s1?s2:null,div(s2,s1),'of sessions',div(q2,q1),noSess)+stage('Checkouts',s3,div(s3,s2),'of add to carts',div(q3,q2),'orders plus abandoned checkouts')+stage('Purchases',s4,div(s4,s3),'of checkouts',div(q4,q3))+cvrCard(div(s4,s1),div(q4,q1),s1?'orders ÷ sessions':noSess)+'</div>';
   }
 
   // Meta
   const m=C.m, pm=P.m;
   h+=head('meta','Meta','Ads traffic only, as Meta reports it');
-  h+='<div class="funnel five">'+stage('Landing page views',m.lpv,div(m.lpv,m.clicks),'of clicks',div(pm.lpv,pm.clicks))+stage('Add to cart',m.atc,div(m.atc,m.lpv),'of LPV',div(pm.atc,pm.lpv))+stage('Checkouts',m.ic,div(m.ic,m.atc),'of ATC',div(pm.ic,pm.atc))+stage('Purchases',m.purchases,div(m.purchases,m.ic),'of checkouts',div(pm.purchases,pm.ic))+cvrCard(div(m.purchases,m.lpv),div(pm.purchases,pm.lpv),'purchases ÷ landing page views')+'</div>';
+  h+='<div class="funnel five f-meta">'+stage('Landing page views',m.lpv,div(m.lpv,m.clicks),'of clicks',div(pm.lpv,pm.clicks))+stage('Add to cart',m.atc,div(m.atc,m.lpv),'of LPV',div(pm.atc,pm.lpv))+stage('Checkouts',m.ic,div(m.ic,m.atc),'of ATC',div(pm.ic,pm.atc))+stage('Purchases',m.purchases,div(m.purchases,m.ic),'of checkouts',div(pm.purchases,pm.ic))+cvrCard(div(m.purchases,m.lpv),div(pm.purchases,pm.lpv),'purchases ÷ landing page views')+'</div>';
 
   // Google
   const g=C.g, pg=P.g, gHasLpv=g.gLpv>0||pg.gLpv>0, gHasSteps=gHasLpv||g.gAtc>0||g.gIc>0||pg.gAtc>0||pg.gIc>0;
   if(g.spend||pg.spend){
     h+=head('google','Google','Ads traffic only, as Google Ads reports it'+(gHasSteps?'':'. No add to cart or checkout conversion actions in this account yet'));
     const gTop=gHasLpv?g.gLpv:g.clicks, pTop=gHasLpv?pg.gLpv:pg.clicks, topLbl=gHasLpv?'of LPV':'of clicks';
-    h+='<div class="funnel five">'+(gHasLpv?stage('Landing page views',g.gLpv,div(g.gLpv,g.clicks),'of clicks',div(pg.gLpv,pg.clicks)):stage('Landing page views',g.clicks,null,'',null,'clicks shown, Google Ads has no page view action set'))+
+    h+='<div class="funnel five f-google">'+(gHasLpv?stage('Landing page views',g.gLpv,div(g.gLpv,g.clicks),'of clicks',div(pg.gLpv,pg.clicks)):stage('Landing page views',g.clicks,null,'',null,'clicks shown, Google Ads has no page view action set'))+
       stage('Add to cart',g.gAtc>0||pg.gAtc>0?g.gAtc:null,div(g.gAtc,gTop),topLbl,div(pg.gAtc,pTop),'no add to cart action in Google Ads')+
       stage('Checkouts',g.gIc>0||pg.gIc>0?g.gIc:null,div(g.gIc,g.gAtc),'of ATC',div(pg.gIc,pg.gAtc),'no begin checkout action in Google Ads')+
       stage('Purchases',g.purchases,g.gIc?div(g.purchases,g.gIc):null,'of checkouts',div(pg.purchases,pg.gIc),'Google Ads conversions')+
