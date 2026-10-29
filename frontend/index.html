@@ -1496,7 +1496,7 @@ const ICONS={
 
 /* ============================== STATE / RENDER =========================== */
 let D=null, S={};
-const state={plRange:'7d',plSort:{key:'dev',dir:'asc'},view:'overview',clientId:null,range:'today',tab:'campaigns',crf:'spending',crView:'grid',q:'',ovView:'table',showInfo:false,expanded:new Set(),sort:{overview:{key:'health',dir:'asc'},campaigns:{key:'spend',dir:'desc'},ads:{key:'spend',dir:'desc'},products:{key:'revenue',dir:'desc'},orders:{key:'at',dir:'desc'}}};
+const state={plRange:'7d',plSort:{key:'dev',dir:'asc'},view:'overview',clientId:null,range:'today',tab:'campaigns',crf:'spending',cmpf:'all',crView:'grid',q:'',ovView:'table',showInfo:false,expanded:new Set(),sort:{overview:{key:'health',dir:'asc'},campaigns:{key:'spend',dir:'desc'},ads:{key:'spend',dir:'desc'},products:{key:'revenue',dir:'desc'},orders:{key:'at',dir:'desc'}}};
 const root=document.getElementById('root');
 function readHash(){ const m=location.hash.match(/^#c\/([a-z0-9-]+)/); if(m&&D&&D.clients.some(c=>c.id===m[1])){state.view='client';state.clientId=m[1]} else {state.view='overview';state.clientId=null} }
 function go(id){ if(id){location.hash='#c/'+id} else { try{history.replaceState(null,'',location.href.split('#')[0])}catch(e){location.hash=''} readHash(); render(); window.scrollTo(0,0); } }
@@ -2781,12 +2781,19 @@ function campaignTree(x){
   const c=x.c, isE=c.type==='ecom', ent=x.ent, spec=x.spec, res=isE?'purchases':isApp(c)?'installs':'leads'; const so=state.sort.campaigns;
   const val=(r)=>{ switch(so.key){ case 'name':return r.e.name; case 'status':return r.e.status||''; case 'budget':return r.e.dailyBudget||r.e.lifetimeBudget||0; case 'results':return r.m[res]; case 'cpr':return isE?r.m.cpa:isApp(c)?r.m.cpi:r.m.cpl; case 'kpi':return isE?r.m.roas:isApp(c)?r.m.cpi:r.m.cpl; case 'ctr':return r.m.ctr; case 'cpm':return r.m.cpm; default:return r.m.spend; } };
   const cmp=(a,b)=>{ let va=val(a),vb=val(b); if(typeof va==='string') return so.dir==='asc'?va.localeCompare(vb):vb.localeCompare(va); if(!isFinite(va)) va=so.dir==='asc'?Infinity:-Infinity; if(!isFinite(vb)) vb=so.dir==='asc'?Infinity:-Infinity; return so.dir==='asc'?va-vb:vb-va; };
-  const camps=(ent.campaigns||[]).map(e=>({e,m:entRange(e,spec),pm:entRange(e,spec.prev)})).sort(cmp); const totalSpend=camps.reduce((s,r)=>s+r.m.spend,0); const rows=[];
+  const allCamps=(ent.campaigns||[]).map(e=>({e,m:entRange(e,spec),pm:entRange(e,spec.prev)})).sort(cmp); const totalSpend=allCamps.reduce((s,r)=>s+r.m.spend,0); const rows=[];
+  // Active / Paused / All. Meta says ACTIVE, Google ENABLED; paused covers PAUSED and the
+  // CAMPAIGN_PAUSED style states. Archived, removed and ended campaigns only show under All.
+  const cst=e=>{ const st=String(e.status||'').toUpperCase(); return st==='ACTIVE'||st==='ENABLED'?'active':/PAUSED/.test(st)?'paused':'other'; };
+  const CMPF=[['active','Active'],['paused','Paused'],['all','All']];
+  const nOf=k=>k==='all'?allCamps.length:allCamps.filter(r=>cst(r.e)===k).length;
+  const camps=state.cmpf==='all'?allCamps:allCamps.filter(r=>cst(r.e)===state.cmpf);
+  const chips='<span class="crchips">'+CMPF.map(k=>'<button class="crchip'+(state.cmpf===k[0]?' on':'')+'" data-act="cmpf" data-f="'+k[0]+'">'+k[1]+' '+nOf(k[0])+'</button>').join('')+'</span>';
   for(const r of camps){ const kids=(ent.adsets||[]).filter(s=>s.campaignId===r.e.id).map(e=>({e,m:entRange(e,spec),pm:entRange(e,spec.prev)})).sort(cmp); rows.push({lvl:0,...r,hasKids:kids.length>0,open:state.expanded.has(r.e.id)});
     if(state.expanded.has(r.e.id)) for(const s of kids){ const ads=(x.ads||[]).filter(a=>a.adsetId===s.e.id).map(e=>({e,m:entRange(e,spec),pm:entRange(e,spec.prev)})).sort(cmp); rows.push({lvl:1,...s,hasKids:ads.length>0,open:state.expanded.has(s.e.id)}); if(state.expanded.has(s.e.id)) for(const a of ads) rows.push({lvl:2,...a,hasKids:false}); } }
   const cols=[{key:'name',label:'Campaign / ad set / ad'},{key:'status',label:'Status'},{key:'budget',label:'Budget',num:1},{key:'spend',label:'Spend',num:1},{key:'results',label:cap(res),num:1},{key:'cpr',label:isE?'CPA':kpiLabel(c),num:1},{key:'kpi',label:isE?'ROAS':'vs target',num:1},{key:'ctr',label:'CTR',num:1},{key:'cpm',label:'CPM',num:1}];
-  let h='<div class="glass-panel"><h2>Campaigns <span class="sub">'+spec.label+' · deltas vs '+spec.prevLabel+' · click ▶ to open ad sets and ads</span></h2><div class="data-table-wrap tree"><table class="dtable">'+thead(cols,'campaigns')+'<tbody>';
-  if(!rows.length) h+='<tr><td colspan="9" class="faint">No campaigns yet.</td></tr>';
+  let h='<div class="glass-panel"><h2>Campaigns <span class="sub">'+spec.label+' · deltas vs '+spec.prevLabel+' · click ▶ to open ad sets and ads</span>'+chips+'</h2><div class="data-table-wrap tree"><table class="dtable">'+thead(cols,'campaigns')+'<tbody>';
+  if(!rows.length) h+='<tr><td colspan="9" class="faint">'+(allCamps.length?'No '+state.cmpf+' campaigns. Try another filter above.':'No campaigns yet.')+'</td></tr>';
   for(const r of rows){ const e=r.e,m=r.m,pm=r.pm;
     const budget=e.dailyBudget?fmtMoney(e.dailyBudget,c)+'<span class="sub">daily'+(e.budgetLevel==='adset'&&r.lvl===0?', ad set level':'')+'</span>':e.lifetimeBudget?fmtMoney(e.lifetimeBudget,c)+'<span class="sub">lifetime</span>':(r.lvl===0&&e.budgetLevel==='adset'?'<span class="faint small">ad set level</span>':'<span class="faint">n/a</span>');
     const st=r.lvl===1?learnChip(e):(e.status?'<span class="chip '+(e.status==='ACTIVE'?'good':/DISAPPROVED|WITH_ISSUES/.test(e.status)?'bad':'neutral')+'"><span class="d"></span>'+esc(cap(e.status.toLowerCase().replace(/_/g,' ')))+'</span>':'');
@@ -2975,6 +2982,7 @@ document.addEventListener('click',e=>{
   else if(act==='tab'){ state.tab=el.dataset.tab; render(); }
   else if(act==='srcpf'){ state.srcPf=el.dataset.pf; render(); }
   else if(act==='srcreload'){ delete SRC[el.dataset.client]; render(); }
+  else if(act==='cmpf'){ state.cmpf=el.dataset.f; render(); }
   else if(act==='crf'){ if(!el.disabled){ state.crf=el.dataset.crf; render(); } }
   else if(act==='crembed'){ crEmbed(el.dataset.ad); }
   else if(act==='crclose'){ const m=document.getElementById('crmodal'); if(m) m.remove(); }
