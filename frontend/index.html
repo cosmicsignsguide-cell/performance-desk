@@ -2422,9 +2422,9 @@ function clientView(x){
   if(isE&&x.cur.hasShop) h+=shopDaysPanel(x);
   if(isE) h+=sourcePanel(x);
   if(isE) h+=funnelPanel(x);
-  // Orders, Order sources and Reports were taken off this row on request; their panels
+  // Orders, Order sources, Reports and Site Watch were taken off this row on request; their panels
   // (ordersPanel, sourcesTab, weeklyPanel) are still here, so adding a tab back is one line.
-  const tabs=isE?[['campaigns','Campaigns'],['ads','Creatives'],['products','Best seller products'],['site','Site Watch']]:[['campaigns','Campaigns'],['ads','Creatives'],['site','Site Watch']];
+  const tabs=isE?[['campaigns','Campaigns'],['ads','Creatives'],['products','Best seller products']]:[['campaigns','Campaigns'],['ads','Creatives']];
   if(!tabs.some(t=>t[0]===state.tab)) state.tab='campaigns';
   const body=state.tab==='site'?sitePanel(x):state.tab==='weekly'?weeklyPanel(x):state.tab==='campaigns'?campaignTree(x):state.tab==='orders'?ordersPanel(x):state.tab==='sources'?sourcesTab(x):entityTable(x);
   h+='<div class="section"><div class="tab-row" style="margin-bottom:12px">'+tabs.map(t=>'<button class="tab-btn '+(state.tab===t[0]?'active':'')+'" data-act="tab" data-tab="'+t[0]+'">'+t[1]+'</button>').join('')+'</div>'+body+'</div>';
@@ -2648,11 +2648,15 @@ function funnelPanel(x){
   h+='<div class="funnel five f-meta">'+stage('Landing page views',m.lpv,div(m.lpv,m.clicks),'of clicks',div(pm.lpv,pm.clicks))+stage('Add to cart',m.atc,div(m.atc,m.lpv),'of LPV',div(pm.atc,pm.lpv))+stage('Checkouts',m.ic,div(m.ic,m.atc),'of ATC',div(pm.ic,pm.atc))+stage('Purchases',m.purchases,div(m.purchases,m.ic),'of checkouts',div(pm.purchases,pm.ic))+cvrCard(div(m.purchases,m.lpv),div(pm.purchases,pm.lpv),'purchases ÷ landing page views')+'</div>';
 
   // Google
-  const g=C.g, pg=P.g, gHasLpv=g.gLpv>0||pg.gLpv>0, gHasSteps=gHasLpv||g.gAtc>0||g.gIc>0||pg.gAtc>0||pg.gIc>0;
+  // A Google "page view" conversion action usually fires on every page a visitor opens, so it can
+  // run far above clicks (one click, five pages). That is not a landing page view. When it is
+  // above clicks the row starts from clicks instead and says so.
+  const lpvOk=o=>o.gLpv>0&&o.gLpv<=o.clicks*1.05;
+  const g=C.g, pg=P.g, gHasLpv=lpvOk(g)&&(!pg.gLpv||lpvOk(pg)), gLpvInflated=!gHasLpv&&(g.gLpv>0||pg.gLpv>0), gHasSteps=gHasLpv||g.gAtc>0||g.gIc>0||pg.gAtc>0||pg.gIc>0;
   if(g.spend||pg.spend){
     h+=head('google','Google','Ads traffic only, as Google Ads reports it'+(gHasSteps?'':'. No add to cart or checkout conversion actions in this account yet'));
     const gTop=gHasLpv?g.gLpv:g.clicks, pTop=gHasLpv?pg.gLpv:pg.clicks, topLbl=gHasLpv?'of LPV':'of clicks';
-    h+='<div class="funnel five f-google">'+(gHasLpv?stage('Landing page views',g.gLpv,div(g.gLpv,g.clicks),'of clicks',div(pg.gLpv,pg.clicks)):stage('Landing page views',g.clicks,null,'',null,'clicks shown, Google Ads has no page view action set'))+
+    h+='<div class="funnel five f-google">'+(gHasLpv?stage('Landing page views',g.gLpv,div(g.gLpv,g.clicks),'of clicks',div(pg.gLpv,pg.clicks)):stage('Clicks',g.clicks,null,'',null,gLpvInflated?'Google\u2019s page view tag counts every page ('+fmtNum(g.gLpv)+'), not landings, so clicks are used':'no page view action in Google Ads, so clicks are used'))+
       stage('Add to cart',g.gAtc>0||pg.gAtc>0?g.gAtc:null,div(g.gAtc,gTop),topLbl,div(pg.gAtc,pTop),'no add to cart action in Google Ads')+
       stage('Checkouts',g.gIc>0||pg.gIc>0?g.gIc:null,div(g.gIc,g.gAtc),'of ATC',div(pg.gIc,pg.gAtc),'no begin checkout action in Google Ads')+
       stage('Purchases',g.purchases,g.gIc?div(g.purchases,g.gIc):null,'of checkouts',div(pg.purchases,pg.gIc),'Google Ads conversions')+
