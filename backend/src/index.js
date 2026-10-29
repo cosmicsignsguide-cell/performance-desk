@@ -212,7 +212,11 @@ async function syncClient(store, client, { mode, days }) {
           } catch (e) { log(`${client.id}/sources campaigns check failed: ${String(e.message || e).slice(0, 120)}`); }
         }
         ent.recentOrders = recentOrders;
-        if (mode === 'daily' && entitiesDue(ent, source)) { ent.products = await shopify.fetchProducts(client, untilFull); ent.entitiesAt = { ...(ent.entitiesAt || {}), shopify: nowIso() }; }
+        if (mode === 'daily' && entitiesDue(ent, source)) {
+          ent.products = await shopify.fetchProducts(client, untilFull); ent.entitiesAt = { ...(ent.entitiesAt || {}), shopify: nowIso() };
+          const p0 = ent.products[0];
+          log(`${client.id}/products: ${ent.products.length}, ${ent.products.filter((p) => p.title).length} with a name, ${ent.products.filter((p) => p.url).length} with a link${p0 ? `, top ${JSON.stringify({ id: p0.id, title: p0.title, url: p0.url, image: !!p0.image, price: p0.price }).slice(0, 300)}` : ''}`);
+        }
       } else if (source === 'ga4') {
         const rows = await ga4.fetchDaily(client, since, today);
         await writeDaily(store, rows);
