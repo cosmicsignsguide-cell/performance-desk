@@ -644,6 +644,7 @@ a{color:var(--cyan)}
 
 /* tables */
 .data-table-wrap{overflow-x:auto}
+.srckpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:4px 0 14px}.srckpis>div{border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}.srckpis span{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.05em}.srckpis b{font-size:20px;font-variant-numeric:tabular-nums}.srckpis i{font-style:normal;font-size:11.5px;color:var(--faint)}.srch{font-size:13px;font-weight:650;margin:20px 0 8px}.srch .sub{font-size:11.5px;color:var(--faint);font-weight:450}.srcdot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:7px;vertical-align:middle}.srcctl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:8px;font-size:12.5px}.srcctl select,.srcctl input{font:inherit;padding:6px 9px;border:1px solid var(--border);border-radius:8px;background:var(--panel);color:inherit}.srcctl input{min-width:220px}.srcledger{max-height:460px;overflow:auto}.srcledger td.utmv{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
 table.dtable{width:100%;border-collapse:collapse;font-size:12.5px;min-width:640px}
 table.dtable thead th{text-align:left;padding:0 12px 11px;font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:9px;font-weight:500;text-transform:none;letter-spacing:.012em;color:var(--faint);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
 table.dtable thead th:hover,table.dtable thead th.sorted{color:var(--text)}
@@ -2388,9 +2389,9 @@ function clientView(x){
   if(isE&&x.cur.hasShop) h+=shopDaysPanel(x);
   if(isE) h+=sourcePanel(x);
   if(isE) h+=funnelPanel(x);
-  const tabs=isE?[['campaigns','Campaigns'],['ads','Creatives'],['orders','Orders'],['products','Products'],['site','Site Watch'],['weekly','Reports']]:[['campaigns','Campaigns'],['ads','Creatives'],['site','Site Watch'],['weekly','Reports']];
+  const tabs=isE?[['campaigns','Campaigns'],['ads','Creatives'],['orders','Orders'],...(c.accounts?.shopify?.shop||!LIVE?[['sources','Order sources']]:[]),['products','Products'],['site','Site Watch'],['weekly','Reports']]:[['campaigns','Campaigns'],['ads','Creatives'],['site','Site Watch'],['weekly','Reports']];
   if(!tabs.some(t=>t[0]===state.tab)) state.tab='campaigns';
-  const body=state.tab==='site'?sitePanel(x):state.tab==='weekly'?weeklyPanel(x):state.tab==='campaigns'?campaignTree(x):state.tab==='orders'?ordersPanel(x):entityTable(x);
+  const body=state.tab==='site'?sitePanel(x):state.tab==='weekly'?weeklyPanel(x):state.tab==='campaigns'?campaignTree(x):state.tab==='orders'?ordersPanel(x):state.tab==='sources'?sourcesTab(x):entityTable(x);
   h+='<div class="section"><div class="tab-row" style="margin-bottom:12px">'+tabs.map(t=>'<button class="tab-btn '+(state.tab===t[0]?'active':'')+'" data-act="tab" data-tab="'+t[0]+'">'+t[1]+'</button>').join('')+'</div>'+body+'</div>';
   return h;
 }
@@ -2553,6 +2554,94 @@ function sourcePanel(x){
     +'</div>';
   h+='<div class="note">Read the two together, not one instead of the other. The platforms count every order they touched inside their own window, so one order seen on both Meta and Google is counted twice. The store counts where the customer first arrived, so an order that started with an ad and finished from a typed URL lands in Direct instead. The truth sits between them: the store&rsquo;s figure is the floor, the platforms&rsquo; figure is the ceiling. Net sales and MER on this page come from the store, which is why they match the Shopify admin exactly.'+(a.srcNone?' '+fmtNum(a.srcNone)+' order'+(a.srcNone===1?'':'s')+' arrived with no source recorded at all, usually a broken or missing UTM, and every one of those is a sale no platform can be credited for.':'')+'</div>';
   return h+'</div></div>';
+}
+/* ---- Order sources: last visit before each order, by platform, channel and campaign ----
+   Built on the server (/sources) from Shopify's own journey data, so the team sees exactly what the
+   client report shows plus the raw UTM ledger and what the Direct bucket is hiding. One answer per
+   order: the rows add up to the store's order count and nothing is counted twice. */
+const SRC={};
+const SRC_COL={Meta:'#2f6bd9',Google:'#c9751a',Other:'#7a5fc4'};
+async function srcLoad(cid){
+  SRC[cid]={loading:true};
+  try{
+    if(!LIVE){ SRC[cid]={data:srcSample(D.today)}; render(); return; }
+    const u=fb&&fb.auth&&fb.auth.currentUser; if(!u) throw new Error('sign in first');
+    const tok=await u.getIdToken();
+    const base=String(CFG.syncUrl||'').replace(/\/(sync|run)(\?.*)?$/,'').replace(/\/$/,'');
+    const r=await fetch(base+'/sources?client='+encodeURIComponent(cid)+'&days=95',{headers:{'Authorization':'Bearer '+tok}});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    SRC[cid]={data:await r.json()};
+  }catch(e){ SRC[cid]={error:String(e.message||e)}; }
+  render();
+}
+function srcSample(today){
+  const camps={'Meta:120':{p:'Meta',c:'Meta Ads (paid)',name:'PG | Sample | TOF | Waffle Range',id:'120'},'Google:2167':{p:'Google',c:'Google Ads (paid)',name:'PG_PMax_Shopping',id:'2167'},'Google:Google free listings:sag organic':{p:'Google',c:'Google free listings',name:'sag_organic'},'Other:Direct:':{p:'Other',c:'Direct',name:''},'Other:Email:welcome':{p:'Other',c:'Email',name:'welcome'}};
+  const mix=[['Meta','Meta Ads (paid)','facebook','paid','120','Meta:120','Meta click ID (fbclid)',3,1500,4200],['Google','Google Ads (paid)','google','paid','2167','Google:2167','Own site (no ad ID)',3,1400,3100],['Google','Google free listings','google','product_sync','sag_organic','Google:Google free listings:sag organic','Own site (no ad ID)',4,1300,0],['Other','Direct','direct','','','Other:Direct:','Google Shopping click ID (srsltid)',1,1600,0],['Other','Direct','direct','','','Other:Direct:','Own site (no ad ID)',2,1600,0],['Other','Email','shopify_email','email','welcome','Other:Email:welcome','Own site (no ad ID)',1,1200,0]];
+  const rows=[],spend=[],days=[],ledger=[];
+  for(let i=94;i>=0;i--){ const d=addDays(today,-i), w=0.8+0.4*Math.sin(i/6);
+    mix.forEach(m=>{ const n=Math.round(m[7]*w); if(n>0){ rows.push([d,m[0],m[1],m[5],n,n*m[8],0,0]); ledger.push([d,m[0],m[1],m[2],m[3],m[4],'','',m[6],n,n*m[8]]); } if(m[9]&&!spend.some(x=>x[0]===d&&x[1]===m[5])) spend.push([d,m[5],Math.round(m[9]*w)]); });
+    days.push([d,i%11===0?2:0,i%11===0?4:0,i%17===0?1:0,1]); }
+  return {testBelow:10,days,rows,spend,camps,ledger};
+}
+function sourcesTab(x){
+  const c=x.c, cid=c.id, st=SRC[cid];
+  if(!st){ SRC[cid]={loading:true}; setTimeout(()=>srcLoad(cid),0); return '<div class="glass-panel"><h2>Order sources</h2><div class="note">Loading the last visit behind every order...</div></div>'; }
+  if(st.loading) return '<div class="glass-panel"><h2>Order sources</h2><div class="note">Loading the last visit behind every order...</div></div>';
+  if(st.error) return '<div class="glass-panel"><h2>Order sources</h2><div class="note">Could not load ('+esc(st.error)+'). <button class="crchip" data-act="srcreload" data-client="'+esc(cid)+'">Try again</button></div></div>';
+  const S=st.data; const spec=(state.range==='today'||state.range==='yesterday')?x.spec:x.spec; const w=window_(D.today,spec);
+  const inW=d=>d>=w.start&&d<=w.end;
+  const days=(S.days||[]).filter(d=>inW(d[0]));
+  if(!days.some(d=>d[4])) return '<div class="glass-panel"><h2>Order sources</h2><div class="note">No order sources stored for '+spec.label+' yet. They are captured from the next Shopify sync onward; run a 90 day refresh for this client to fill the history.</div></div>';
+  const pf=state.srcPf||'All';
+  const rowsAll=(S.rows||[]).filter(r=>inW(r[0]));
+  const rows=rowsAll.filter(r=>pf==='All'||r[1]===pf);
+  let tests=0,testV=0,canc=0; days.forEach(d=>{tests+=d[1];testV+=d[2];canc+=d[3];});
+  const tot=rows.reduce((a,r)=>(a.n+=r[4],a.v+=r[5],a.nc+=r[6],a.cod+=r[7],a),{n:0,v:0,nc:0,cod:0});
+  const byPf={Meta:0,Google:0,Other:0}; rowsAll.forEach(r=>byPf[r[1]]=(byPf[r[1]]||0)+r[4]);
+  const allN=rowsAll.reduce((a,r)=>a+r[4],0);
+  // campaigns
+  const cm={}; const camp=k=>{ const m=S.camps[k]||{p:'Other',c:'',name:''}; return cm[k]||(cm[k]={k,p:m.p,c:m.c,name:m.name,id:m.id,n:0,v:0,s:0}); };
+  rows.forEach(r=>{ if(/\(paid\)/.test(r[2])){ const y=camp(r[3]); y.n+=r[4]; y.v+=r[5]; } });
+  (S.spend||[]).forEach(r=>{ if(inW(r[0])){ const m=S.camps[r[1]]; if(m&&(pf==='All'||m.p===pf)) camp(r[1]).s+=r[2]; } });
+  const cml=Object.values(cm).filter(y=>y.n||y.s).sort((a,b)=>b.v-a.v||b.s-a.s);
+  const paid=cml.reduce((a,y)=>(a.s+=y.s,y.s&&(a.v+=y.v),a),{s:0,v:0});
+  // channels
+  const ch={}; rows.forEach(r=>{ const k=r[1]+'|'+r[2]; const y=ch[k]||(ch[k]={p:r[1],c:r[2],n:0,v:0}); y.n+=r[4]; y.v+=r[5]; });
+  const chl=Object.values(ch).sort((a,b)=>b.n-a.n);
+  let h='<div class="glass-panel"><h2>Order sources <span class="sub">'+spec.label+' · last visit before each order, as Shopify recorded it · '+fmtNum(tot.n)+' orders</span><span class="chip good" style="margin-left:8px">Source: Shopify</span></h2>';
+  h+='<div class="crchips" style="margin-bottom:12px">'+['All','Google','Meta','Other'].map(k=>'<button class="crchip'+(pf===k?' on':'')+'" data-act="srcpf" data-pf="'+k+'">'+k+' '+fmtNum(k==='All'?allN:byPf[k]||0)+'</button>').join('')+'</div>';
+  h+='<div class="srckpis"><div><span>Orders</span><b>'+fmtNum(tot.n)+'</b><i>'+fmtNum(tot.nc)+' first-time · '+fmtNum(tot.cod)+' COD</i></div><div><span>Order value</span><b>'+fmtMoney(tot.v,c)+'</b><i>after refunds, incl. tax</i></div><div><span>Spend, campaigns tracked</span><b>'+fmtMoney(paid.s,c)+'</b><i>'+fmtNum(cml.filter(y=>y.s).length)+' campaigns</i></div><div><span>Store ROAS, paid</span><b>'+(paid.s?fmtX(paid.v/paid.s):'--')+'</b><i>store order value / spend</i></div></div>';
+  h+=srcDayChart(rows,w,c);
+  h+='<h3 class="srch">Orders by channel</h3><div class="data-table-wrap"><table class="dtable"><thead><tr><th>Platform</th><th>Channel</th><th class="num">Orders</th><th class="num">Share</th><th class="num">Order value</th></tr></thead><tbody>'
+    +chl.map(y=>'<tr><td><span class="srcdot" style="background:'+SRC_COL[y.p]+'"></span>'+esc(y.p)+'</td><td>'+esc(y.c)+'</td><td class="num">'+fmtNum(y.n)+'</td><td class="num">'+fmtPct(tot.n?y.n/tot.n*100:null)+'</td><td class="num">'+fmtMoney(y.v,c)+'</td></tr>').join('')+'</tbody></table></div>';
+  if(cml.length) h+='<h3 class="srch">Campaigns <span class="sub">orders from the UTM campaign, spend from the ad platform, same days</span></h3><div class="data-table-wrap"><table class="dtable"><thead><tr><th>Platform</th><th>Channel</th><th>Campaign</th><th class="num">Orders</th><th class="num">Order value</th><th class="num">Spend</th><th class="num">Store ROAS</th></tr></thead><tbody>'
+    +cml.map(y=>'<tr><td><span class="srcdot" style="background:'+SRC_COL[y.p]+'"></span>'+esc(y.p)+'</td><td>'+esc(y.c)+'</td><td title="'+esc(y.id?('Campaign id '+y.id):'Not matched to an ad platform campaign')+'">'+esc(y.name||'(no campaign tag)')+(y.id?'':' <span class="sub">not matched</span>')+'</td><td class="num">'+fmtNum(y.n)+'</td><td class="num">'+fmtMoney(y.v,c)+'</td><td class="num">'+(y.s?fmtMoney(y.s,c):'--')+'</td><td class="num">'+(y.s?fmtX(y.v/y.s):'--')+'</td></tr>').join('')
+    +'</tbody><tfoot><tr><td>Paid, with spend</td><td></td><td></td><td></td><td class="num">'+fmtMoney(paid.v,c)+'</td><td class="num">'+fmtMoney(paid.s,c)+'</td><td class="num">'+(paid.s?fmtX(paid.v/paid.s):'--')+'</td></tr></tfoot></table></div>';
+  // UTM ledger
+  const grp=state.srcGroup||'smc', q=(state.srcQ||'').toLowerCase();
+  const G={s:[3],sm:[3,4],smc:[3,4,5],full:[3,4,5,6,7]}[grp]||[3,4,5];
+  const L={}; (S.ledger||[]).filter(r=>inW(r[0])&&(pf==='All'||r[1]===pf)).forEach(r=>{ const key=r[1]+'|'+G.map(i=>String(r[i]||'').toLowerCase()).join('|'); const y=L[key]||(L[key]={p:r[1],vals:G.map(i=>r[i]),n:0,v:0}); y.n+=r[9]; y.v+=r[10]; });
+  let ll=Object.values(L).sort((a,b)=>b.n-a.n); if(q) ll=ll.filter(y=>y.vals.join(' ').toLowerCase().includes(q));
+  const heads={3:'Source',4:'Medium',5:'Campaign',6:'Term',7:'Content'};
+  h+='<h3 class="srch">UTM parameters behind every order <span class="sub">'+fmtNum(ll.length)+' combinations</span></h3><div class="srcctl"><label>Group by <select id="srcGroup">'+[['s','Source'],['sm','Source and medium'],['smc','Source, medium and campaign'],['full','Full UTM (adds term and content)']].map(o=>'<option value="'+o[0]+'"'+(grp===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select></label><input id="srcQ" type="search" placeholder="Search a UTM value" value="'+esc(state.srcQ||'')+'"></div>';
+  h+='<div class="data-table-wrap srcledger"><table class="dtable"><thead><tr><th>Platform</th>'+G.map(i=>'<th>'+heads[i]+'</th>').join('')+'<th class="num">Orders</th><th class="num">Share</th><th class="num">Order value</th></tr></thead><tbody>'
+    +ll.slice(0,200).map(y=>'<tr><td><span class="srcdot" style="background:'+SRC_COL[y.p]+'"></span>'+esc(y.p)+'</td>'+y.vals.map(v=>'<td class="utmv">'+(v?esc(v):'<i class="sub">(not set)</i>')+'</td>').join('')+'<td class="num">'+fmtNum(y.n)+'</td><td class="num">'+fmtPct(tot.n?y.n/tot.n*100:null)+'</td><td class="num">'+fmtMoney(y.v,c)+'</td></tr>').join('')+'</tbody></table></div>';
+  // Direct bucket
+  const DB={}; (S.ledger||[]).filter(r=>inW(r[0])&&r[2]==='Direct').forEach(r=>{ const y=DB[r[8]]||(DB[r[8]]={k:r[8],n:0,v:0}); y.n+=r[9]; y.v+=r[10]; });
+  const dbl=Object.values(DB).sort((a,b)=>b.n-a.n);
+  if(dbl.length) h+='<h3 class="srch">Inside the Direct bucket <span class="sub">what the store had on orders with no source</span></h3><div class="data-table-wrap"><table class="dtable"><thead><tr><th>Evidence on the order</th><th class="num">Orders</th><th class="num">Order value</th></tr></thead><tbody>'+dbl.map(y=>'<tr><td>'+esc(y.k)+'</td><td class="num">'+fmtNum(y.n)+'</td><td class="num">'+fmtMoney(y.v,c)+'</td></tr>').join('')+'</tbody></table></div>';
+  h+='<div class="note">How orders are sorted: the UTM on the last visit Shopify recorded, then UTM keys a checkout app wrote into the order notes (GoKwik and similar), then click IDs on the landing page (gclid or gbraid = Google Ads, srsltid = Google free listings, fbclid = Meta), then the referrer. Nothing else is guessed; an order with none of it is Direct. Spend and Store ROAS come from campaigns matched by the id or name in utm_campaign; an unmatched campaign shows "not matched" and no spend. '
+    +(tests?fmtNum(tests)+' test orders ('+fmtMoney(testV,c)+') are left out: Shopify test orders and anything under '+fmtMoney(S.testBelow||10,c)+'. ':'')+(canc?fmtNum(canc)+' cancelled orders are left out. ':'')+'The client report shows the platform, channel and campaign tables only, with cleaned campaign names.</div>';
+  return h+'</div>';
+}
+function srcDayChart(rows,w,c){
+  const ds=[]; for(let d=w.start;d<=w.end;d=addDays(d,1)) ds.push(d);
+  if(ds.length<2) return '';
+  const by={}; rows.forEach(r=>{ const y=by[r[0]]||(by[r[0]]={Meta:0,Google:0,Other:0}); y[r[1]]+=r[4]; });
+  const max=Math.max(1,...ds.map(d=>{const y=by[d]||{};return (y.Meta||0)+(y.Google||0)+(y.Other||0);}));
+  const W=900,H=150,bw=W/ds.length;
+  let g=''; ds.forEach((d,i)=>{ let y0=H; ['Google','Meta','Other'].forEach(k=>{ const v=(by[d]||{})[k]||0; if(!v) return; const hh=v/max*(H-6); y0-=hh; g+='<rect x="'+(i*bw+1).toFixed(1)+'" y="'+y0.toFixed(1)+'" width="'+Math.max(1,bw-2).toFixed(1)+'" height="'+hh.toFixed(1)+'" fill="'+SRC_COL[k]+'"><title>'+d+' · '+k+' '+v+'</title></rect>'; }); });
+  return '<div class="legend" style="margin:6px 0"><span><i class="srcdot" style="background:'+SRC_COL.Google+'"></i>Google</span><span><i class="srcdot" style="background:'+SRC_COL.Meta+'"></i>Meta</span><span><i class="srcdot" style="background:'+SRC_COL.Other+'"></i>Other</span><span class="sub">orders per day, peak '+fmtNum(max)+'</span></div><svg class="chart" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="width:100%;height:150px;display:block">'+g+'</svg>';
 }
 function trendChart(x){
   const c=x.c,isE=c.type==='ecom'; const spec=state.range==='today'||state.range==='yesterday'?rangeSpec('14d',D.today):x.spec;
@@ -2770,6 +2859,8 @@ document.addEventListener('click',e=>{
   else if(act==='plmode'){ state.plMode=el.dataset.m; render(); }
   else if(act==='plsort'){ const k=el.dataset.k, p=state.plSort; state.plSort=p.key===k?{key:k,dir:p.dir==='asc'?'desc':'asc'}:{key:k,dir:k==='name'?'asc':(k==='dev'?'asc':'desc')}; render(); }
   else if(act==='tab'){ state.tab=el.dataset.tab; render(); }
+  else if(act==='srcpf'){ state.srcPf=el.dataset.pf; render(); }
+  else if(act==='srcreload'){ delete SRC[el.dataset.client]; render(); }
   else if(act==='crf'){ if(!el.disabled){ state.crf=el.dataset.crf; render(); } }
   else if(act==='crembed'){ crEmbed(el.dataset.ad); }
   else if(act==='crclose'){ const m=document.getElementById('crmodal'); if(m) m.remove(); }
@@ -2812,7 +2903,8 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){ e.preventDefault(); if(cmdk.classList.contains('open')) closeCmdk(); else openCmdk(); } if((e.key==='Enter'||e.key===' ')&&e.target.matches('tr.rowlink')){e.preventDefault();go(e.target.dataset.client)}
   if((e.key==='Enter'||e.key===' ')&&e.target.matches('.kpi-card.clickable')){e.preventDefault();metricModal(e.target.dataset.metric)} if(e.key==='Escape'){ document.querySelectorAll('.modal').forEach(m=>m.remove()); closeCmdk(); } });
-document.addEventListener('change',e=>{ if(e.target.id==='mobilePick') go(e.target.value||null) });
+document.addEventListener('change',e=>{ if(e.target.id==='mobilePick') go(e.target.value||null); if(e.target.id==='srcGroup'){ state.srcGroup=e.target.value; render(); } });
+document.addEventListener('input',e=>{ if(e.target.id==='srcQ'){ state.srcQ=e.target.value; clearTimeout(window.__srcT); window.__srcT=setTimeout(()=>{ const pos=e.target.selectionStart; render(); const q=document.getElementById('srcQ'); if(q){ q.focus(); try{q.setSelectionRange(pos,pos);}catch(_){} } },250); } });
 document.addEventListener('input',e=>{ if(e.target.id==='q'){ state.q=e.target.value; const nav=root.querySelector('.sidebar'); if(nav){ const pos=e.target.selectionStart; nav.innerHTML=sidebar(); const q=root.querySelector('#q'); q.value=state.q; q.focus(); q.setSelectionRange(pos,pos); } } });
 
 // Sync is authorised with the signed-in user's own Firebase ID token, not with a shared secret.

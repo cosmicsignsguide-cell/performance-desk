@@ -8,8 +8,15 @@
 
 import { config, shopifyTokenFor } from '../config.js';
 import { fetchJson, emptyDaily, log, num, round, addDays, tzOffset } from '../util.js';
+import { classifyOrder, isTestOrder, payOf, groupDay } from '../orderSources.js';
 
-const ORDERS_Q = `query DeskOrders($q: String!, $after: String) { orders(first: 100, after: $after, query: $q, sortKey: CREATED_AT) { pageInfo { hasNextPage endCursor } nodes { id name createdAt cancelledAt displayFinancialStatus currentSubtotalPriceSet { shopMoney { amount currencyCode } } currentTotalPriceSet { shopMoney { amount } } currentTotalTaxSet { shopMoney { amount } } totalRefundedSet { shopMoney { amount } } customer { id numberOfOrders } customerJourneySummary { customerOrderIndex firstVisit { source } } discountCodes lineItems(first: 50) { nodes { quantity title product { id title } variant { id } originalUnitPriceSet { shopMoney { amount } } } } } } }`;
+const ORDERS_Q = `query DeskOrders($q: String!, $after: String) { orders(first: 100, after: $after, query: $q, sortKey: CREATED_AT) { pageInfo { hasNextPage endCursor } nodes { id name createdAt cancelledAt displayFinancialStatus currentSubtotalPriceSet { shopMoney { amount currencyCode } } currentTotalPriceSet { shopMoney { amount } } currentTotalTaxSet { shopMoney { amount } } totalRefundedSet { shopMoney { amount } } customer { id numberOfOrders } %s discountCodes lineItems(first: 50) { nodes { quantity title product { id title } variant { id } originalUnitPriceSet { shopMoney { amount } } } } } } }`;
+// Same query plus what the Order sources view needs: the last visit with its UTM parameters, landing
+// page and referrer, the note attributes checkout apps write UTMs into, the payment gateway (COD or
+// prepaid) and Shopify's own test flag. Kept as a second query, not an edit of the first, so a store
+// whose token or API version rejects any of these fields still syncs its sales exactly as before.
+const ORDERS_Q_BASE = ORDERS_Q.replace('%s', 'customerJourneySummary { customerOrderIndex firstVisit { source } }');
+const ORDERS_Q_SRC = ORDERS_Q.replace('%s', 'customerJourneySummary { customerOrderIndex firstVisit { source } lastVisit { source referrerUrl landingPage utmParameters { source medium campaign term content } } } test paymentGatewayNames customAttributes { key value }');
 const ABANDONED_Q = `query DeskAbandoned($q: String!, $after: String) { abandonedCheckouts(first: 100, after: $after, query: $q) { pageInfo { hasNextPage endCursor } nodes { id createdAt completedAt } } }`;
 const PRODUCTS_Q = `query DeskProducts($ids: [ID!]!) { nodes(ids: $ids) { ... on Product { id title totalInventory featuredMedia { preview { image { url } } } variants(first: 1) { nodes { price } } } } }`;
 const SHOP_Q = `query DeskShop { shop { name myshopifyDomain currencyCode ianaTimezone plan { publicDisplayName } primaryDomain { url } } }`;
@@ -102,8 +109,15 @@ export async function sessionsByDay(client, since, until) {
 export async function fetchDaily(client, since, until) {
   const off = tzOffset();
   const q = `created_at:>='${since}T00:00:00${off}' created_at:<='${until}T23:59:59${off}'`;
-  const [orders, abandoned] = await Promise.all([
-    allPages(client, ORDERS_Q, q, 'orders'),
+  const ordersWithSources = async () => {
+    try { return { list: await allPages(client, ORDERS_Q_SRC, q, 'orders'), src: true }; }
+    catch (e) {
+      log(`shopify ${client.id}: order sources unavailable (${String(e.message || e).slice(0, 140)}), syncing sales without them`);
+      return { list: await allPages(client, ORDERS_Q_BASE, q, 'orders'), src: false };
+    }
+  };
+  const [{ list: orders, src: hasSources }, abandoned] = await Promise.all([
+    ordersWithSources(),
     allPages(client, ABANDONED_Q, q, 'abandonedCheckouts'),
   ]);
   const byDay = {};
@@ -169,7 +183,23 @@ export async function fetchDaily(client, since, until) {
     source: o.customerJourneySummary?.firstVisit?.source || '',
     discount: (o.discountCodes || []).join(', '),
   }));
-  return { rows, products: Object.values(products), recentOrders };
+  // Order sources, one compact document per day (see orderSources.js). Every day in the window is
+  // written, empty ones included, so a day that lost its orders to cancellations is overwritten too.
+  let orderDays = null;
+  if (hasSources) {
+    orderDays = {};
+    for (let d = since; d <= until; d = addDays(d, 1)) orderDays[d] = { list: [], test: { n: 0, v: 0 }, cancelled: { n: 0, v: 0 } };
+    for (const o of orders) {
+      const d = dayOf(o.createdAt); const day = orderDays[d]; if (!day) continue;
+      const v = Math.max(0, num(o.currentTotalPriceSet?.shopMoney?.amount) - num(o.totalRefundedSet?.shopMoney?.amount));
+      if (isTestOrder(o, v)) { day.test.n += 1; day.test.v = round(day.test.v + v); continue; }
+      if (o.cancelledAt || o.displayFinancialStatus === 'VOIDED') { day.cancelled.n += 1; day.cancelled.v = round(day.cancelled.v + num(o.currentTotalPriceSet?.shopMoney?.amount)); continue; }
+      const nc = o.customerJourneySummary?.customerOrderIndex === 1 || (!o.customerJourneySummary && o.customer?.numberOfOrders === 1);
+      day.list.push({ ...classifyOrder(o), v: round(v), nc, cod: payOf(o) === 'COD' });
+    }
+    for (const d in orderDays) { const x = orderDays[d]; orderDays[d] = { g: groupDay(x.list), test: x.test, cancelled: x.cancelled }; }
+  }
+  return { rows, products: Object.values(products), recentOrders, orderDays };
 }
 
 // Top products for the last 30 days with live inventory, so ads on an out-of-stock SKU show up.

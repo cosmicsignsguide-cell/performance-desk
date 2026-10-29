@@ -159,6 +159,19 @@ export async function fetchDaily(client, since, until) {
   return data.map((r) => rowFromInsight(client.id, r));
 }
 
+// Spend per campaign per day, for the Order sources view: what each campaign cost on the days its
+// orders came in, so a campaign's store ROAS can be read off the same window. Small call (three
+// fields, campaign level) and only made for clients whose orders are tracked.
+export async function fetchCampaignSpend(client, since, until) {
+  const accountId = client.accounts.meta;
+  const data = await pagedRange(
+    (s, u) => insightsUrl(accountId, { level: 'campaign', time_increment: '1', fields: 'spend,campaign_id,campaign_name', time_range: JSON.stringify({ since: s, until: u }) }),
+    since, until);
+  const out = {};
+  for (const r of data) { const sp = round(num(r.spend)); if (!sp) continue; (out[r.date_start] = out[r.date_start] || []).push([String(r.campaign_id), r.campaign_name || '', sp]); }
+  return out;
+}
+
 function metrics(r) {
   const spend = num(r.spend), imp = num(r.impressions), clicks = num(r.clicks);
   return {

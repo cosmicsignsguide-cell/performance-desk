@@ -14,6 +14,8 @@
 import crypto from 'node:crypto';
 import { addDays, nowIso, round, todayStr } from './util.js';
 import * as meta from './fetchers/meta.js';
+import { dailyIdRange } from './db.js';
+import { buildSourceFeed } from './orderSources.js';
 
 const DAYS = 95;                 // enough for this month, last month, and a 90-day trend
 const newToken = () => crypto.randomBytes(24).toString('base64url');   // 192 bits
@@ -240,6 +242,13 @@ export async function reportPayload(store, clientId) {
   // set on the client record. An unset target used to fall back to 3x, which put an invented
   // number on a page the client reads as a commitment; nothing is invented here, and the page
   // says "not set" rather than guessing. The AM and the internal slug still stay out.
+  // Order sources: where each store order came from (last visit), by platform, channel and
+  // campaign, with each campaign's spend and store ROAS. Cleaned names only, no raw UTM strings.
+  let sources = null;
+  if (c.type !== 'lead' && c.accounts?.shopify?.shop) {
+    const docs = await store.list('orderdays', dailyIdRange(clientId, since, today));
+    if (docs.some((x) => Array.isArray(x.g))) sources = buildSourceFeed(docs.filter((x) => x.clientId === clientId), { internal: false, clean: cleanName, clientName: c.name });
+  }
   const target = c.type === 'lead' ? (c.target?.cpl ?? null) : (c.target?.roas ?? null);
   return {
     top: { window: 'last 30 days', campaigns, creatives, products },
@@ -255,5 +264,6 @@ export async function reportPayload(store, clientId) {
     today,
     generatedAt: nowIso(),
     daily,
+    ...(sources ? { sources } : {}),
   };
 }

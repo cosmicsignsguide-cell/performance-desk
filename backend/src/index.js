@@ -24,6 +24,7 @@ import { createUpload, listMine, listToday, istToday } from './creatorPortal.js'
 import { raise } from './alerts.js';
 import { handleChat, notesApi } from './chat/index.js';
 import { verifyShopify, verifyMeta } from './verify.js';
+import { buildSourceFeed } from './orderSources.js';
 import Sample from './sample.cjs';
 
 const SAMPLE_FALLBACK = /^(1|true|yes)$/i.test(process.env.DESK_SAMPLE_FALLBACK || '');
@@ -36,6 +37,19 @@ function sourceState(client, source) {
   if (source === 'ga4') return !a.ga4 ? 'not-configured' : has('ga4') ? 'ready' : 'no-token';
   return 'not-configured';
 }
+
+// Order sources live in orderdays/{clientId}_{date}: the grouped orders of that day from Shopify
+// plus each ad platform's spend per campaign that day. The three parts are written by three
+// different steps of the sync, so each writes only its own fields (merge), and every day of the
+// window is written, empty days included, so a stale figure is always overwritten. Arrays rather
+// than maps on purpose: a merge replaces an array whole, where it would deep-merge a map and keep
+// a campaign that has since dropped to zero.
+async function writeOrderDays(store, client, since, until, byDate, pick) {
+  const rows = [];
+  for (let d = since; d <= until; d = addDays(d, 1)) rows.push({ id: `${client.id}_${d}`, data: { clientId: client.id, date: d, ...pick(byDate[d]), updatedAt: nowIso() } });
+  await store.batchSet('orderdays', rows);
+}
+const tracksOrders = (client) => client.type !== 'lead' && !!client.accounts?.shopify?.shop;
 
 async function writeDaily(store, rows) {
   await store.batchSet('daily', rows.map((r) => ({ id: dailyId(r.clientId, r.date, r.platform), data: { ...r, updatedAt: nowIso() } })));
@@ -139,6 +153,10 @@ async function syncClient(store, client, { mode, days }) {
       if (source === 'meta') {
         const rows = await meta.fetchDaily(client, since, today);
         await writeDaily(store, rows);
+        if (tracksOrders(client)) {
+          try { const sp = await meta.fetchCampaignSpend(client, since, today); await writeOrderDays(store, client, since, today, sp, (x) => ({ spendMeta: (x || []).flat() })); }
+          catch (e) { log(`${client.id}/meta: campaign spend for order sources skipped: ${String(e.message || e).slice(0, 120)}`); }
+        }
         if (mode === 'daily' && entitiesDue(ent, source)) {
           const e = await meta.fetchEntities(client, untilFull);
           ent.campaigns = [...(ent.campaigns || []).filter((c) => c.platform !== 'meta'), ...e.campaigns];
@@ -158,14 +176,19 @@ async function syncClient(store, client, { mode, days }) {
       } else if (source === 'google') {
         const rows = await google.fetchDaily(client, since, today);
         await writeDaily(store, rows);
+        if (tracksOrders(client)) {
+          try { const sp = await google.fetchCampaignSpend(client, since, today); await writeOrderDays(store, client, since, today, sp, (x) => ({ spendGoogle: (x || []).flat() })); }
+          catch (e) { log(`${client.id}/google: campaign spend for order sources skipped: ${String(e.message || e).slice(0, 120)}`); }
+        }
         if (mode === 'daily' && entitiesDue(ent, source)) {
           const e = await google.fetchEntities(client, untilFull);
           ent.campaigns = [...(ent.campaigns || []).filter((c) => c.platform !== 'google'), ...e.campaigns];
           ent.entitiesAt = { ...(ent.entitiesAt || {}), google: nowIso() };
         }
       } else if (source === 'shopify' && isE) {
-        const { rows, recentOrders } = await shopify.fetchDaily(client, since, today);
+        const { rows, recentOrders, orderDays } = await shopify.fetchDaily(client, since, today);
         await writeDaily(store, rows);
+        if (orderDays) await writeOrderDays(store, client, since, today, orderDays, (x) => ({ g: (x?.g || []).flat(), gw: 12, test: x?.test || { n: 0, v: 0 }, cancelled: x?.cancelled || { n: 0, v: 0 } }));
         ent.recentOrders = recentOrders;
         if (mode === 'daily' && entitiesDue(ent, source)) { ent.products = await shopify.fetchProducts(client, untilFull); ent.entitiesAt = { ...(ent.entitiesAt || {}), shopify: nowIso() }; }
       } else if (source === 'ga4') {
@@ -468,7 +491,7 @@ async function main() {
 
       const isCreatorRoute = url.pathname.startsWith('/creator/');
       const isChatRoute = url.pathname === '/chat' || url.pathname.startsWith('/chat/');
-      if (!isCreatorRoute && !isChatRoute && !['/sync', '/run', '/links', '/rotate', '/creators', '/creators/today'].includes(url.pathname)) { res.writeHead(404); res.end('not found'); return; }
+      if (!isCreatorRoute && !isChatRoute && !['/sync', '/run', '/links', '/rotate', '/creators', '/creators/today', '/sources'].includes(url.pathname)) { res.writeHead(404); res.end('not found'); return; }
 
       // Two ways in, and only one of them may ever reach a browser.
       //
@@ -542,6 +565,20 @@ async function main() {
       }
 
       // GET /links — every client's report URL, for pasting into an email. Behind the sync key.
+      // GET /sources?client=<id>&days=95 — the team's Order sources view for one client: raw UTM
+      // values, the ledger and the Direct bucket evidence. Same sign-in as Sync now.
+      if (url.pathname === '/sources') {
+        const id = String(url.searchParams.get('client') || '').trim().toLowerCase();
+        const n = Math.min(Math.max(parseInt(url.searchParams.get('days') || '95', 10) || 95, 1), 120);
+        const c = id && (await store.get('clients', id));
+        if (!c) { res.writeHead(404); res.end('not found'); return; }
+        const until = todayStr(), since = addDays(until, -(n - 1));
+        const docs = (await store.list('orderdays', dailyIdRange(id, since, until))).filter((x) => x.clientId === id);
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ client: { id, name: c.name, currency: c.currency || 'INR' }, since, until, ...buildSourceFeed(docs, { internal: true }) }));
+        return;
+      }
+
       if (url.pathname === '/links') {
         const clients = await loadClients();
         const rows = await listLinks(store, clients, reportBase(req));

@@ -44,6 +44,16 @@ export async function fetchDaily(client, since, until) {
   });
 }
 
+// Spend per campaign per day, for the Order sources view (see meta.fetchCampaignSpend).
+export async function fetchCampaignSpend(client, since, until) {
+  const rows = await gaql(client.accounts.google, `
+    SELECT campaign.id, campaign.name, segments.date, metrics.cost_micros
+    FROM campaign WHERE segments.date BETWEEN '${since}' AND '${until}' AND metrics.cost_micros > 0`);
+  const out = {};
+  for (const r of rows) { const sp = round(micros(r.metrics.costMicros)); if (!sp) continue; (out[r.segments.date] = out[r.segments.date] || []).push([String(r.campaign.id), r.campaign.name || '', sp]); }
+  return out;
+}
+
 export async function fetchEntities(client, until) {
   const since = addDays(until, -29);
   const isE = client.type !== 'lead';
