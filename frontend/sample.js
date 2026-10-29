@@ -222,7 +222,7 @@
       PRODUCTS.forEach((title, i) => {
         const share = w[i] / sw; const units = Math.round(sh.units * share); const units7 = Math.round(sh7.units * share * (0.7 + rnd() * 0.6));
         const inv = i === 1 ? 9 : Math.round(units * (0.4 + rnd() * 2.5));
-        products.push({ id: `${client.id}-p${i}`, title, units, units7, revenue: Math.round(sh.netSales * share * (0.9 + rnd() * 0.2)), orders: Math.round(sh.orders * share), inventory: inv, price: Math.round(p.aov * (0.5 + rnd())), image: '' });
+        products.push({ id: `${client.id}-p${i}`, title, units, units7, revenue: Math.round(sh.netSales * share * (0.9 + rnd() * 0.2)), orders: Math.round(sh.orders * share), inventory: inv, price: Math.round(p.aov * (0.5 + rnd())), image: '', url: i % 5 === 4 ? '' : `https://example-store.in/products/sample-${i}` });
       });
       products.sort((a, b) => b.revenue - a.revenue);
     }

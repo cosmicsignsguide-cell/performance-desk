@@ -18,7 +18,7 @@ const ORDERS_Q = `query DeskOrders($q: String!, $after: String) { orders(first: 
 const ORDERS_Q_BASE = ORDERS_Q.replace('%s', 'customerJourneySummary { customerOrderIndex firstVisit { source } }');
 const ORDERS_Q_SRC = ORDERS_Q.replace('%s', 'customerJourneySummary { customerOrderIndex firstVisit { source } lastVisit { source referrerUrl landingPage utmParameters { source medium campaign term content } } } test paymentGatewayNames customAttributes { key value }');
 const ABANDONED_Q = `query DeskAbandoned($q: String!, $after: String) { abandonedCheckouts(first: 100, after: $after, query: $q) { pageInfo { hasNextPage endCursor } nodes { id createdAt completedAt } } }`;
-const PRODUCTS_Q = `query DeskProducts($ids: [ID!]!) { nodes(ids: $ids) { ... on Product { id title totalInventory featuredMedia { preview { image { url } } } variants(first: 1) { nodes { price } } } } }`;
+const PRODUCTS_Q = `query DeskProducts($ids: [ID!]!) { nodes(ids: $ids) { ... on Product { id title handle onlineStoreUrl totalInventory featuredMedia { preview { image { url } } } variants(first: 1) { nodes { price } } } } }`;
 const SHOP_Q = `query DeskShop { shop { name myshopifyDomain currencyCode ianaTimezone plan { publicDisplayName } primaryDomain { url } } }`;
 
 // ShopifyQL against Shopify's own reporting engine. This is the whole point: gross sales, discounts,
@@ -213,7 +213,15 @@ export async function fetchProducts(client, until) {
     const data = await gql(client, PRODUCTS_Q, { ids });
     info = Object.fromEntries((data.nodes || []).filter(Boolean).map((n) => [n.id, n]));
   }
-  return top.map((p) => ({ ...p, revenue: round(p.revenue), inventory: info[p.id]?.totalInventory ?? null, image: info[p.id]?.featuredMedia?.preview?.image?.url || '', price: num(info[p.id]?.variants?.nodes?.[0]?.price) }));
+  // The store link: Shopify's own online store URL when the product is published there, else the
+  // store domain plus /products/<handle>. The name comes from the product itself first, because a
+  // line item keeps whatever title the product had on the day it was ordered (or none at all).
+  const base = String(client.site?.url || (client.accounts?.shopify?.shop ? `https://${client.accounts.shopify.shop}` : '')).replace(/\/$/, '');
+  return top.map((p) => {
+    const n = info[p.id] || {};
+    const url = /^https:\/\//.test(n.onlineStoreUrl || '') ? n.onlineStoreUrl : (n.handle && base ? `${base}/products/${n.handle}` : '');
+    return { ...p, title: n.title || p.title || '', url, revenue: round(p.revenue), inventory: n.totalInventory ?? null, image: n.featuredMedia?.preview?.image?.url || '', price: num(n.variants?.nodes?.[0]?.price) };
+  });
 }
 
 export async function testToken(client) {
