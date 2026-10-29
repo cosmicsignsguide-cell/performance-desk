@@ -247,7 +247,7 @@ export async function reportPayload(store, clientId) {
   let sources = null;
   if (c.type !== 'lead' && c.accounts?.shopify?.shop) {
     const docs = await store.list('orderdays', dailyIdRange(clientId, since, today));
-    if (docs.some((x) => Array.isArray(x.g))) sources = buildSourceFeed(docs.filter((x) => x.clientId === clientId), { internal: false, clean: cleanName, clientName: c.name });
+    if (docs.some((x) => Array.isArray(x.g))) sources = buildSourceFeed(docs.filter((x) => x.clientId === clientId), { internal: false, clean: cleanName, clientName: c.name, entities: ent });
   }
   const target = c.type === 'lead' ? (c.target?.cpl ?? null) : (c.target?.roas ?? null);
   return {

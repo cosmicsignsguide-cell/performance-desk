@@ -172,7 +172,10 @@ export const normName = (v) => lc(v).replace(/[^a-z0-9]+/g, ' ').trim();
 // opts.internal  true for the team's dashboard: raw names, the full UTM ledger and the Direct
 //                bucket evidence. false for the client report: cleaned names, no raw UTM strings.
 // opts.clean     the report's name cleaner (passed in to keep this module free of report.js).
-export function buildSourceFeed(docs, { internal = false, clean = (n) => n, clientName = '' } = {}) {
+// opts.entities  the client's entity tree (campaigns, ad sets, ads). Many URL templates put the ad
+//                set or ad id in utm_campaign instead of the campaign id; the tree maps those back to
+//                their campaign, and also names campaigns that had no spend inside the window.
+export function buildSourceFeed(docs, { internal = false, clean = (n) => n, clientName = '', entities = null } = {}) {
   const days = [], rows = [], ledger = [], spend = [], camps = {};
   const idx = { Meta: { byId: new Map(), byName: new Map() }, Google: { byId: new Map(), byName: new Map() } };
   const sorted = docs.slice().sort((a, b) => (a.date < b.date ? -1 : 1));
@@ -196,16 +199,31 @@ export function buildSourceFeed(docs, { internal = false, clean = (n) => n, clie
     const out = count === 1 ? hit : '';
     tokCache.set(key, out); return out;
   };
+  const alias = new Map();   // ad set or ad id -> campaign id (Meta)
+  if (entities) {
+    for (const c of entities.campaigns || []) {
+      const p = c.platform === 'google' ? 'Google' : 'Meta';
+      const id = String(c.id || ''); if (!id) continue;
+      if (!idx[p].byId.has(id)) idx[p].byId.set(id, c.name || '');
+      if (c.name && !idx[p].byName.has(normName(c.name))) idx[p].byName.set(normName(c.name), id);
+    }
+    for (const x of [...(entities.adsets || []), ...(entities.ads || [])]) {
+      if (!x?.id || !x.campaignId) continue;
+      alias.set(String(x.id), String(x.campaignId));
+      if (!idx.Meta.byId.has(String(x.campaignId)) && x.campaignName) idx.Meta.byId.set(String(x.campaignId), x.campaignName);
+    }
+  }
   const label = (p, id, raw) => {
     if (internal) return id ? `${idx[p].byId.get(id) || raw}` : (raw || '(no campaign tag)');
     if (id) return clean(idx[p].byId.get(id) || raw, clientName, 'campaign');
     if (!raw) return 'Untagged';
+    if (/\{\{.*\}\}/.test(raw)) return 'Untagged (link template not filled)';
     if (/^\d{6,}$/.test(raw)) return 'Campaign ending ' + raw.slice(-4);
     return clean(raw, clientName, 'campaign');
   };
   const keyOf = (p, c, ca) => {
     if (idx[p]) {
-      const id = idx[p].byId.has(String(ca)) ? String(ca) : (idx[p].byName.get(normName(ca)) || tokenMatch(p, ca));
+      const id = idx[p].byId.has(String(ca)) ? String(ca) : (p === 'Meta' && alias.has(String(ca)) ? alias.get(String(ca)) : '') || idx[p].byName.get(normName(ca)) || tokenMatch(p, ca);
       if (id) { const k = `${p}:${id}`; if (!camps[k]) camps[k] = { p, c: p === 'Meta' ? 'Meta Ads (paid)' : 'Google Ads (paid)', name: label(p, id, ca), id: internal ? id : undefined }; return k; }
     }
     const k = `${p}:${c}:${normName(ca)}`;

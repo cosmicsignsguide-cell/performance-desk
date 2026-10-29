@@ -201,7 +201,7 @@ async function syncClient(store, client, { mode, days }) {
           // their spend and store ROAS, and the paid order value that could not be tied to a campaign.
           try {
             const docs = (await store.list('orderdays', dailyIdRange(client.id, since, today))).filter((x) => x.clientId === client.id);
-            const f = buildSourceFeed(docs, { internal: true });
+            const f = buildSourceFeed(docs, { internal: true, entities: ent });
             const agg = {};
             for (const r of f.rows) { if (!/\(paid\)/.test(r[2])) continue; const a2 = agg[r[3]] || (agg[r[3]] = { n: 0, v: 0, s: 0 }); a2.n += r[4]; a2.v += r[5]; }
             for (const r of f.spend) { const a2 = agg[r[1]] || (agg[r[1]] = { n: 0, v: 0, s: 0 }); a2.s += r[2]; }
@@ -597,7 +597,7 @@ async function main() {
         const until = todayStr(), since = addDays(until, -(n - 1));
         const docs = (await store.list('orderdays', dailyIdRange(id, since, until))).filter((x) => x.clientId === id);
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ client: { id, name: c.name, currency: c.currency || 'INR' }, since, until, ...buildSourceFeed(docs, { internal: true }) }));
+        res.end(JSON.stringify({ client: { id, name: c.name, currency: c.currency || 'INR' }, since, until, ...buildSourceFeed(docs, { internal: true, entities: await store.get('entities', id) }) }));
         return;
       }
 
