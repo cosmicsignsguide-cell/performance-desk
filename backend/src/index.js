@@ -196,6 +196,21 @@ async function syncClient(store, client, { mode, days }) {
           for (const r of g) { by[r[0]] += r[8]; ch[r[1]] = (ch[r[1]] || 0) + r[8]; }
           log(`${client.id}/sources ${d}: G${by.Google} M${by.Meta} O${by.Other} test ${orderDays[d].test.n} cancelled ${orderDays[d].cancelled.n} | ${Object.entries(ch).map(([k, v]) => k + ' ' + v).join(', ')}`);
         }
+        if (orderDays && backfill) {
+          // How well orders tie back to ad platform campaigns over the window: matched campaigns with
+          // their spend and store ROAS, and the paid order value that could not be tied to a campaign.
+          try {
+            const docs = (await store.list('orderdays', dailyIdRange(client.id, since, today))).filter((x) => x.clientId === client.id);
+            const f = buildSourceFeed(docs, { internal: true });
+            const agg = {};
+            for (const r of f.rows) { if (!/\(paid\)/.test(r[2])) continue; const a2 = agg[r[3]] || (agg[r[3]] = { n: 0, v: 0, s: 0 }); a2.n += r[4]; a2.v += r[5]; }
+            for (const r of f.spend) { const a2 = agg[r[1]] || (agg[r[1]] = { n: 0, v: 0, s: 0 }); a2.s += r[2]; }
+            const list = Object.entries(agg).map(([k, x]) => ({ k, ...x, name: f.camps[k]?.name || '', matched: !!f.camps[k]?.id })).sort((a2, b2) => b2.v - a2.v);
+            const um = list.filter((x) => !x.matched);
+            log(`${client.id}/sources campaigns: ${list.filter((x) => x.matched).length} matched, paid order value unmatched ${Math.round(um.reduce((t, x) => t + x.v, 0))} of ${Math.round(list.reduce((t, x) => t + x.v, 0))}`);
+            for (const x of list.slice(0, 12)) log(`${client.id}/sources camp ${x.matched ? 'OK ' : 'NO '}${x.k.slice(0, 60)} "${String(x.name).slice(0, 50)}" orders ${x.n} value ${Math.round(x.v)} spend ${Math.round(x.s)} roas ${x.s ? (x.v / x.s).toFixed(2) : '-'}`);
+          } catch (e) { log(`${client.id}/sources campaigns check failed: ${String(e.message || e).slice(0, 120)}`); }
+        }
         ent.recentOrders = recentOrders;
         if (mode === 'daily' && entitiesDue(ent, source)) { ent.products = await shopify.fetchProducts(client, untilFull); ent.entitiesAt = { ...(ent.entitiesAt || {}), shopify: nowIso() }; }
       } else if (source === 'ga4') {
