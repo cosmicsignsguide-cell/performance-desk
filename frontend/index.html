@@ -688,6 +688,10 @@ table.dtable thead th[data-act]{cursor:pointer} table.dtable thead th:not([data-
 tr.rowlink{cursor:pointer} tr.rowlink:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
 .row-title{color:var(--text);font-weight:600}
 .stock-low{color:var(--red);font-weight:700}
+/* Client view (?s=<token>): the same page, without anything that belongs to the team. */
+html.clientview .rail-search,html.clientview [data-act="alllinks"],html.clientview [data-act="syncnow"],html.clientview [data-act="syncall"],html.clientview .rail-user,html.clientview .rail-bad,
+html.clientview .detail-back,html.clientview [data-act="clientlink"],html.clientview [data-act="update"],html.clientview .mobile-pick,html.clientview [data-act="syncclient"],html.clientview .sidebar,html.clientview .cmdk-hint{display:none!important}
+html.clientview .rail-brand{cursor:default}
 td.pcell{white-space:normal;min-width:280px;max-width:520px}
 .pwrap{display:flex;align-items:center;gap:12px}
 .pimg{width:44px;height:44px;border-radius:8px;object-fit:cover;flex:none;border:1px solid var(--border);background:var(--panel-hover)}
@@ -1346,6 +1350,11 @@ window.addEventListener('unhandledrejection',function(e){ send('promise '+String
    demo: no config -> the same collections generated in memory by sample.js. Everything below the data layer is shared. */
 const CFG = window.DESK_CONFIG || {};
 const LIVE = !!(CFG.firebase && CFG.firebase.projectId);
+// Client view: ?s=<token> opens this same client page for the client, read only, with no sign-in.
+// The token is the client's report token; the API answers with that one client's data only.
+const SHARE = (()=>{ try{ const t=new URLSearchParams(location.search).get('s')||''; return /^[A-Za-z0-9_-]{16,80}$/.test(t)?t:''; }catch(e){ return ''; } })();
+const API_BASE = String(CFG.syncUrl||'').replace(/\/(sync|run)(\?.*)?$/,'').replace(/\/$/,'');
+if(SHARE){ try{ document.documentElement.classList.add('clientview'); }catch(e){} }
 const RANGE_DAYS = 35;
 const TZ = CFG.timezone || 'Asia/Kolkata';
 function isoToday(){ return new Date().toLocaleDateString('en-CA',{timeZone:TZ}); }
@@ -1380,6 +1389,14 @@ let fb=null;
 function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>rej(new Error('failed to load '+src)); document.head.appendChild(s); }); }
 async function initFirebase(){ const v=CFG.firebaseVersion||'10.14.1'; for(const f of ['app','auth','firestore']) await loadScript(`https://cdn.jsdelivr.net/npm/firebase@${v}/firebase-${f}-compat.js`); firebase.initializeApp(CFG.firebase); fb={auth:firebase.auth(),db:firebase.firestore()}; return fb; }
 function allowedEmail(email){ const doms=CFG.allowedDomains||[], users=CFG.allowedEmails||[]; if(!doms.length&&!users.length) return true; const e=(email||'').toLowerCase(); return users.map(x=>x.toLowerCase()).includes(e)||doms.some(d=>e.endsWith('@'+d.toLowerCase())); }
+async function loadShare(){
+  const r=await fetch(API_BASE+'/r/'+encodeURIComponent(SHARE)+'/d',{cache:'no-store'});
+  if(r.status===404) throw new Error('This link is not active any more. Ask your account manager for a new one.');
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const j=await r.json(); const id=j.client.id;
+  if(j.sources) SRC[id]={data:j.sources};
+  return {today:j.today||isoToday(),clients:[j.client],daily:j.daily||[],entities:{[id]:j.entities||{}},signals:{[id]:j.signals||{items:[]}},sitewatch:{},syncs:{[id]:j.syncs||{}},alerts:[],intraday:Object.fromEntries((j.intraday||[]).map(x=>[x.id||(id+'_'+x.date),x])),lastRun:j.lastRun||{},reportTokens:{[id]:SHARE},weekly:[]};
+}
 async function loadLive(){
   const today=isoToday(); const since=addDays(today,-RANGE_DAYS);
   const PFX=(window.DESK_CONFIG&&window.DESK_CONFIG.collectionPrefix)||'';
@@ -1544,11 +1561,12 @@ const ICONS={
 
 /* ============================== STATE / RENDER =========================== */
 let D=null, S={};
+window.__desk={get D(){return D;},set D(v){D=v;},srcSample:(t)=>srcSample(t)};   // read-only hook for tests
 const state={plRange:'7d',plSort:{key:'dev',dir:'asc'},view:'overview',clientId:null,range:'today',tab:'campaigns',crf:'spending',crcall:'',cmpf:'all',crView:'grid',q:'',ovView:'table',showInfo:false,expanded:new Set(),sort:{overview:{key:'health',dir:'asc'},campaigns:{key:'spend',dir:'desc'},ads:{key:'spend',dir:'desc'},products:{key:'revenue',dir:'desc'},orders:{key:'at',dir:'desc'}}};
 const root=document.getElementById('root');
 // #c/<client> opens a client; #c/<client>/<tab> also opens that tab, so a tab can be linked to.
 const TAB_SLUG={campaigns:'campaigns',creatives:'ads',products:'products',sources:'sources',utm:'sources'};
-function readHash(){ const m=location.hash.match(/^#c\/([a-z0-9-]+)(?:\/([a-z]+))?/); if(m&&D&&D.clients.some(c=>c.id===m[1])){state.view='client';state.clientId=m[1]; if(m[2]&&TAB_SLUG[m[2]]) state.tab=TAB_SLUG[m[2]];} else {state.view='overview';state.clientId=null} }
+function readHash(){ if(SHARE&&D&&D.clients[0]){ const t=location.hash.match(/^#c\/[a-z0-9-]+\/([a-z]+)/); state.view='client'; state.clientId=D.clients[0].id; if(t&&TAB_SLUG[t[1]]) state.tab=TAB_SLUG[t[1]]; return; } const m=location.hash.match(/^#c\/([a-z0-9-]+)(?:\/([a-z]+))?/); if(m&&D&&D.clients.some(c=>c.id===m[1])){state.view='client';state.clientId=m[1]; if(m[2]&&TAB_SLUG[m[2]]) state.tab=TAB_SLUG[m[2]];} else {state.view='overview';state.clientId=null} }
 function go(id){ if(id){location.hash='#c/'+id} else { try{history.replaceState(null,'',location.href.split('#')[0])}catch(e){location.hash=''} readHash(); render(); window.scrollTo(0,0); } }
 window.addEventListener('hashchange',()=>{readHash();render();window.scrollTo(0,0);});
 function computeAll(){ S={}; D.clients.forEach(c=>S[c.id]=summarize(D,c,state.range)); }
@@ -1646,7 +1664,7 @@ function topRail(){
     +'<button class="rail-brand" data-act="nav" data-client="" title="Command Center"><span class="rail-mark disp"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:19px;height:19px"><path fill="#fff" d="M2.6 21.4l2.2-8.2.4-4.6C7 4.6 12 3.2 15.2 5.4c.8.6 1.1 1.4 1.2 2.2 2.2.2 4.6 1.4 5.6 3.6.2 1.4-.6 2.6-1.6 3-.4-1-1.4-1.6-2.8-1.8l-1.4 1.8c-.4 1.2-.4 2.4 0 3.6l1.3 3.7-5.5-2.5-4 3-.8-3.5z"/><path fill="var(--accent)" d="M11.6 7.6l3.9.5-.6 1.6-3.1-.3z"/></svg></span><span class="rail-name">GARUDA<u>PER4MANCE GURU</u></span></button>'
     +'<div class="rail-live '+(LIVE?'on':'demo')+'"><span class="dot"></span>'
       +(LIVE?'<span>LIVE</span><span class="sep">/</span><span data-ago="'+esc(lastAt)+'">'+ago(lastAt)+'</span><span class="sep">/</span><span data-next-short>next sync '+untilTxt(nextSync().at)+'</span>':'<span>DEMO</span><span class="sep">/</span><span>sample data</span>')
-      +(bad?'<span class="sep">/</span><span class="rail-bad">'+bad+' critical</span>':'')+'</div>'
+      +(bad&&!SHARE?'<span class="sep">/</span><span class="rail-bad">'+bad+' critical</span>':'')+'</div>'
     +'<div class="rail-mid">'+rangeBar()+'</div>'
     +'<button class="rail-search" data-act="cmdk"><span>'+ICONS.search+'Jump to client</span><kbd>Ctrl K</kbd></button>'
     +'<button class="btn btn-ghost btn-small" data-act="alllinks" title="Secret report link for each client">Client dashboards</button>'
@@ -2414,7 +2432,7 @@ function clientView(x){
   const c=x.c, a=x.cur, p=x.prev, isE=c.type==='ecom', spec=x.spec, acct=x.ent.account;
   let h='<button class="detail-back" data-act="nav" data-client="">'+ICONS.back+'Command Center</button>';
   h+='<div class="page-head"><div><h1 class="disp">'+esc(c.name)+'</h1><p class="subtitle">'+typeLabel(c)+' · '+esc(pfLabel(c))+(c.budget?' · '+fmtMoney(c.budget,c)+' per month':'')+(kpiTarget(c)?' · target '+kpiFmt(c,kpiTarget(c))+' '+kpiLabel(c):' · <span class="faint">no target set</span>')+(c.am?' · AM '+esc(c.am):'')+(acct&&acct.statusCode&&acct.statusCode!==1?' <span class="chip bad">Meta account: '+esc(acct.status)+'</span>':'')+'</p></div><div class="meta">'+niceDate(D.today)+'<br>'+syncChips(x)+'</div></div>';
-  h+='<div class="toolbar">'+rangeBar()+'<select class="mobile-pick" id="mobilePick"><option value="">All clients</option>'+D.clients.map(k=>'<option value="'+k.id+'">'+esc(k.name)+'</option>').join('')+'</select><div class="grow"></div>'+(LIVE&&CFG.syncUrl?'<button class="btn btn-ghost btn-small" data-act="syncnow">'+ICONS.refresh+' Sync now</button>':'')+'<button class="btn btn-ghost btn-small" data-act="clientlink">'+ICONS.copy+' Client dashboard link</button><button class="btn btn-primary btn-small" data-act="update">'+ICONS.copy+' Copy client update</button></div>';
+  h+='<div class="toolbar">'+rangeBar()+'<select class="mobile-pick" id="mobilePick"><option value="">All clients</option>'+D.clients.map(k=>'<option value="'+k.id+'">'+esc(k.name)+'</option>').join('')+'</select><div class="grow"></div>'+(LIVE&&CFG.syncUrl?'<button class="btn btn-ghost btn-small" data-act="syncnow">'+ICONS.refresh+' Sync now</button>':'')+'<button class="btn btn-ghost btn-small" data-act="clientlink">'+ICONS.copy+' Copy client dashboard link</button><button class="btn btn-primary btn-small" data-act="update">'+ICONS.copy+' Copy client update</button></div>';
   if(!x.hasData) return h+noDataPanel(x);
   const V=(cur,prev,inv)=>vs(cur,prev,inv)+' vs '+spec.prevLabel;
   // Where each card's number comes from: which ad platforms actually spent in this range, and whether Shopify is connected.
@@ -2735,6 +2753,7 @@ async function srcLoad(cid){
   SRC[cid]={loading:true};
   try{
     if(!LIVE){ SRC[cid]={data:srcSample(D.today)}; render(); return; }
+    if(SHARE){ SRC[cid]={error:'no order sources stored yet'}; render(); return; }
     const u=fb&&fb.auth&&fb.auth.currentUser; if(!u) throw new Error('sign in first');
     const tok=await u.getIdToken();
     const base=String(CFG.syncUrl||'').replace(/\/(sync|run)(\?.*)?$/,'').replace(/\/$/,'');
@@ -3081,7 +3100,8 @@ function clientUpdateText(x){
   return lines.join('\n'); }
 
 /* client dashboards: the secret report link per client, listed for the team to copy and send */
-function reportLink(id){ const t=(D.reportTokens||{})[id]; return t?new URL('report.html',location.href).href.split('#')[0]+'#'+t:''; }
+// The link a client gets: this same dashboard page in client view (?s=<token>), no sign-in.
+function reportLink(id){ const t=(D.reportTokens||{})[id]; if(!t) return ''; const u=new URL(location.href); u.search='?s='+t; u.hash='c/'+id; return u.href; }
 function linkReady(c){ const sy=(D.syncs||{})[c.id]||{}; return !!reportLink(c.id)&&!!sy.meta?.ok&&(c.type!=='ecom'||!!sy.shopify?.ok); }
 function showLinks(onlyId){
   const list=D.clients.filter(c=>!onlyId||c.id===onlyId).slice().sort((a,b)=>(linkReady(b)-linkReady(a))||a.name.localeCompare(b.name));
@@ -3110,6 +3130,7 @@ cmdk.addEventListener('click',e=>{ if(e.target===cmdk) closeCmdk(); });
 /* events */
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el) return; const act=el.dataset.act;
+  if(SHARE&&['nav','cmdk','alllinks','clientlink','update','syncnow','syncall','syncclient','signout','closecmdk'].includes(act)) return;
   // A modal's backdrop carries the close action, so a click anywhere inside the box would bubble
   // up to it. Only a click on the backdrop itself closes; the box used to stop propagation for
   // this, which also swallowed its own Close button.
@@ -3152,7 +3173,7 @@ document.addEventListener('click',e=>{
   else if(act==='toggle'){ e.stopPropagation(); const id=el.dataset.id; if(state.expanded.has(id)) state.expanded.delete(id); else state.expanded.add(id); render(); }
   else if(act==='sort'){ const so=state.sort[el.dataset.table]; if(so.key===el.dataset.key) so.dir=so.dir==='asc'?'desc':'asc'; else {so.key=el.dataset.key;so.dir=['name','title','health','type','platform','learning','format','status','items','source','discount'].includes(el.dataset.key)?'asc':'desc'} render(); }
   else if(act==='update'){ showUpdate(S[state.clientId]); }
-  else if(act==='clientlink'){ showLinks(state.clientId); }
+  else if(act==='clientlink'){ const u=reportLink(state.clientId); if(!u){ toast('No link yet for this client. Run a sync first.','warn'); } else { navigator.clipboard?.writeText(u).then(()=>toast('Client dashboard link copied. Anyone with it sees this page for this client only, no login.')).catch(()=>window.prompt('Copy this link',u)); } }
   else if(act==='alllinks'){ showLinks(); }
   else if(act==='copylink'){ navigator.clipboard?.writeText(el.dataset.url).then(()=>toast('Link copied')).catch(()=>toast('Copy failed')); }
   else if(act==='copyalllinks'){ const m=el.closest('.modal'); navigator.clipboard?.writeText(m._text||'').then(()=>toast('Links copied')).catch(()=>toast('Copy failed')); }
@@ -3169,7 +3190,7 @@ document.addEventListener('click',e=>{
   else if(act==='signin'){ signIn(); }
   else if(act==='theme'){ toggleTheme(); }
 });
-document.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){ e.preventDefault(); if(cmdk.classList.contains('open')) closeCmdk(); else openCmdk(); } if((e.key==='Enter'||e.key===' ')&&e.target.matches('tr.rowlink')){e.preventDefault();go(e.target.dataset.client)}
+document.addEventListener('keydown',e=>{ if(SHARE) return; if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){ e.preventDefault(); if(cmdk.classList.contains('open')) closeCmdk(); else openCmdk(); } if((e.key==='Enter'||e.key===' ')&&e.target.matches('tr.rowlink')){e.preventDefault();go(e.target.dataset.client)}
   if((e.key==='Enter'||e.key===' ')&&e.target.matches('.kpi-card.clickable')){e.preventDefault();metricModal(e.target.dataset.metric)} if(e.key==='Escape'){ document.querySelectorAll('.modal').forEach(m=>m.remove()); closeCmdk(); } });
 document.addEventListener('change',e=>{ if(e.target.id==='mobilePick') go(e.target.value||null); if(e.target.id==='srcGroup'){ state.srcGroup=e.target.value; render(); } });
 document.addEventListener('input',e=>{ if(e.target.id==='srcQ'){ state.srcQ=e.target.value; clearTimeout(window.__srcT); window.__srcT=setTimeout(()=>{ const pos=e.target.selectionStart; render(); const q=document.getElementById('srcQ'); if(q){ q.focus(); try{q.setSelectionRange(pos,pos);}catch(_){} } },250); } });
@@ -3246,6 +3267,12 @@ async function signIn(){
   }
 }
 async function boot(refresh){
+  if(SHARE){
+    if(!fb) fb={auth:{currentUser:null,signOut:async()=>{}}};
+    if(!D) root.innerHTML='<div class="loading">Loading your dashboard…</div>';
+    try{ D=await loadShare(); }catch(e){ root.innerHTML='<div class="loading">'+esc(e.message)+'</div>'; return; }
+    readHash(); render(); startLive(); return;
+  }
   if(!LIVE){ root.innerHTML='<div class="loading">Loading sample data…</div>'; D=await loadDemo(); readHash(); render(); chatMount(); return; }
   if(!fb){ root.innerHTML='<div class="loading">Loading…</div>'; try{ await initFirebase(); }catch(e){ root.innerHTML='<div class="loading">Could not load Firebase: '+esc(e.message)+'</div>'; return; }
     // A redirect sign-in lands back here. Its result is checked so a failure on the way back is
@@ -3288,7 +3315,7 @@ function startLive(){
     const ae=document.activeElement;
     if(ae&&/^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName)) return;   // someone is typing; try again next minute
     try{
-      const fresh=await loadLive();
+      const fresh=SHARE?await loadShare():await loadLive();
       const before=snapshotVals();
       D=fresh; animateNext=false; render(); flashChanged(before);
     }catch(e){ /* a failed poll is not worth interrupting anyone over; the next one retries */ }

@@ -506,6 +506,33 @@ async function main() {
           res.end(JSON.stringify({ src }));
           return;
         }
+        if (kind === 'd') {
+          // The team's own client page, for the client. Everything the page needs for this one
+          // client and nothing about any other: the client record (without the store token name
+          // or the AM), its daily rows, entity tree, signals, sync state, intraday and order
+          // sources. The token is the only key, exactly like the report link.
+          const c = await store.get('clients', clientId);
+          if (!c || c.active === false) { res.writeHead(404); res.end('not found'); return; }
+          const until = todayStr(), since = addDays(until, -95);
+          const roll = await store.get('rollup', clientId).catch(() => null);
+          let daily = Array.isArray(roll?.rows) ? roll.rows : (await store.list('daily', [['clientId', '==', clientId]]));
+          daily = daily.filter((r) => r.clientId === clientId && r.date >= since && !r.sample);
+          const ent = (await store.get('entities', clientId)) || {};
+          const { recentOrders, ...entOut } = ent;
+          const [sig, sy, intra, lastRun, od] = await Promise.all([
+            store.get('signals', clientId).catch(() => null), store.get('syncs', clientId).catch(() => null),
+            store.list('intraday', dailyIdRange(clientId, addDays(until, -8), until)).catch(() => []),
+            store.get('meta', 'lastRun').catch(() => null),
+            (c.type !== 'lead' && c.accounts?.shopify?.shop) ? store.list('orderdays', dailyIdRange(clientId, since, until)).catch(() => []) : Promise.resolve([]),
+          ]);
+          const { am, accounts, ...rest } = c;
+          const client = { ...rest, id: clientId, accounts: { meta: accounts?.meta || '', google: accounts?.google || '', ga4: accounts?.ga4 ? 'yes' : '', shopify: accounts?.shopify?.shop ? { shop: accounts.shopify.shop } : null } };
+          const odDocs = od.filter((x) => x.clientId === clientId);
+          const sources = odDocs.some((x) => Array.isArray(x.g)) ? { client: { id: clientId, name: c.name, currency: c.currency || 'INR' }, since, until, ...buildSourceFeed(odDocs, { internal: true, entities: ent }) } : null;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ today: until, client, daily, entities: { ...entOut, clientId }, signals: sig || { clientId, items: [] }, syncs: sy || {}, intraday: intra.filter((x) => x.clientId === clientId), lastRun: lastRun ? { hourly: lastRun.hourly || '', daily: lastRun.daily || '' } : {}, sources }));
+          return;
+        }
         if (kind) { res.writeHead(404); res.end('not found'); return; }
 
         const data = await reportPayload(store, clientId);
