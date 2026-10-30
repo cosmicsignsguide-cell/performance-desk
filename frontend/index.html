@@ -2470,7 +2470,8 @@ function clientView(x){
   h+='<div class="section"><div class="glass-panel"><h2>Spend and '+kpiLabel(c)+' by day</h2><div class="legend"><span><i class="bar"></i>Spend</span><span><i class="line"></i>'+kpiLabel(c)+'</span><span><i class="tgt"></i>Target</span></div>'+trendChart(x)+'</div></div>';
   if(x.flags.length) h+='<div class="section"><div class="section-head"><h2>What to fix</h2></div><div class="attn-list">'+groupFlags(x.flags).map(f=>attnItem(f.sev,groupMeta(f,''),f.text,'')).join('')+'</div></div>';
   if(isE&&x.cur.hasShop) h+=shopDaysPanel(x);
-  if(isE) h+=sourcePanel(x);
+  // The old first-visit panel ("Where the orders came from") was removed on request; the
+  // Order sources (UTM) tab is the answer to that question now.
   if(isE) h+=funnelPanel(x);
   // Orders, Order sources, Reports and Site Watch were taken off this row on request; their panels
   // (ordersPanel, sourcesTab, weeklyPanel) are still here, so adding a tab back is one line.
