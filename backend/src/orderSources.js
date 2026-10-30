@@ -148,7 +148,9 @@ export function payOf(o) {
 export function groupDay(list) {
   const map = new Map();
   for (const x of list) {
-    const k = [x.p, x.c, x.s, x.m, x.ca, x.te, x.co, x.rk].join('\u0001');
+    // COD and prepaid orders are kept in separate groups, so the dashboard's Payment filter splits
+    // order value exactly instead of pro rata. The stored row shape is unchanged.
+    const k = [x.p, x.c, x.s, x.m, x.ca, x.te, x.co, x.rk, x.cod ? 1 : 0].join('\u0001');
     const g = map.get(k) || [x.p, x.c, x.s, x.m, x.ca, x.te, x.co, x.rk, 0, 0, 0, 0];
     g[8] += 1; g[9] = Math.round((g[9] + x.v) * 100) / 100; g[10] += x.nc ? 1 : 0; g[11] += x.cod ? 1 : 0;
     map.set(k, g);
@@ -241,7 +243,7 @@ export function buildSourceFeed(docs, { internal = false, clean = (n) => n, clie
       const r = agg.get(k) || [d, p, c, k, 0, 0, 0, 0];
       r[4] += n; r[5] = Math.round((r[5] + v) * 100) / 100; r[6] += nc; r[7] += cod;
       agg.set(k, r);
-      if (internal) ledger.push([d, p, c, s, m, ca, te, co, rk, n, v]);
+      if (internal) ledger.push([d, p, c, s, m, ca, te, co, rk, n, v, cod || 0, k]);
     }
     rows.push(...agg.values());
     for (const [p, arr] of [['Meta', doc.spendMeta], ['Google', doc.spendGoogle]]) {
