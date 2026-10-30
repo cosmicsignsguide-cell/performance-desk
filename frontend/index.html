@@ -1546,7 +1546,9 @@ const ICONS={
 let D=null, S={};
 const state={plRange:'7d',plSort:{key:'dev',dir:'asc'},view:'overview',clientId:null,range:'today',tab:'campaigns',crf:'spending',crcall:'',cmpf:'all',crView:'grid',q:'',ovView:'table',showInfo:false,expanded:new Set(),sort:{overview:{key:'health',dir:'asc'},campaigns:{key:'spend',dir:'desc'},ads:{key:'spend',dir:'desc'},products:{key:'revenue',dir:'desc'},orders:{key:'at',dir:'desc'}}};
 const root=document.getElementById('root');
-function readHash(){ const m=location.hash.match(/^#c\/([a-z0-9-]+)/); if(m&&D&&D.clients.some(c=>c.id===m[1])){state.view='client';state.clientId=m[1]} else {state.view='overview';state.clientId=null} }
+// #c/<client> opens a client; #c/<client>/<tab> also opens that tab, so a tab can be linked to.
+const TAB_SLUG={campaigns:'campaigns',creatives:'ads',products:'products',sources:'sources',utm:'sources'};
+function readHash(){ const m=location.hash.match(/^#c\/([a-z0-9-]+)(?:\/([a-z]+))?/); if(m&&D&&D.clients.some(c=>c.id===m[1])){state.view='client';state.clientId=m[1]; if(m[2]&&TAB_SLUG[m[2]]) state.tab=TAB_SLUG[m[2]];} else {state.view='overview';state.clientId=null} }
 function go(id){ if(id){location.hash='#c/'+id} else { try{history.replaceState(null,'',location.href.split('#')[0])}catch(e){location.hash=''} readHash(); render(); window.scrollTo(0,0); } }
 window.addEventListener('hashchange',()=>{readHash();render();window.scrollTo(0,0);});
 function computeAll(){ S={}; D.clients.forEach(c=>S[c.id]=summarize(D,c,state.range)); }
@@ -3118,7 +3120,7 @@ document.addEventListener('click',e=>{
   else if(act==='plrange'){ state.plRange=el.dataset.r; render(); }
   else if(act==='plmode'){ state.plMode=el.dataset.m; render(); }
   else if(act==='plsort'){ const k=el.dataset.k, p=state.plSort; state.plSort=p.key===k?{key:k,dir:p.dir==='asc'?'desc':'asc'}:{key:k,dir:k==='name'?'asc':(k==='dev'?'asc':'desc')}; render(); }
-  else if(act==='tab'){ state.tab=el.dataset.tab; render(); }
+  else if(act==='tab'){ state.tab=el.dataset.tab; if(state.clientId){ const slug={ads:'creatives'}[state.tab]||state.tab; try{ history.replaceState(null,'','#c/'+state.clientId+'/'+slug); }catch(err){} } render(); }
   else if(act==='srcpf'){ state.srcPf=el.dataset.pf; render(); }
   else if(act==='srcpay'){ state.srcPay=el.dataset.v; render(); }
   else if(act==='srcview'){ state.srcView=el.dataset.v; render(); }
