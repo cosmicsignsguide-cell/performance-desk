@@ -2468,8 +2468,6 @@ function clientView(x){
   h+=platformSplit(x);
   h+='<div class="two">'+intradayPanel(x)+pacePanel(x)+'</div>';
   h+='<div class="section"><div class="glass-panel"><h2>Spend and '+kpiLabel(c)+' by day</h2><div class="legend"><span><i class="bar"></i>Spend</span><span><i class="line"></i>'+kpiLabel(c)+'</span><span><i class="tgt"></i>Target</span></div>'+trendChart(x)+'</div></div>';
-  if(x.flags.length) h+='<div class="section"><div class="section-head"><h2>What to fix</h2></div><div class="attn-list">'+groupFlags(x.flags).map(f=>attnItem(f.sev,groupMeta(f,''),f.text,'')).join('')+'</div></div>';
-  if(isE&&x.cur.hasShop) h+=shopDaysPanel(x);
   // The old first-visit panel ("Where the orders came from") was removed on request; the
   // Order sources (UTM) tab is the answer to that question now.
   if(isE) h+=funnelPanel(x);
@@ -2479,6 +2477,9 @@ function clientView(x){
   if(!tabs.some(t=>t[0]===state.tab)) state.tab='campaigns';
   const body=state.tab==='site'?sitePanel(x):state.tab==='weekly'?weeklyPanel(x):state.tab==='campaigns'?campaignTree(x):state.tab==='orders'?ordersPanel(x):state.tab==='sources'?sourcesTab(x):entityTable(x);
   h+='<div class="section"><div class="tab-row" style="margin-bottom:12px">'+tabs.map(t=>'<button class="tab-btn '+(state.tab===t[0]?'active':'')+'" data-act="tab" data-tab="'+t[0]+'">'+t[1]+'</button>').join('')+'</div>'+body+'</div>';
+  // What to fix and the Shopify by-day check sit at the very bottom, under the tabs.
+  if(x.flags.length) h+='<div class="section"><div class="section-head"><h2>What to fix</h2></div><div class="attn-list">'+groupFlags(x.flags).map(f=>attnItem(f.sev,groupMeta(f,''),f.text,'')).join('')+'</div></div>';
+  if(isE&&x.cur.hasShop) h+=shopDaysPanel(x);
   return h;
 }
 // Ad spend on this page is Meta and Google added together, which hides the first thing an AM
