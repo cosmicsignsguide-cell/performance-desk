@@ -1562,7 +1562,7 @@ const ICONS={
 /* ============================== STATE / RENDER =========================== */
 let D=null, S={};
 window.__desk={get D(){return D;},set D(v){D=v;},srcSample:(t)=>srcSample(t)};   // read-only hook for tests
-const state={plRange:'7d',plSort:{key:'dev',dir:'asc'},view:'overview',clientId:null,range:'today',tab:'campaigns',crf:'spending',crcall:'',cmpf:'all',crView:'grid',q:'',ovView:'table',showInfo:false,expanded:new Set(),sort:{overview:{key:'health',dir:'asc'},campaigns:{key:'spend',dir:'desc'},ads:{key:'spend',dir:'desc'},products:{key:'revenue',dir:'desc'},orders:{key:'at',dir:'desc'}}};
+const state={plRange:'7d',plSort:{key:'dev',dir:'asc'},view:'overview',clientId:null,range:'today',tab:'campaigns',crf:'spending',crcall:'',cmpf:'all',cmpp:'all',crView:'grid',q:'',ovView:'table',showInfo:false,expanded:new Set(),sort:{overview:{key:'health',dir:'asc'},campaigns:{key:'spend',dir:'desc'},ads:{key:'spend',dir:'desc'},products:{key:'revenue',dir:'desc'},orders:{key:'at',dir:'desc'}}};
 const root=document.getElementById('root');
 // #c/<client> opens a client; #c/<client>/<tab> also opens that tab, so a tab can be linked to.
 const TAB_SLUG={campaigns:'campaigns',creatives:'ads',products:'products',sources:'sources',utm:'sources'};
@@ -2900,19 +2900,27 @@ function campaignTree(x){
   // CAMPAIGN_PAUSED style states. Archived, removed and ended campaigns only show under All.
   const cst=e=>{ const st=String(e.status||'').toUpperCase(); return st==='ACTIVE'||st==='ENABLED'?'active':/PAUSED/.test(st)?'paused':'other'; };
   const CMPF=[['active','Active'],['paused','Paused'],['all','All']];
-  const nOf=k=>k==='all'?allCamps.length:allCamps.filter(r=>cst(r.e)===k).length;
-  const camps=state.cmpf==='all'?allCamps:allCamps.filter(r=>cst(r.e)===state.cmpf);
-  const chips='<span class="crchips">'+CMPF.map(k=>'<button class="crchip'+(state.cmpf===k[0]?' on':'')+'" data-act="cmpf" data-f="'+k[0]+'">'+k[1]+' '+nOf(k[0])+'</button>').join('')+'</span>';
+  // Platform split first (All / Meta / Google), then status inside it; the status counts follow
+  // the platform picked, so "Active 12" always means active campaigns on that platform.
+  const PLATS=[['all','All platforms'],['meta','Meta'],['google','Google']].filter(k=>k[0]==='all'||allCamps.some(r=>r.e.platform===k[0]));
+  if(!PLATS.some(k=>k[0]===state.cmpp)) state.cmpp='all';
+  const onPlat=state.cmpp==='all'?allCamps:allCamps.filter(r=>r.e.platform===state.cmpp);
+  const nOf=k=>k==='all'?onPlat.length:onPlat.filter(r=>cst(r.e)===k).length;
+  const camps=state.cmpf==='all'?onPlat:onPlat.filter(r=>cst(r.e)===state.cmpf);
+  const shareBase=onPlat.reduce((t,r)=>t+r.m.spend,0);   // spend % is of the platform picked
+  const pSpend=k=>(k==='all'?allCamps:allCamps.filter(r=>r.e.platform===k)).reduce((t,r)=>t+r.m.spend,0);
+  const chips=(PLATS.length>2?'<span class="crchips">'+PLATS.map(k=>'<button class="crchip callchip '+(k[0]==='meta'?'accent':k[0]==='google'?'warn':'neutral')+(state.cmpp===k[0]?' on':'')+'" data-act="cmpp" data-p="'+k[0]+'" title="Spend '+fmtMoney(pSpend(k[0]),c)+'">'+(k[0]==='all'?'':'<i></i>')+k[1]+' '+(k[0]==='all'?allCamps.length:allCamps.filter(r=>r.e.platform===k[0]).length)+'</button>').join('')+'</span>':'')
+    +'<span class="crchips">'+CMPF.map(k=>'<button class="crchip'+(state.cmpf===k[0]?' on':'')+'" data-act="cmpf" data-f="'+k[0]+'">'+k[1]+' '+nOf(k[0])+'</button>').join('')+'</span>';
   for(const r of camps){ const kids=(ent.adsets||[]).filter(s=>s.campaignId===r.e.id).map(e=>({e,m:entRange(e,spec),pm:entRange(e,spec.prev)})).sort(cmp); rows.push({lvl:0,...r,hasKids:kids.length>0,open:state.expanded.has(r.e.id)});
     if(state.expanded.has(r.e.id)) for(const s of kids){ const ads=(x.ads||[]).filter(a=>a.adsetId===s.e.id).map(e=>({e,m:entRange(e,spec),pm:entRange(e,spec.prev)})).sort(cmp); rows.push({lvl:1,...s,hasKids:ads.length>0,open:state.expanded.has(s.e.id)}); if(state.expanded.has(s.e.id)) for(const a of ads) rows.push({lvl:2,...a,hasKids:false}); } }
   const cols=[{key:'name',label:'Campaign / ad set / ad'},{key:'status',label:'Status'},{key:'budget',label:'Budget',num:1},{key:'spend',label:'Spend',num:1},{key:'results',label:cap(res),num:1},{key:'cpr',label:isE?'CPA':kpiLabel(c),num:1},{key:'kpi',label:isE?'ROAS':'vs target',num:1},{key:'ctr',label:'CTR',num:1},{key:'cpm',label:'CPM',num:1}];
   let h='<div class="glass-panel"><h2>Campaigns <span class="sub">'+spec.label+' · deltas vs '+spec.prevLabel+' · click ▶ to open ad sets and ads</span>'+chips+'</h2><div class="data-table-wrap tree"><table class="dtable">'+thead(cols,'campaigns')+'<tbody>';
-  if(!rows.length) h+='<tr><td colspan="9" class="faint">'+(allCamps.length?'No '+state.cmpf+' campaigns. Try another filter above.':'No campaigns yet.')+'</td></tr>';
+  if(!rows.length) h+='<tr><td colspan="9" class="faint">'+(allCamps.length?'No '+(state.cmpf==='all'?'':state.cmpf+' ')+(state.cmpp==='all'?'':cap(state.cmpp)+' ')+'campaigns. Try another filter above.':'No campaigns yet.')+'</td></tr>';
   for(const r of rows){ const e=r.e,m=r.m,pm=r.pm;
     const budget=e.dailyBudget?fmtMoney(e.dailyBudget,c)+'<span class="sub">daily'+(e.budgetLevel==='adset'&&r.lvl===0?', ad set level':'')+'</span>':e.lifetimeBudget?fmtMoney(e.lifetimeBudget,c)+'<span class="sub">lifetime</span>':(r.lvl===0&&e.budgetLevel==='adset'?'<span class="faint small">ad set level</span>':'<span class="faint">n/a</span>');
     const st=r.lvl===1?learnChip(e):(e.status?'<span class="chip '+(e.status==='ACTIVE'?'good':/DISAPPROVED|WITH_ISSUES/.test(e.status)?'bad':'neutral')+'"><span class="d"></span>'+esc(cap(e.status.toLowerCase().replace(/_/g,' ')))+'</span>':'');
     const name=(r.hasKids?'<span class="tw '+(r.open?'on':'')+'" data-act="toggle" data-id="'+esc(e.id)+'">▶</span>':'<span class="tw"></span>')+(r.lvl===2&&e.thumb?'<img class="thumb" src="'+esc(e.thumb)+'" alt="" loading="lazy" style="width:28px;height:28px">':'')+esc(e.name)+(r.lvl===0?'<span class="sub">'+cap(e.platform)+(e.objective?' · '+esc(e.objective).toLowerCase().replace(/_/g,' '):'')+(e.channel?' · '+esc(e.channel).toLowerCase().replace(/_/g,' '):'')+'</span>':r.lvl===1&&e.optimization?'<span class="sub">'+esc(e.optimization).toLowerCase().replace(/_/g,' ')+'</span>':'');
-    h+='<tr class="lvl'+r.lvl+'"><td class="name">'+name+'</td><td>'+st+'</td><td class="num">'+budget+'</td><td class="num"><span class="row-title">'+fmtMoney(m.spend,c)+'</span>'+(r.lvl===0&&totalSpend?' <span class="faint small">'+pct(m.spend/totalSpend)+'</span>':'')+'<span class="sub" style="text-align:right">'+vs(m.spend,pm.spend)+'</span></td><td class="num"><span class="row-title">'+fmtNum(m[res])+'</span><span class="sub" style="text-align:right">'+vs(m[res],pm[res])+'</span></td><td class="num">'+fmtMoney(isE?m.cpa:m.cpl,c)+'</td><td class="num">'+chipK(c,isE?m.roas:m.cpl)+'</td><td class="num">'+fmtPct(m.ctr)+'</td><td class="num">'+fmtMoney(m.cpm,c)+'</td></tr>'; }
+    h+='<tr class="lvl'+r.lvl+'"><td class="name">'+name+'</td><td>'+st+'</td><td class="num">'+budget+'</td><td class="num"><span class="row-title">'+fmtMoney(m.spend,c)+'</span>'+(r.lvl===0&&shareBase?' <span class="faint small">'+pct(m.spend/shareBase)+'</span>':'')+'<span class="sub" style="text-align:right">'+vs(m.spend,pm.spend)+'</span></td><td class="num"><span class="row-title">'+fmtNum(m[res])+'</span><span class="sub" style="text-align:right">'+vs(m[res],pm[res])+'</span></td><td class="num">'+fmtMoney(isE?m.cpa:m.cpl,c)+'</td><td class="num">'+chipK(c,isE?m.roas:m.cpl)+'</td><td class="num">'+fmtPct(m.ctr)+'</td><td class="num">'+fmtMoney(m.cpm,c)+'</td></tr>'; }
   return h+'</tbody></table></div><div class="note">Google campaigns have no children yet.</div></div>';
 }
 function learnChip(r){ const l=(r.learning||'').toUpperCase(); if(r.status&&r.status!=='ACTIVE') return '<span class="chip neutral">'+esc(cap(r.status.toLowerCase().replace(/_/g,' ')))+'</span>'; if(l==='FAIL') return '<span class="chip warn"><span class="d"></span>Learning limited</span>'; if(l==='LEARNING') return '<span class="chip neutral"><span class="d"></span>Learning</span>'; if(l==='SUCCESS') return '<span class="chip good"><span class="d"></span>Active</span>'; return '<span class="chip neutral">'+esc(r.status||'n/a')+'</span>'; }
@@ -3149,6 +3157,7 @@ document.addEventListener('click',e=>{
   else if(act==='srcreload'){ delete SRC[el.dataset.client]; render(); }
   else if(act==='crcall'){ state.crcall=el.dataset.call||''; render(); }
   else if(act==='crshare'){ crShare(el.dataset.ad); }
+  else if(act==='cmpp'){ state.cmpp=el.dataset.p; render(); }
   else if(act==='cmpf'){ state.cmpf=el.dataset.f; render(); }
   else if(act==='crf'){ if(!el.disabled){ state.crf=el.dataset.crf; render(); } }
   else if(act==='crembed'){ crEmbed(el.dataset.ad); }
