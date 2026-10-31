@@ -111,6 +111,11 @@ export async function fetchEntities(client, until) {
   return { campaigns, since, until, updatedAt: nowIso() };
 }
 
+// Every account under the manager (MCC) login, for the access check. Read only.
+export async function listAccounts() {
+  const rows = await gaql(config.google.loginCustomerId, 'SELECT customer_client.id, customer_client.descriptive_name, customer_client.status, customer_client.manager, customer_client.level FROM customer_client');
+  return rows.map((r) => r.customerClient || {});
+}
 export async function testToken(client) {
   const rows = await gaql(client.accounts.google, 'SELECT customer.id, customer.descriptive_name, customer.currency_code, customer.time_zone FROM customer LIMIT 1');
   const c = rows[0]?.customer || {};

@@ -336,6 +336,12 @@ export async function adPreviewSrc(adId) {
   }
 }
 
+// Every ad account the system user can read, for the access check. Read only.
+export async function listAccounts() {
+  const out = []; let url = `${BASE()}/me/adaccounts?${new URLSearchParams({ access_token: config.meta.token, fields: 'name,account_id,account_status,currency,business_name', limit: '200' })}`;
+  for (let i = 0; url && i < 20; i++) { const b = await metaGet(url); out.push(...(b.data || [])); url = b.paging?.next || ''; }
+  return out;
+}
 export async function testToken(client) {
   const q = new URLSearchParams({ access_token: config.meta.token, fields: 'name,currency,account_status,timezone_name' });
   const body = await metaGet(`${BASE()}/act_${client.accounts.meta}?${q}`);

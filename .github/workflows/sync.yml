@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "hourly, daily or verify"
+        description: "hourly, daily, verify or access (client = search text)"
         default: "hourly"
       client:
         description: "optional client id (one client only, short request)"

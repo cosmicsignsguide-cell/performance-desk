@@ -370,6 +370,20 @@ async function main() {
         await store.merge('meta', 'lastRun', { verify: nowIso(), verifySummary: `${r.clean} clean, ${r.mismatched} mismatched, ${r.skipped} skipped` });
         return { mode, ...r };
       }
+      if (mode === 'access') {
+        // Which ad accounts the dashboard's own credentials can read, filtered by ?q=. Names and
+        // ids go to the server log only; the answer carries counts, because the Actions log that
+        // prints it is public.
+        const q = String(url.searchParams.get('q') || url.searchParams.get('client') || '').trim().toLowerCase();
+        const hit = (s) => !q || String(s || '').toLowerCase().includes(q);
+        const out = { mode, q, meta: 0, metaMatch: 0, google: 0, googleMatch: 0 };
+        try { const ma = await meta.listAccounts(); out.meta = ma.length; for (const a of ma) if (hit(a.name) || hit(a.business_name) || hit(a.account_id)) { out.metaMatch++; log(`access meta: act_${a.account_id} "${a.name}" status ${a.account_status} ${a.currency || ''} bm "${a.business_name || ''}"`); } }
+        catch (e) { out.metaError = String(e.message || e).slice(0, 120); log(`access meta FAILED ${out.metaError}`); }
+        try { const ga = await google.listAccounts(); out.google = ga.length; for (const a of ga) if (hit(a.descriptiveName) || hit(a.id)) { out.googleMatch++; log(`access google: ${a.id} "${a.descriptiveName}" status ${a.status}${a.manager ? ' (manager)' : ''} level ${a.level}`); } }
+        catch (e) { out.googleError = String(e.message || e).slice(0, 120); log(`access google FAILED ${out.googleError}`); }
+        log(`access q="${q}": meta ${out.metaMatch} of ${out.meta}, google ${out.googleMatch} of ${out.google}`);
+        return out;
+      }
       if (mode === 'verifymeta') {
         const r = await verifyMeta(store, clients, { only: String(url.searchParams.get('client') || '').trim().toLowerCase() });
         await store.merge('meta', 'lastRun', { verifyMeta: nowIso(), verifyMetaSummary: `${r.clean} clean, ${r.mismatched} mismatched, ${r.skipped} skipped`, verifyMetaProblems: r.problems.slice(0, 60) });
@@ -745,7 +759,7 @@ async function main() {
       }
 
       const asked = url.searchParams.get('mode');
-      const mode = ['daily', 'hourly', 'sitewatch', 'weekly', 'verify', 'verifymeta', 'creators'].includes(asked) ? asked : 'hourly';
+      const mode = ['daily', 'hourly', 'sitewatch', 'weekly', 'verify', 'verifymeta', 'creators', 'access'].includes(asked) ? asked : 'hourly';
       // ?days=N restates N days of history instead of the usual 7. Ignored for hourly and
       // sitewatch, which have nothing to restate.
       const days = mode === 'daily' ? parseInt(url.searchParams.get('days') || '', 10) : NaN;
