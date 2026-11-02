@@ -772,7 +772,12 @@ async function main() {
       if (url.pathname === '/run') {          // fire and forget, answer immediately
         running.add(lock);
         res.writeHead(202); res.end(JSON.stringify({ ok: true, started: lock, days: Number.isFinite(days) ? days : undefined }));
-        runMode(mode, days, url).then((r) => log(`run ${lock} done (${r.clients} clients)${r.failures ? ' with ' + r.failures.length + ' failure(s)' : ''}`))
+        // The free instance is put to sleep after about 15 minutes with no incoming request, and a
+        // background run has none: it was being killed mid-way. While the run lasts, the service
+        // calls its own public URL every four minutes, which counts as traffic and keeps it awake.
+        const self = (process.env.RENDER_EXTERNAL_URL || `https://${req.headers.host}`).replace(/\/$/, '');
+        const awake = setInterval(() => { fetch(`${self}/health`).catch(() => {}); }, 4 * 60 * 1000);
+        runMode(mode, days, url).finally(() => clearInterval(awake)).then((r) => log(`run ${lock} done (${r.clients} clients)${r.failures ? ' with ' + r.failures.length + ' failure(s)' : ''}`))
           .catch((e) => log(`run ${lock} FAILED ${e.message || e}`))
           .finally(() => running.delete(lock));
         return;
