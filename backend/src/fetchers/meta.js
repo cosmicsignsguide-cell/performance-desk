@@ -98,7 +98,17 @@ async function paged(url) {
   const out = [];
   let next = url;
   while (next) {
-    const body = await metaGet(next);
+    let body;
+    try { body = await metaGet(next); }
+    catch (e) {
+      // A list call (ads with their creatives, say) that Meta finds too heavy cannot be split by
+      // date, but it can be asked for in smaller pages. Halve the page size and ask again.
+      const lim = Number(new URL(next).searchParams.get('limit') || 25);
+      if (!/reduce the amount of data|please reduce|too much data/i.test(String(e.message || e)) || lim <= 5) throw e;
+      const u = new URL(next); u.searchParams.set('limit', String(Math.max(5, Math.floor(lim / 2)))); next = u.toString();
+      log(`meta: page too heavy, asking for ${u.searchParams.get('limit')} at a time`);
+      continue;
+    }
     out.push(...(body.data || []));
     next = body.paging?.next || null;
   }
