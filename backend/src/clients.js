@@ -57,7 +57,7 @@ export function normalizeClient(c) {
     am: c.am || '',
     contact: c.contact || '',                     // the client's own person, greeted on their report
     accounts: {
-      meta: c.accounts?.meta ? String(c.accounts.meta).replace(/^act_/, '') : '',
+      meta: c.accounts?.meta ? String(c.accounts.meta).split(/[\s,]+/).map((x) => x.replace(/^act_/, '')).filter(Boolean).join(',') : '',   // one id, or several separated by commas
       google: c.accounts?.google ? String(c.accounts.google).replace(/-/g, '') : '',
       shopify: c.accounts?.shopify ? {
         shop: String(c.accounts.shopify.shop || '').replace(/^https?:\/\//, '').replace(/\/$/, ''),

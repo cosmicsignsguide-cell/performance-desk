@@ -58,10 +58,20 @@ export async function verifyMeta(store, clients, { only = '' } = {}) {
     if (c.sample || !c.accounts?.meta || !config.meta.token) { out.skipped++; continue; }
     try {
       const q = new URLSearchParams({ access_token: config.meta.token, level: 'account', time_increment: '1', fields: 'spend,impressions,clicks,actions,action_values', time_range: JSON.stringify({ since, until }), limit: '100' });
-      const r = await fetch(`https://graph.facebook.com/${config.meta.apiVersion}/act_${c.accounts.meta}/insights?${q}`);
-      const body = await r.json();
-      if (!r.ok) { out.skipped++; out.notes.push(`${c.id}: Meta said ${body?.error?.message?.slice(0, 90) || r.status}`); continue; }
-      const truth = Object.fromEntries((body.data || []).map((x) => [x.date_start, x]));
+      // Several ad accounts on one client are summed per day, the same way the sync stores them.
+      const truth = {}; let failed = '';
+      for (const id of String(c.accounts.meta).split(/[\s,]+/).map((x) => x.replace(/^act_/, '')).filter(Boolean)) {
+        const r = await fetch(`https://graph.facebook.com/${config.meta.apiVersion}/act_${id}/insights?${q}`);
+        const body = await r.json();
+        if (!r.ok) { failed = body?.error?.message?.slice(0, 90) || String(r.status); break; }
+        for (const x of body.data || []) {
+          const t = truth[x.date_start];
+          if (!t) { truth[x.date_start] = x; continue; }
+          for (const f of ['spend', 'impressions', 'clicks']) t[f] = String((parseFloat(t[f]) || 0) + (parseFloat(x[f]) || 0));
+          for (const f of ['actions', 'action_values']) { const m = new Map((t[f] || []).map((y) => [y.action_type, { ...y }])); for (const y of x[f] || []) { const z = m.get(y.action_type); if (z) z.value = String((parseFloat(z.value) || 0) + (parseFloat(y.value) || 0)); else m.set(y.action_type, { ...y }); } t[f] = [...m.values()]; }
+        }
+      }
+      if (failed) { out.skipped++; out.notes.push(`${c.id}: Meta said ${failed}`); continue; }
       const rows = (await store.list('daily', dailyIdRange(c.id, since, until))).filter((x) => x.platform === 'meta');
       const byDate = Object.fromEntries(rows.map((x) => [x.date, x]));
       const bad = [], attr = [];

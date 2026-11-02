@@ -151,7 +151,7 @@ function rowFromInsight(clientId, r, platform = 'meta') {
 }
 
 // Daily account-level rows between two dates (inclusive).
-export async function fetchDaily(client, since, until) {
+async function fetchDailyOne(client, since, until) {
   const accountId = client.accounts.meta;
   const data = await pagedRange(
     (s, u) => insightsUrl(accountId, { level: 'account', time_increment: '1', time_range: JSON.stringify({ since: s, until: u }) }),
@@ -162,7 +162,7 @@ export async function fetchDaily(client, since, until) {
 // Spend per campaign per day, for the Order sources view: what each campaign cost on the days its
 // orders came in, so a campaign's store ROAS can be read off the same window. Small call (three
 // fields, campaign level) and only made for clients whose orders are tracked.
-export async function fetchCampaignSpend(client, since, until) {
+async function fetchCampaignSpendOne(client, since, until) {
   const accountId = client.accounts.meta;
   const data = await pagedRange(
     (s, u) => insightsUrl(accountId, { level: 'campaign', time_increment: '1', fields: 'spend,campaign_id,campaign_name', time_range: JSON.stringify({ since: s, until: u }) }),
@@ -200,7 +200,7 @@ const budgetOf = (o) => (o?.daily_budget ? { dailyBudget: num(o.daily_budget) / 
 // Hourly top-up for the entity tree. fetchEntities only runs in the daily sync, so without this the
 // per-day tuples for today stay at whatever they were at 02:00 and every ad reads "No spend" all day.
 // Three small calls (campaign, ad set, ad level, today only) that are merged into the stored tree.
-export async function fetchTodayDays(client, today) {
+async function fetchTodayDaysOne(client, today) {
   const accountId = client.accounts.meta;
   const ins = (level, idField) => (s, u) => insightsUrl(accountId, { level, time_increment: '1', fields: DAILY_FIELDS + ',' + idField, time_range: JSON.stringify({ since: s, until: u }) });
   const [camp, set, ad] = await pool([
@@ -212,7 +212,7 @@ export async function fetchTodayDays(client, today) {
 }
 
 // Campaigns, ad sets and ads: 30 day totals, per-day tuples for the last ENTITY_DAYS days, statuses, budgets, issues.
-export async function fetchEntities(client, until) {
+async function fetchEntitiesOne(client, until) {
   const accountId = client.accounts.meta;
   const since = addDays(until, -29);
   const dSince = addDays(until, -(ENTITY_DAYS - 1)), dUntil = addDays(until, 1); // includes today
@@ -348,9 +348,49 @@ export async function recentSpend(actId) {
   const b = await metaGet(`${BASE()}/act_${actId}/insights?${q}`);
   return Number(b.data?.[0]?.spend || 0);
 }
-export async function testToken(client) {
+async function testTokenOne(client) {
   const q = new URLSearchParams({ access_token: config.meta.token, fields: 'name,currency,account_status,timezone_name' });
   const body = await metaGet(`${BASE()}/act_${client.accounts.meta}?${q}`);
   log(`meta ok: ${body.name} (${body.currency}, status ${body.account_status}, ${body.timezone_name})`);
   return body;
 }
+
+// ---------------------------------------------------------------------------------------------
+// A client can run on more than one Meta ad account (Whimsy spends from two). accounts.meta then
+// holds the ids separated by commas, every account is pulled on its own, and the results are
+// merged here, so nothing above this line and nothing in the sync had to change.
+export const metaIds = (client) => String(client?.accounts?.meta || '').split(/[\s,]+/).map((x) => x.replace(/^act_/, '')).filter(Boolean);
+const forAccount = (client, id) => ({ ...client, accounts: { ...client.accounts, meta: id } });
+async function each(client, fn) { const ids = metaIds(client); const out = []; for (const id of ids) out.push(await fn(forAccount(client, id))); return out; }
+
+export async function fetchDaily(client, since, until) {
+  const parts = await each(client, (c) => fetchDailyOne(c, since, until));
+  if (parts.length === 1) return parts[0];
+  const by = new Map();
+  for (const row of parts.flat()) {
+    const k = row.date, cur = by.get(k);
+    if (!cur) { by.set(k, { ...row }); continue; }
+    for (const [f, v] of Object.entries(row)) if (typeof v === 'number') cur[f] = (cur[f] || 0) + v;
+  }
+  return [...by.values()].map((r) => ({ ...r, spend: round(r.spend), revenue: round(r.revenue) }));
+}
+export async function fetchCampaignSpend(client, since, until) {
+  const parts = await each(client, (c) => fetchCampaignSpendOne(c, since, until));
+  if (parts.length === 1) return parts[0];
+  const out = {}; for (const p of parts) for (const [d, arr] of Object.entries(p)) (out[d] = out[d] || []).push(...arr);
+  return out;
+}
+export async function fetchTodayDays(client, today) {
+  const parts = await each(client, (c) => fetchTodayDaysOne(c, today));
+  if (parts.length === 1) return parts[0];
+  return parts.reduce((a, p) => ({ campaign: { ...a.campaign, ...p.campaign }, adset: { ...a.adset, ...p.adset }, ad: { ...a.ad, ...p.ad } }), { campaign: {}, adset: {}, ad: {} });
+}
+export async function fetchEntities(client, until) {
+  const parts = await each(client, (c) => fetchEntitiesOne(c, until));
+  if (parts.length === 1) return parts[0];
+  const cat = (k) => parts.flatMap((p) => p[k] || []);
+  // The account card shows the worst status of the set, so a disabled second account is not hidden.
+  const worst = parts.map((p) => p.account).sort((a, b) => (a.statusCode === 1) - (b.statusCode === 1))[0];
+  return { ...parts[0], campaigns: cat('campaigns'), adsets: cat('adsets'), ads: cat('ads'), issues: cat('issues'), account: { ...worst, name: parts.map((p) => p.account?.name).filter(Boolean).join(' + '), amountSpent: parts.reduce((t, p) => t + (p.account?.amountSpent || 0), 0), accounts: parts.map((p) => p.account) } };
+}
+export async function testToken(client) { const r = await each(client, (c) => testTokenOne(c)); return r[0]; }

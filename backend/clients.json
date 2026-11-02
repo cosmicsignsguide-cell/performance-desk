@@ -289,15 +289,18 @@
     "name": "Whimsy Beauty",
     "type": "ecom",
     "currency": "INR",
-    "budget": 500000,
+    "budget": 2500000,
     "target": {
-      "roas": 3
+      "roas": 3.5
     },
     "am": "",
     "accounts": {
-      "meta": "1022095032103885",
-      "google": "",
-      "shopify": null,
+      "meta": "1022095032103885,562278962526172",
+      "google": "2413448793",
+      "shopify": {
+        "shop": "whimsy-web.myshopify.com",
+        "tokenEnv": "SHOPIFY_TOKEN_WHIMSY"
+      },
       "ga4": ""
     },
     "site": {
@@ -332,8 +335,9 @@
       "productPath": "",
       "expectText": ""
     },
-    "active": true,
-    "contact": ""
+    "active": false,
+    "contact": "",
+    "note": "Merged into whimsy on 2026-11-02 (its Meta account and Shopify store now sync under Whimsy Beauty)."
   },
   {
     "id": "iluumi",
