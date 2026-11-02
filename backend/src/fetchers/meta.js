@@ -342,6 +342,12 @@ export async function listAccounts() {
   for (let i = 0; url && i < 20; i++) { const b = await metaGet(url); out.push(...(b.data || [])); url = b.paging?.next || ''; }
   return out;
 }
+// Spend over the last 30 days for one account, for the access check. Read only.
+export async function recentSpend(actId) {
+  const q = new URLSearchParams({ access_token: config.meta.token, fields: 'spend', date_preset: 'last_30d' });
+  const b = await metaGet(`${BASE()}/act_${actId}/insights?${q}`);
+  return Number(b.data?.[0]?.spend || 0);
+}
 export async function testToken(client) {
   const q = new URLSearchParams({ access_token: config.meta.token, fields: 'name,currency,account_status,timezone_name' });
   const body = await metaGet(`${BASE()}/act_${client.accounts.meta}?${q}`);

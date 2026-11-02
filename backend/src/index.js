@@ -377,9 +377,9 @@ async function main() {
         const q = String(url.searchParams.get('q') || url.searchParams.get('client') || '').trim().toLowerCase();
         const hit = (s) => !q || String(s || '').toLowerCase().includes(q);
         const out = { mode, q, meta: 0, metaMatch: 0, google: 0, googleMatch: 0 };
-        try { const ma = await meta.listAccounts(); out.meta = ma.length; for (const a of ma) if (hit(a.name) || hit(a.business_name) || hit(a.account_id)) { out.metaMatch++; log(`access meta: act_${a.account_id} "${a.name}" status ${a.account_status} ${a.currency || ''} bm "${a.business_name || ''}"`); } }
+        try { const ma = await meta.listAccounts(); out.meta = ma.length; for (const a of ma) if (hit(a.name) || hit(a.business_name) || hit(a.account_id)) { out.metaMatch++; let sp = ''; if (q) { try { sp = ` spend30d ${Math.round(await meta.recentSpend(a.account_id))}`; } catch (e) { sp = ' spend30d ?'; } } log(`access meta: act_${a.account_id} "${a.name}" status ${a.account_status} ${a.currency || ''} bm "${a.business_name || ''}"${sp}`); } }
         catch (e) { out.metaError = String(e.message || e).slice(0, 120); log(`access meta FAILED ${out.metaError}`); }
-        try { const ga = await google.listAccounts(); out.google = ga.length; for (const a of ga) if (hit(a.descriptiveName) || hit(a.id)) { out.googleMatch++; log(`access google: ${a.id} "${a.descriptiveName}" status ${a.status}${a.manager ? ' (manager)' : ''} level ${a.level}`); } }
+        try { const ga = await google.listAccounts(); out.google = ga.length; for (const a of ga) if (hit(a.descriptiveName) || hit(a.id)) { out.googleMatch++; let sp = ''; if (q && !a.manager) { try { sp = ` cost30d ${Math.round(await google.recentSpend(a.id))}`; } catch (e) { sp = ' cost30d ?'; } } log(`access google: ${a.id} "${a.descriptiveName}" status ${a.status}${a.manager ? ' (manager)' : ''} level ${a.level}${sp}`); } }
         catch (e) { out.googleError = String(e.message || e).slice(0, 120); log(`access google FAILED ${out.googleError}`); }
         log(`access q="${q}": meta ${out.metaMatch} of ${out.meta}, google ${out.googleMatch} of ${out.google}`);
         return out;
