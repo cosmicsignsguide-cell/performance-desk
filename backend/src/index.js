@@ -234,6 +234,8 @@ async function syncClient(store, client, { mode, days }) {
   if (skipped.length === 4) log(`${client.id}: nothing to sync (${skipped.join('; ')})`);
   else if (skipped.length) log(`${client.id}: skipped ${skipped.join('; ')}`);
   ent.updatedAt = nowIso();
+  const entKb = Math.round(JSON.stringify(ent).length / 1024);
+  if (entKb > 700) log(`${client.id}: entity tree is ${entKb} KB, close to Firestore's 1 MB document limit`);
   await store.set('entities', client.id, ent);
   if (mode === 'hourly') await intradaySnapshot(store, client, today);
   await writeRollup(store, client, today);
@@ -382,6 +384,7 @@ async function main() {
         try { const ga = await google.listAccounts(); out.google = ga.length; for (const a of ga) if (hit(a.descriptiveName) || hit(a.id)) { out.googleMatch++; let sp = ''; if (q && !a.manager) { try { sp = ` cost30d ${Math.round(await google.recentSpend(a.id))}`; } catch (e) { sp = ' cost30d ?'; } } log(`access google: ${a.id} "${a.descriptiveName}" status ${a.status}${a.manager ? ' (manager)' : ''} level ${a.level}${sp}`); } }
         catch (e) { out.googleError = String(e.message || e).slice(0, 120); log(`access google FAILED ${out.googleError}`); }
         log(`access q="${q}": meta ${out.metaMatch} of ${out.meta}, google ${out.googleMatch} of ${out.google}`);
+        if (q) { const e = await store.get('entities', q).catch(() => null); if (e) log(`access entities ${q}: campaigns ${(e.campaigns || []).length} (meta ${(e.campaigns || []).filter((c) => c.platform === 'meta').length}), adsets ${(e.adsets || []).length}, ads ${(e.ads || []).length}, products ${(e.products || []).length}, size ${Math.round(JSON.stringify(e).length / 1024)} KB, entitiesAt ${JSON.stringify(e.entitiesAt || {})}, updatedAt ${e.updatedAt}`); }
         return out;
       }
       if (mode === 'verifymeta') {
