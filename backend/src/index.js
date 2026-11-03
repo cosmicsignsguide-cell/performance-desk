@@ -234,8 +234,19 @@ async function syncClient(store, client, { mode, days }) {
   if (skipped.length === 4) log(`${client.id}: nothing to sync (${skipped.join('; ')})`);
   else if (skipped.length) log(`${client.id}: skipped ${skipped.join('; ')}`);
   ent.updatedAt = nowIso();
-  const entKb = Math.round(JSON.stringify(ent).length / 1024);
-  if (entKb > 700) log(`${client.id}: entity tree is ${entKb} KB, close to Firestore's 1 MB document limit`);
+  let entKb = Math.round(JSON.stringify(ent).length / 1024);
+  // Firestore refuses a document over 1 MB, and then nothing for this client is saved. A large
+  // account (two ad accounts, hundreds of creatives) gets near it, so the tree is trimmed in
+  // steps that cost the dashboard nothing: zero days first, then the per-day history of ads that
+  // spent nothing in the window, then ads that spent nothing and are not running.
+  if (entKb > 800) {
+    const zero = (t) => !t || !t.some((v) => Number(v) > 0);
+    for (const x of [...(ent.ads || []), ...(ent.adsets || []), ...(ent.campaigns || [])]) if (x.days) for (const k of Object.keys(x.days)) if (zero(x.days[k])) delete x.days[k];
+    entKb = Math.round(JSON.stringify(ent).length / 1024);
+    if (entKb > 800) { for (const a of ent.ads || []) if (!(a.spend > 0)) { delete a.days; delete a.last7; delete a.prev7; } entKb = Math.round(JSON.stringify(ent).length / 1024); }
+    if (entKb > 850) { ent.ads = (ent.ads || []).filter((a) => a.spend > 0 || a.status === 'ACTIVE'); entKb = Math.round(JSON.stringify(ent).length / 1024); }
+    log(`${client.id}: entity tree trimmed to ${entKb} KB to stay under Firestore's 1 MB limit`);
+  }
   await store.set('entities', client.id, ent);
   if (mode === 'hourly') await intradaySnapshot(store, client, today);
   await writeRollup(store, client, today);

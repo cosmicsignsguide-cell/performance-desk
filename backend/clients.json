@@ -105,15 +105,15 @@
     "id": "mackly",
     "name": "Mackly Store",
     "type": "ecom",
-    "currency": "LKR",
+    "currency": "INR",
     "budget": 1200000,
     "target": {
       "roas": 4
     },
     "am": "",
     "accounts": {
-      "meta": "2999205000182683",
-      "google": "",
+      "meta": "2999205000182683,439345888148374",
+      "google": "5988201478",
       "shopify": {
         "shop": "aavwri-g3.myshopify.com",
         "tokenEnv": "SHOPIFY_TOKEN_MACKLY"
@@ -149,8 +149,9 @@
       "productPath": "",
       "expectText": ""
     },
-    "active": true,
-    "contact": ""
+    "active": false,
+    "contact": "",
+    "note": "Merged into mackly on 2026-11-03 (India reporting = Mackly Store + Mackly India accounts)."
   },
   {
     "id": "tresnova",
