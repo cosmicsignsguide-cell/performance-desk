@@ -3282,7 +3282,7 @@ async function boot(refresh){
     if(!fb) fb={auth:{currentUser:null,signOut:async()=>{}}};
     if(!D) root.innerHTML='<div class="loading">Loading your dashboard…</div>';
     try{ D=await loadShare(); }catch(e){ root.innerHTML='<div class="loading">'+esc(e.message)+'</div>'; return; }
-    readHash(); render(); startLive(); return;
+    window.__lastFull=Date.now(); readHash(); render(); startLive(); return;
   }
   if(!LIVE){ root.innerHTML='<div class="loading">Loading sample data…</div>'; D=await loadDemo(); readHash(); render(); chatMount(); return; }
   if(!fb){ root.innerHTML='<div class="loading">Loading…</div>'; try{ await initFirebase(); }catch(e){ root.innerHTML='<div class="loading">Could not load Firebase: '+esc(e.message)+'</div>'; return; }
@@ -3292,6 +3292,7 @@ async function boot(refresh){
     fb.auth.onAuthStateChanged(async(u)=>{ if(!u){ gate('Use your Per4mance Guru Google account.'); return; } if(!allowedEmail(u.email)){ await fb.auth.signOut(); gate('Use your Per4mance Guru Google account.','That Google account is not on the allowed list ('+u.email+').'); return; } boot(true); }); return; }
   root.innerHTML='<div class="loading">Loading data…</div>';
   try{ D=await loadLive(); }catch(e){ root.innerHTML='<div class="loading">Could not read data: '+esc(e.message)+'. Check Firestore rules and that the backend has run at least once.</div>'; return; }
+  window.__lastFull=Date.now();
   readHash(); render(); chatMount(); if(refresh===true&&D) toast('Data refreshed');
   startLive();
 }
@@ -3326,10 +3327,21 @@ function startLive(){
     const ae=document.activeElement;
     if(ae&&/^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName)) return;   // someone is typing; try again next minute
     try{
+      // A full reload reads several hundred Firestore documents. Doing that every minute in every
+      // open tab used up the free daily read quota by mid-morning, after which every reload failed
+      // and the page sat on hours-old numbers. So each minute reads one document, meta/lastRun,
+      // and the full reload happens only when a sync has finished since the last one.
+      if(!SHARE){
+        const PFX=(window.DESK_CONFIG&&window.DESK_CONFIG.collectionPrefix)||'';
+        const lr=await fb.db.collection(PFX+'meta').doc('lastRun').get().then(d=>d.exists?d.data():{});
+        const sig=o=>JSON.stringify([o&&o.touched,o&&o.hourly,o&&o.daily,o&&o.weekly]);
+        if(sig(lr)===sig(D.lastRun)&&Date.now()-(window.__lastFull||0)<30*60000) return;
+      } else if(Date.now()-(window.__lastFull||0)<10*60000) return;
       const fresh=SHARE?await loadShare():await loadLive();
+      window.__lastFull=Date.now(); window.__loadErr='';
       const before=snapshotVals();
       D=fresh; animateNext=false; render(); flashChanged(before);
-    }catch(e){ /* a failed poll is not worth interrupting anyone over; the next one retries */ }
+    }catch(e){ if(!window.__loadErr){ window.__loadErr=String(e&&e.message||e); toast('Could not refresh the data ('+window.__loadErr.slice(0,80)+'). Showing the last numbers loaded.','warn'); } }
   },60000);
 }
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) tickClock(); });

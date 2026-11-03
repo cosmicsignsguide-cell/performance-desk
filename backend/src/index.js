@@ -446,7 +446,9 @@ async function main() {
       // own: every full-book daily sync also refreshes "this week so far" from the entity trees
       // it just pulled. Wrapped so a scoring bug costs the scorecard, never the sync it rides on.
       if (mode === 'daily' && !only) { try { await computeCreatorScores(store, clients); } catch (e) { log('creator scores after daily failed: ' + String(e.message || e).slice(0, 120)); } }
-      if (!only) await store.merge('meta', 'lastRun', { [mode]: nowIso() });
+      // touched moves on every run, a one-client run included: the dashboard polls only this one
+      // document and reloads everything else only when it has moved.
+      await store.merge('meta', 'lastRun', only ? { touched: nowIso() } : { [mode]: nowIso(), touched: nowIso() });
       return { mode, clients: list.length, ...(verified ? { verify: { clean: verified.clean, mismatched: verified.mismatched } } : {}), ...(only ? { client: only } : {}), ...(failures.length ? { failures } : {}) };
     }
 
