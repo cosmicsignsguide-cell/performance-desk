@@ -69,11 +69,26 @@ function readUsage(headers, k) {
   }
 }
 
+// How long one account may keep a run waiting on Meta's throttle, per hour. Past this the call
+// fails for that account only, so one heavily throttled account (Firvt, Whimsy) cannot hold up
+// every client queued behind it in a full sync; it is picked up again on the next run.
+const WAIT_BUDGET_MS = 20 * 60 * 1000;
+const waited = new Map();   // account -> { since, ms }
+function chargeWait(k, ms) {
+  const now = Date.now(), w = waited.get(k);
+  const cur = !w || now - w.since > 60 * 60 * 1000 ? { since: now, ms: 0 } : w;
+  if (cur.ms + ms > WAIT_BUDGET_MS) { waited.set(k, cur); return false; }
+  cur.ms += ms; waited.set(k, cur); return true;
+}
+
 async function metaGet(url) {
   const k = keyOf(url);
   for (let attempt = 0; ; attempt++) {
     const wait = cdUntil(k) - Date.now();
-    if (wait > 0) { log(`meta: pacing act_${k}, waiting ${Math.ceil(wait / 1000)}s`); await sleep(wait); }
+    if (wait > 0) {
+      if (k !== 'global' && !chargeWait(k, wait)) throw new Error(`meta: act_${k} is throttled by Meta (waited over ${WAIT_BUDGET_MS / 60000} min this hour), skipped for this run`);
+      log(`meta: pacing act_${k}, waiting ${Math.ceil(wait / 1000)}s`); await sleep(wait);
+    }
     let r, text;
     try { r = await fetch(url); text = await r.text(); }
     catch (e) { if (attempt >= 3) throw e; await sleep(3000 * (attempt + 1)); continue; }
