@@ -2837,9 +2837,15 @@ function sourcesTab(x){
   const cm={}; const camp=k=>{ const m=S.camps[k]||{p:'Other',c:'',name:''}; return cm[k]||(cm[k]={k,p:m.p,c:m.c,name:m.name,id:m.id,n:0,v:0,s:0}); };
   L.forEach(o=>{ if(/\(paid\)/.test(o.r[2])&&o.r[12]){ const y=camp(o.r[12]); y.n+=o.n; y.v+=o.v; } });
   if(pay==='all') (S.spend||[]).forEach(r=>{ if(inW(r[0])&&S.camps[r[1]]) camp(r[1]).s+=r[2]; });
-  const cml=Object.values(cm).filter(y=>y.n||y.s).sort((a,b)=>b.v-a.v||b.s-a.s);
+  // Platform filter and sorting for the paid campaigns table.
+  const cpf=state.srcCpf||'All', cso=state.srcCsort||{k:'v',dir:-1};
+  const cmAll=Object.values(cm).filter(y=>y.n||y.s);
+  const roasOf=y=>y.s?y.v/y.s:-1;
+  const cml=cmAll.filter(y=>cpf==='All'||y.p===cpf).sort((a,b)=>{ const va=cso.k==='r'?roasOf(a):(a[cso.k]||0), vb=cso.k==='r'?roasOf(b):(b[cso.k]||0); return cso.dir*(va-vb)||b.v-a.v; });
   const paid=cml.reduce((a,y)=>(a.s+=y.s,y.s&&(a.v+=y.v),a),{s:0,v:0});
-  if(cml.length) h+='<section class="srcpanel"><div class="srcph"><div><h3>Paid campaigns</h3><p>Orders from the UTM campaign, spend from Meta and Google for the same days'+(pay==='all'?'':'. Spend and ROAS show with Payment set to All')+'</p></div></div><div class="data-table-wrap"><table class="dtable"><thead><tr><th>Platform</th><th>Channel</th><th>Campaign</th><th class="num">Orders</th><th class="num">Order value</th>'+(pay==='all'?'<th class="num">Amount spent</th><th class="num">ROAS</th>':'')+'</tr></thead><tbody>'
+  const cth=(k,l)=>'<th class="num"><button class="srcsort'+(cso.k===k?' on':'')+'" data-act="srccsort" data-k="'+k+'">'+l+(cso.k===k?(cso.dir<0?' \u2193':' \u2191'):'')+'</button></th>';
+  const cchips='<div class="crchips">'+['All','Meta','Google'].map(k=>'<button class="crchip'+(cpf===k?' on':'')+'" data-act="srccpf" data-v="'+k+'">'+(k!=='All'?'<i class="srcdot" style="background:'+SRC_COL[k]+'"></i>':'')+k+' '+fmtNum(cmAll.filter(y=>k==='All'||y.p===k).length)+'</button>').join('')+'</div>';
+  if(cmAll.length) h+='<section class="srcpanel"><div class="srcph"><div><h3>Paid campaigns</h3><p>Orders from the UTM campaign, spend from Meta and Google for the same days'+(pay==='all'?'':'. Spend and ROAS show with Payment set to All')+'</p></div>'+cchips+'</div><div class="data-table-wrap"><table class="dtable"><thead><tr><th>Platform</th><th>Channel</th><th>Campaign</th>'+cth('n','Orders')+cth('v','Order value')+(pay==='all'?cth('s','Amount spent')+cth('r','ROAS'):'')+'</tr></thead><tbody>'
     +cml.map(y=>'<tr><td><span class="srcdot" style="background:'+SRC_COL[y.p]+'"></span>'+esc(y.p)+'</td><td>'+esc(y.c)+'</td><td class="srccamp" title="'+esc(y.id?('Campaign id '+y.id):'Not matched to an ad platform campaign')+'">'+esc(y.name||'(no campaign tag)')+(y.id?'':' <span class="sub" style="display:inline">not matched</span>')+'</td><td class="num">'+fmtNum(y.n)+'</td><td class="num">'+fmtMoney(y.v,c)+'</td>'+(pay==='all'?'<td class="num">'+(y.s?fmtMoney(y.s,c):'--')+'</td><td class="num">'+(y.s?chipK(c,y.v/y.s):'--')+'</td>':'')+'</tr>').join('')
     +'</tbody>'+(pay==='all'?'<tfoot><tr><td colspan="4">Campaigns with spend</td><td class="num">'+fmtMoney(paid.v,c)+'</td><td class="num">'+fmtMoney(paid.s,c)+'</td><td class="num">'+(paid.s?fmtX(paid.v/paid.s):'--')+'</td></tr></tfoot>':'')+'</table></div></section>';
   // UTM table
@@ -3159,6 +3165,8 @@ document.addEventListener('click',e=>{
   else if(act==='plsort'){ const k=el.dataset.k, p=state.plSort; state.plSort=p.key===k?{key:k,dir:p.dir==='asc'?'desc':'asc'}:{key:k,dir:k==='name'?'asc':(k==='dev'?'asc':'desc')}; render(); }
   else if(act==='tab'){ state.tab=el.dataset.tab; if(state.clientId){ const slug={ads:'creatives'}[state.tab]||state.tab; try{ history.replaceState(null,'','#c/'+state.clientId+'/'+slug); }catch(err){} } render(); }
   else if(act==='srcpf'){ state.srcPf=el.dataset.pf; render(); }
+  else if(act==='srccpf'){ state.srcCpf=el.dataset.v; render(); }
+  else if(act==='srccsort'){ const k=el.dataset.k, o=state.srcCsort||{k:'v',dir:-1}; state.srcCsort={k,dir:o.k===k?-o.dir:-1}; render(); }
   else if(act==='srcpay'){ state.srcPay=el.dataset.v; render(); }
   else if(act==='srcview'){ state.srcView=el.dataset.v; render(); }
   else if(act==='srcsort'){ const k=el.dataset.k, o=state.srcSort||{k:'n',dir:-1}; state.srcSort={k,dir:o.k===k?-o.dir:(k==='p'?1:-1)}; render(); }
