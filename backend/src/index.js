@@ -110,7 +110,7 @@ function entitiesDue(ent, source) {
 // old wrong numbers, and every window the dashboard shows (this month, last month, 90-day trend)
 // reads that history. Passing ?days=95 re-pulls the whole visible past in one run instead of
 // editing DESK_RESTATE_DAYS on the host and waiting out two redeploys.
-async function syncClient(store, client, { mode, days }) {
+async function syncClient(store, client, { mode, days, sources: onlySources = null }) {
   const today = todayStr();
   const untilFull = addDays(today, -1);            // last complete day for entity/product windows
   const backfill = Number.isFinite(days) && days > 0 ? Math.min(Math.round(days), 365) : 0;
@@ -135,7 +135,7 @@ async function syncClient(store, client, { mode, days }) {
   // clients finished in under a minute and wrote nothing to the log, which reads exactly like a
   // run that never happened. Say what was skipped and why, once per client.
   const skipped = [];
-  for (const source of ['meta', 'google', 'shopify', 'ga4']) {
+  for (const source of ['meta', 'google', 'shopify', 'ga4'].filter((x) => !onlySources || onlySources.includes(x))) {
     const state = sourceState(client, source);
     if (state === 'not-configured') { skipped.push(`${source}: no account id on the client`); continue; }
     if (state === 'no-token') {
@@ -435,7 +435,10 @@ async function main() {
         // One client throwing used to end the whole run where it stood, so clients later in the
         // file silently never synced and the log gave no hint that the rest had been dropped.
         let entities;
-        try { ({ entities } = await syncClient(store, c, { mode, days })); }
+        // ?sources=shopify (comma list) limits a run to those sources, e.g. a store-only restate
+        // that should not spend any of the Meta rate limit.
+        const onlySrc = String(url.searchParams.get('sources') || '').split(',').map((x) => x.trim()).filter(Boolean);
+        try { ({ entities } = await syncClient(store, c, { mode, days, sources: onlySrc.length ? onlySrc : null })); }
         catch (e) {
           const msg = String(e.message || e).slice(0, 300);
           log(`${c.id}: run aborted for this client, continuing with the rest (${msg})`);

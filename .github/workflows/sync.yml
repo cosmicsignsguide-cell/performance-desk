@@ -21,6 +21,9 @@ on:
       days:
         description: "daily mode only: restate this many past days (e.g. 90)"
         default: ""
+      sources:
+        description: "optional: only these sources, comma separated (e.g. shopify)"
+        default: ""
 
 jobs:
   sync:
@@ -35,6 +38,7 @@ jobs:
           MODE_IN: ${{ github.event.inputs.mode }}
           CLIENT_IN: ${{ github.event.inputs.client }}
           DAYS_IN: ${{ github.event.inputs.days }}
+          SOURCES_IN: ${{ github.event.inputs.sources }}
         run: |
           if [ -z "$DESK_SYNC_KEY" ]; then echo "DESK_SYNC_KEY secret is not set"; exit 1; fi
           MODE="${MODE_IN:-hourly}"
@@ -46,7 +50,7 @@ jobs:
           # answers 502 while the run is still going. Those go to /run, which starts the run in the
           # background and answers 202 at once; the result is in the desk-api logs.
           ROUTE=sync; if [ -n "$DAYS_IN" ] || [ "$MODE" = "daily" ]; then ROUTE=run; fi
-          code=$(curl -sS -o out.txt -w "%{http_code}" --max-time 8400 -X POST -H "Authorization: Bearer $DESK_SYNC_KEY" "$API/$ROUTE?mode=$MODE${CLIENT_IN:+&client=$CLIENT_IN}${DAYS_IN:+&days=$DAYS_IN}")
+          code=$(curl -sS -o out.txt -w "%{http_code}" --max-time 8400 -X POST -H "Authorization: Bearer $DESK_SYNC_KEY" "$API/$ROUTE?mode=$MODE${CLIENT_IN:+&client=$CLIENT_IN}${DAYS_IN:+&days=$DAYS_IN}${SOURCES_IN:+&sources=$SOURCES_IN}")
           cat out.txt; echo
           # 409 means the same mode is still running from the last tick, which is fine.
           if [ "$code" != "200" ] && [ "$code" != "202" ] && [ "$code" != "409" ]; then echo "sync failed with HTTP $code"; exit 1; fi

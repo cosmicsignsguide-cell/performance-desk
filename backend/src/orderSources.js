@@ -137,7 +137,8 @@ export function isTestOrder(o, value) {
 
 export function payOf(o) {
   const g = (o.paymentGatewayNames || []).join(' ').toLowerCase();
-  if (/cash on delivery|cod\b|\bcod/.test(g)) return 'COD';
+  // Stores spell it many ways: "Cash on Delivery (COD)", "cash_on_delivery", "COD", "Gokwik COD".
+  if (/cash[\s_-]*on[\s_-]*delivery|(^|[^a-z])cod([^a-z]|$)/.test(g)) return 'COD';
   if (!g || /manual/.test(g)) return o.displayFinancialStatus === 'PAID' ? 'Prepaid' : 'Other';
   return 'Prepaid';
 }
