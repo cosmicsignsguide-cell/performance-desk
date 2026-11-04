@@ -265,7 +265,7 @@ async function syncClient(store, client, { mode, days, sources: onlySources = nu
 // documents, every single time anyone opened it. Firestore's free tier allows 50,000 reads a day,
 // so the whole team shared roughly thirteen page loads before the dashboard simply stopped
 // loading. This makes the same page cost 31.
-export const ROLLUP_DAYS = 40;   // a little past the dashboard's 35 so a range change needs no resync
+export const ROLLUP_DAYS = 95;   // the dashboard's 95: Last month plus the month before it, for the comparison
 async function writeRollup(store, client, today) {
   try {
     const since = addDays(today, -(ROLLUP_DAYS - 1));
@@ -275,9 +275,14 @@ async function writeRollup(store, client, today) {
     const rows = (await store.list('daily', dailyIdRange(client.id, since, today)))
       .filter((r) => r.clientId === client.id && r.date >= since && r.date <= today)
       .sort((a, b) => (a.date === b.date ? String(a.platform).localeCompare(b.platform) : a.date < b.date ? -1 : 1));
+    // 95 days of rows is normally a few hundred KB. If a client ever gets near Firestore's 1 MB
+    // document limit, the oldest days go first so the recent ones are always saved.
+    let kept = rows, from = since;
+    while (kept.length && JSON.stringify(kept).length > 900 * 1024) { from = addDays(from, 7); kept = kept.filter((r) => r.date >= from); }
+    if (from !== since) log(`rollup ${client.id}: trimmed to start ${from} to stay under 1 MB`);
     await store.set('rollup', client.id, {
-      clientId: client.id, from: since, to: today, days: ROLLUP_DAYS,
-      rows, count: rows.length, updatedAt: nowIso(),
+      clientId: client.id, from, to: today, days: ROLLUP_DAYS,
+      rows: kept, count: kept.length, updatedAt: nowIso(),
     });
   } catch (e) {
     // A rollup that fails is a slower dashboard, not a wrong one: the page falls back to reading

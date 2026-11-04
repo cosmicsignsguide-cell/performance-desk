@@ -20,6 +20,9 @@ import { emptyDaily, log, num, nowIso, round, addDays } from '../util.js';
 
 const BASE = () => `https://graph.facebook.com/${config.meta.apiVersion}`;
 export const ENTITY_DAYS = 35;
+// Campaigns keep a longer per-day history (there are few of them, so it is cheap) so the Last
+// month range and its comparison with the month before work in the campaigns table.
+export const CAMPAIGN_DAYS = 95;
 
 function act(v, types) {
   if (!Array.isArray(v)) return 0;
@@ -249,7 +252,7 @@ async function fetchEntitiesOne(client, until) {
     () => pagedRange(ins('ad', INSIGHT_FIELDS + ',ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name'), since, until),
     () => pagedRange(ins('ad', 'spend,impressions,clicks,frequency,ad_id'), addDays(until, -6), until),
     () => pagedRange(ins('ad', 'spend,impressions,clicks,frequency,ad_id'), addDays(until, -13), addDays(until, -7)),
-    () => pagedRange(ins('campaign', DAILY_FIELDS + ',campaign_id', { time_increment: '1' }), dSince, dUntil),
+    () => pagedRange(ins('campaign', DAILY_FIELDS + ',campaign_id', { time_increment: '1' }), addDays(until, -(CAMPAIGN_DAYS - 1)), dUntil),
     () => pagedRange(ins('adset', DAILY_FIELDS + ',adset_id', { time_increment: '1' }), dSince, dUntil),
     () => pagedRange(ins('ad', DAILY_FIELDS + ',ad_id', { time_increment: '1' }), dSince, dUntil),
     () => paged(`${BASE()}/act_${accountId}/adsets?${q('id,name,campaign_id,effective_status,learning_stage_info,daily_budget,lifetime_budget,optimization_goal')}`),
@@ -268,8 +271,9 @@ async function fetchEntitiesOne(client, until) {
     const info = campInfo[r.campaign_id] || {};
     return { id: r.campaign_id, name: r.campaign_name, platform: 'meta', status: info.effective_status || '', objective: info.objective || '', bidStrategy: info.bid_strategy || '', ...budgetOf(info), budgetLevel: info.daily_budget || info.lifetime_budget ? 'campaign' : 'adset', ...metrics(r), days: cDays[r.campaign_id] || {} };
   });
-  // Campaigns that had no spend in the last 30 days but are active still matter (paused/new ones with budget)
-  for (const c of campObjs) if (!campaigns.some((x) => x.id === c.id) && c.effective_status === 'ACTIVE') campaigns.push({ id: c.id, name: c.name, platform: 'meta', status: c.effective_status, objective: c.objective || '', ...budgetOf(c), budgetLevel: c.daily_budget || c.lifetime_budget ? 'campaign' : 'adset', ...metrics({}), days: cDays[c.id] || {} });
+  // Campaigns that had no spend in the last 30 days but are active still matter (paused/new ones with budget),
+  // and so do ones that only spent earlier (last month), which the per-day history covers.
+  for (const c of campObjs) if (!campaigns.some((x) => x.id === c.id) && (c.effective_status === 'ACTIVE' || cDays[c.id])) campaigns.push({ id: c.id, name: c.name, platform: 'meta', status: c.effective_status, objective: c.objective || '', ...budgetOf(c), budgetLevel: c.daily_budget || c.lifetime_budget ? 'campaign' : 'adset', ...metrics({}), days: cDays[c.id] || {} });
 
   const adsets = sets.map((r) => {
     const info = setInfo[r.adset_id] || {};

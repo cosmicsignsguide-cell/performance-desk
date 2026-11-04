@@ -1355,7 +1355,7 @@ const LIVE = !!(CFG.firebase && CFG.firebase.projectId);
 const SHARE = (()=>{ try{ const t=new URLSearchParams(location.search).get('s')||''; return /^[A-Za-z0-9_-]{16,80}$/.test(t)?t:''; }catch(e){ return ''; } })();
 const API_BASE = String(CFG.syncUrl||'').replace(/\/(sync|run)(\?.*)?$/,'').replace(/\/$/,'');
 if(SHARE){ try{ document.documentElement.classList.add('clientview'); }catch(e){} }
-const RANGE_DAYS = 35;
+const RANGE_DAYS = 95;   // Last month and the month before it, for its comparison
 const TZ = CFG.timezone || 'Asia/Kolkata';
 function isoToday(){ return new Date().toLocaleDateString('en-CA',{timeZone:TZ}); }
 function addDays(str,n){ const d=new Date(str+'T12:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
@@ -1429,6 +1429,7 @@ async function loadLive(){
 }
 
 /* ============================== RANGES / METRICS ========================= */
+const MONTHS_FULL=['January','February','March','April','May','June','July','August','September','October','November','December'];
 function rangeSpec(range,today){ const dom=parseInt(today.slice(8),10);
   switch(range){
     case 'today': return {days:1,offset:0,prev:{days:1,offset:7},label:'today',prevLabel:'same day last week'};
@@ -1436,6 +1437,8 @@ function rangeSpec(range,today){ const dom=parseInt(today.slice(8),10);
     case '14d': return {days:14,offset:1,prev:{days:14,offset:15},label:'last 14 days',prevLabel:'prior 14 days'};
     case '30d': return {days:30,offset:1,prev:{days:30,offset:31},label:'last 30 days',prevLabel:'prior 30 days'};
     case 'MTD': return {days:dom,offset:0,prev:{days:dom,offset:dom},label:'month to date',prevLabel:'same days last month'};
+    case 'LM': { const lmEnd=addDays(today,-dom), lmDays=parseInt(lmEnd.slice(8),10), pEnd=addDays(lmEnd,-lmDays), pDays=parseInt(pEnd.slice(8),10);
+      return {days:lmDays,offset:dom,prev:{days:pDays,offset:dom+lmDays},label:'last month ('+MONTHS_FULL[+lmEnd.slice(5,7)-1]+')',prevLabel:MONTHS_FULL[+pEnd.slice(5,7)-1]}; }
     default: return {days:7,offset:1,prev:{days:7,offset:8},label:'last 7 days',prevLabel:'prior 7 days'};
   } }
 function window_(today,spec){ const end=addDays(today,-spec.offset); return {start:addDays(end,-(spec.days-1)),end}; }
@@ -1696,7 +1699,7 @@ function sidebar(){
   return h;
 }
 
-function rangeBar(){ const ranges=[['today','Today'],['yesterday','Yesterday'],['7d','7d'],['14d','14d'],['30d','30d'],['MTD','MTD']]; return '<div class="seg" role="group" aria-label="Date range">'+ranges.map(r=>'<button data-act="range" data-range="'+r[0]+'" class="'+(state.range===r[0]?'on':'')+'">'+r[1]+'</button>').join('')+'</div>'; }
+function rangeBar(){ const ranges=[['today','Today'],['yesterday','Yesterday'],['7d','7d'],['14d','14d'],['30d','30d'],['MTD','MTD'],['LM','Last month']]; return '<div class="seg" role="group" aria-label="Date range">'+ranges.map(r=>'<button data-act="range" data-range="'+r[0]+'" class="'+(state.range===r[0]?'on':'')+'">'+r[1]+'</button>').join('')+'</div>'; }
 // A KPI card carries colour only when it means something: green, amber or red for a metric measured
 // against its target. Everything else stays neutral, so a glance at the row picks out what is off
 // instead of six decorative accents competing. `second` is the card's supporting metric, given its
@@ -2902,6 +2905,10 @@ function trendChart(x){
   const step=cnt>16?Math.ceil(cnt/10):(cnt>8?2:1); days.forEach((d,i)=>{if(i%step===0||i===cnt-1) s+='<text x="'+(pl+i*iw+iw/2).toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle">'+d.date.slice(8)+' '+MON[+d.date.slice(5,7)-1]+'</text>'});
   return s+'</svg>';
 }
+// Ad sets and ads keep 35 days of per-day history (campaigns keep 95). When a range reaches further
+// back than that, say so instead of showing a silently short number.
+function entShort(spec){ const w=window_(D.today,spec); const from=addDays(D.today,-34); return w.start<from?'Ad set and creative numbers cover only '+fmtDay(from)+' onward (35 days are kept for them); campaign totals cover the full range.':''; }
+function fmtDay(d){ return parseInt(d.slice(8),10)+' '+MON[+d.slice(5,7)-1]; }
 function entRange(e,spec){ let m; if(e.days&&Object.keys(e.days).length) m=daysIn(e.days,D.today,spec); else m={spend:e.spend||0,impressions:e.impressions||0,clicks:e.clicks||0,purchases:e.purchases||0,revenue:e.revenue||0,leads:e.leads||0,installs:e.installs||0}; return derive(m); }
 function chipK(c,v){ return '<span class="chip '+kpiStatus(c,v)+'">'+(c.type==='ecom'?fmtX(v):fmtMoney(v,c))+'</span>' }
 function thead(cols,table){ const so=state.sort[table]; return '<thead><tr>'+cols.map(cl=>'<th data-act="sort" data-table="'+table+'" data-key="'+cl.key+'" class="'+(cl.num?'num ':'')+(so.key===cl.key?'sorted':'')+'">'+cl.label+(so.key===cl.key?(so.dir==='asc'?' ↑':' ↓'):'')+'</th>').join('')+'</tr></thead>'; }
@@ -2935,7 +2942,7 @@ function campaignTree(x){
     const st=r.lvl===1?learnChip(e):(e.status?'<span class="chip '+(e.status==='ACTIVE'?'good':/DISAPPROVED|WITH_ISSUES/.test(e.status)?'bad':'neutral')+'"><span class="d"></span>'+esc(cap(e.status.toLowerCase().replace(/_/g,' ')))+'</span>':'');
     const name=(r.hasKids?'<span class="tw '+(r.open?'on':'')+'" data-act="toggle" data-id="'+esc(e.id)+'">▶</span>':'<span class="tw"></span>')+(r.lvl===2&&e.thumb?'<img class="thumb" src="'+esc(e.thumb)+'" alt="" loading="lazy" style="width:28px;height:28px">':'')+esc(e.name)+(r.lvl===0?'<span class="sub">'+cap(e.platform)+(e.objective?' · '+esc(e.objective).toLowerCase().replace(/_/g,' '):'')+(e.channel?' · '+esc(e.channel).toLowerCase().replace(/_/g,' '):'')+'</span>':r.lvl===1&&e.optimization?'<span class="sub">'+esc(e.optimization).toLowerCase().replace(/_/g,' ')+'</span>':'');
     h+='<tr class="lvl'+r.lvl+'"><td class="name">'+name+'</td><td>'+st+'</td><td class="num">'+budget+'</td><td class="num"><span class="row-title">'+fmtMoney(m.spend,c)+'</span>'+(r.lvl===0&&shareBase?' <span class="faint small">'+pct(m.spend/shareBase)+'</span>':'')+'<span class="sub" style="text-align:right">'+vs(m.spend,pm.spend)+'</span></td><td class="num"><span class="row-title">'+fmtNum(m[res])+'</span><span class="sub" style="text-align:right">'+vs(m[res],pm[res])+'</span></td><td class="num">'+fmtMoney(isE?m.cpa:m.cpl,c)+'</td><td class="num">'+chipK(c,isE?m.roas:m.cpl)+'</td><td class="num">'+fmtPct(m.ctr)+'</td><td class="num">'+fmtMoney(m.cpm,c)+'</td></tr>'; }
-  return h+'</tbody></table></div><div class="note">Google campaigns have no children yet.</div></div>';
+  return h+'</tbody></table></div><div class="note">Google campaigns have no children yet.'+(entShort(spec)?' '+entShort(spec):'')+'</div></div>';
 }
 function learnChip(r){ const l=(r.learning||'').toUpperCase(); if(r.status&&r.status!=='ACTIVE') return '<span class="chip neutral">'+esc(cap(r.status.toLowerCase().replace(/_/g,' ')))+'</span>'; if(l==='FAIL') return '<span class="chip warn"><span class="d"></span>Learning limited</span>'; if(l==='LEARNING') return '<span class="chip neutral"><span class="d"></span>Learning</span>'; if(l==='SUCCESS') return '<span class="chip good"><span class="d"></span>Active</span>'; return '<span class="chip neutral">'+esc(r.status||'n/a')+'</span>'; }
 function entityTable(x){
@@ -2953,7 +2960,7 @@ function entityTable(x){
     empty='No Shopify product data yet. Connect the store token to see best sellers and stock.'; note='Top 25 products by revenue in the last 30 days. Revenue is line-item value before discounts. Stock in red means out of stock or under about 14 days left at the last 7 days sales pace.';
   } else { rows=(x.ads||[]).map(e=>({e,m:entRange(e,spec)})).filter(r=>crMatch(r,state.crf)); x._callBar=crCallBar(rows); if(state.crcall) rows=rows.filter(r=>crCallOf(r)===state.crcall); const adTotal=rows.reduce((s,r)=>s+r.m.spend,0); title='Creatives <span class="sub">spend, CTR and results for '+spec.label+' · hook, hold, frequency and the call use the last 30 days</span>';
     cols=[{key:'name',label:'Creative',f:r=>'<td class="row-title"><span class="adname">'+crThumb(r.e,c)+'<span>'+esc(r.e.name)+'<span class="sub">'+esc(r.e.adsetName||'')+'</span></span></span></td>',v:r=>r.e.name},{key:'format',label:'Format',f:r=>'<td>'+esc(r.e.format||'')+'</td>',v:r=>r.e.format||''},{key:'spend',label:'Spend',num:1,f:r=>fmtMoney(r.m.spend,c)+' <span class="faint">'+pct(adTotal?r.m.spend/adTotal:0)+'</span>',v:r=>r.m.spend},{key:'hookRate',label:'Hook',num:1,f:r=>r.e.hookRate==null?'<span class="faint">static</span>':fmtPct(r.e.hookRate),v:r=>r.e.hookRate==null?-1:r.e.hookRate},{key:'holdRate',label:'Hold',num:1,f:r=>r.e.holdRate==null?'<span class="faint">static</span>':fmtPct(r.e.holdRate),v:r=>r.e.holdRate==null?-1:r.e.holdRate},{key:'ctr',label:'CTR',num:1,f:r=>fmtPct(r.m.ctr)+(r.e.ctrTrend?' <span class="delta '+(r.e.ctrTrend<0.9?'down':(r.e.ctrTrend>1.05?'up':'flat'))+'" title="last 7 days vs the 7 before">'+(r.e.ctrTrend>=1?'+':'')+Math.round((r.e.ctrTrend-1)*100)+'%</span>':''),v:r=>r.m.ctr},{key:res,label:cap(res),num:1,f:r=>fmtNum(r.m[res]),v:r=>r.m[res]},kpiCol,{key:'freq',label:'Freq',num:1,f:r=>((r.e.last7&&r.e.last7.freq)||r.e.freq||0).toFixed(1),v:r=>(r.e.last7&&r.e.last7.freq)||r.e.freq||0},{key:'daysLive',label:'Days',num:1,f:r=>r.e.daysLive==null?'<span class="faint">n/a</span>':r.e.daysLive,v:r=>r.e.daysLive||0},{key:'status',label:'Call',f:r=>'<td class="call"><span class="chip '+r.e.tone+'">'+r.e.status+'</span><span class="sub">'+esc(r.e.why)+'</span></td>',v:r=>({Pause:0,Fatiguing:1,Watch:2,Testing:3,Steady:4,Scale:5}[r.e.status]??-1)}];
-    empty=state.crf==='all'?'No Meta creatives yet.':'No creatives in this group. Try another filter above.'; note='Hook = 3 second plays / impressions. Hold = ThruPlays / 3 second plays. Fatiguing = frequency past 3.2 with CTR falling 15%+ and CPM rising 12%+ in the same week.';
+    empty=state.crf==='all'?'No Meta creatives yet.':'No creatives in this group. Try another filter above.'; note=(entShort(spec)?entShort(spec)+' ':'')+'Hook = 3 second plays / impressions. Hold = ThruPlays / 3 second plays. Fatiguing = frequency past 3.2 with CTR falling 15%+ and CPM rising 12%+ in the same week.';
   }
   const so=state.sort[tab]; const sorted=rows.slice().sort((a,b)=>{ const col=cols.find(cl=>cl.key===so.key)||cols[0]; let va=col.v(a),vb=col.v(b); if(typeof va==='number'&&!isFinite(va)) va=so.dir==='asc'?Infinity:-Infinity; if(typeof vb==='number'&&!isFinite(vb)) vb=so.dir==='asc'?Infinity:-Infinity; if(typeof va==='string') return so.dir==='asc'?va.localeCompare(vb):vb.localeCompare(va); return so.dir==='asc'?va-vb:vb-va; });
   if(tab==='ads'&&state.crView!=='table') return creativeGrid(x,sorted,kpiCol,title,note,empty);

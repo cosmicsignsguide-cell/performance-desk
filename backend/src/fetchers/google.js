@@ -6,7 +6,7 @@ import { config } from '../config.js';
 import { fetchJson, emptyDaily, log, num, nowIso, round, addDays } from '../util.js';
 
 let cachedToken = null; // {token, exp}
-export const ENTITY_DAYS = 35;
+export const ENTITY_DAYS = 95; // campaigns only, so Last month and the month before it work
 
 export async function accessToken() {
   if (cachedToken && cachedToken.exp > Date.now() + 60000) return cachedToken.token;
@@ -91,7 +91,7 @@ export async function fetchEntities(client, until) {
              metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value
       FROM campaign WHERE segments.date BETWEEN '${since}' AND '${until}' AND campaign.status != 'REMOVED'`),
     gaql(client.accounts.google, `
-      SELECT campaign.id, segments.date, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value
+      SELECT campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, segments.date, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value
       FROM campaign WHERE segments.date BETWEEN '${addDays(until, -(ENTITY_DAYS - 1))}' AND '${addDays(until, 1)}' AND metrics.cost_micros > 0`),
   ]);
   const days = {};
@@ -99,6 +99,9 @@ export async function fetchEntities(client, until) {
     const id = String(r.campaign.id); const m = (days[id] = days[id] || {}); const conv = num(r.metrics.conversions);
     m[r.segments.date] = [round(micros(r.metrics.costMicros)), num(r.metrics.impressions), num(r.metrics.clicks), isE ? Math.round(conv) : 0, isE ? round(num(r.metrics.conversionsValue)) : 0, isE ? 0 : Math.round(conv)];
   }
+  // Campaigns that spent only before the last 30 days (last month) come from the per-day rows.
+  const seen = new Set(camp.map((r) => String(r.campaign.id)));
+  for (const r of campDaily) { const id = String(r.campaign.id); if (seen.has(id)) continue; seen.add(id); camp.push({ campaign: r.campaign, campaignBudget: {}, metrics: {} }); }
   const campaigns = camp.map((r) => {
     const spend = round(micros(r.metrics.costMicros)), imp = num(r.metrics.impressions), clicks = num(r.metrics.clicks), conv = num(r.metrics.conversions);
     const id = String(r.campaign.id);
