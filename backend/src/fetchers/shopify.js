@@ -189,6 +189,7 @@ export async function fetchDaily(client, since, until) {
   if (hasSources) {
     orderDays = {};
     for (let d = since; d <= until; d = addDays(d, 1)) orderDays[d] = { list: [], test: { n: 0, v: 0 }, cancelled: { n: 0, v: 0 } };
+    const gwTally = {};
     for (const o of orders) {
       const d = dayOf(o.createdAt); const day = orderDays[d]; if (!day) continue;
       const v = Math.max(0, num(o.currentTotalPriceSet?.shopMoney?.amount) - num(o.totalRefundedSet?.shopMoney?.amount));
@@ -196,7 +197,10 @@ export async function fetchDaily(client, since, until) {
       if (o.cancelledAt || o.displayFinancialStatus === 'VOIDED') { day.cancelled.n += 1; day.cancelled.v = round(day.cancelled.v + num(o.currentTotalPriceSet?.shopMoney?.amount)); continue; }
       const nc = o.customerJourneySummary?.customerOrderIndex === 1 || (!o.customerJourneySummary && o.customer?.numberOfOrders === 1);
       day.list.push({ ...classifyOrder(o), v: round(v), nc, cod: payOf(o) === 'COD' });
+      { const gk = (o.paymentGatewayNames || []).join('+') || '(none)'; gwTally[gk] = (gwTally[gk] || 0) + 1; }
     }
+    // How the store names its payment methods, so a COD gateway with an unusual name is visible.
+    log(`shopify ${client.id}: payment gateways ${Object.entries(gwTally).sort((x, y) => y[1] - x[1]).slice(0, 8).map(([k, n]) => `${k} ${n}`).join(', ')}`);
     for (const d in orderDays) { const x = orderDays[d]; orderDays[d] = { g: groupDay(x.list), test: x.test, cancelled: x.cancelled }; }
   }
   return { rows, products: Object.values(products), recentOrders, orderDays };

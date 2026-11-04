@@ -657,7 +657,7 @@ a{color:var(--cyan)}
 .srctile{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--panel)}
 .srctile .tl{font-size:13px;color:var(--faint);font-weight:600;display:flex;align-items:center;gap:6px}
 .srctile .tb{font-size:32px;font-weight:700;letter-spacing:-.02em;margin:6px 0 2px}
-.srctile .ts{font-size:13px;color:var(--faint)}
+.srctile .ts{font-size:13px;color:var(--faint)} .srctile .ts.sp{margin-top:6px;padding-top:6px;border-top:1px solid var(--border);color:var(--dim)} .srctile .ts.sp b{color:var(--text);font-weight:650}
 .srcbar{display:flex;height:12px;border-radius:99px;overflow:hidden;background:var(--line)}.srcbar span{display:block;height:100%}
 .srcgrid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:14px}
 .srcpanel{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--panel);min-width:0}
@@ -2803,8 +2803,14 @@ function sourcesTab(x){
   h+='<div class="srcfilters"><div class="fgrp"><span class="flab">Payment</span>'+seg('srcpay',pay,[['all','All '+fmtNum(allN)],['prepaid','Prepaid '+fmtNum(allN-codN)],['cod','COD '+fmtNum(codN)]])+'</div>'
     +'<div class="fgrp"><span class="flab">Left out</span><span class="srcleft">'+fmtNum(tests)+' test'+(tests===1?'':'s')+' · '+fmtNum(canc)+' cancelled</span></div></div>';
   // Tiles and share bar
-  h+='<div class="srctiles"><div class="srctile"><div class="tl">All orders</div><div class="tb disp">'+fmtNum(tot.n)+'</div><div class="ts">'+fmtMoney(tot.v,c)+' order value</div></div>'
-    +PL.map(p=>'<div class="srctile"><div class="tl"><i class="srcdot" style="background:'+SRC_COL[p]+'"></i>'+p+'</div><div class="tb disp">'+fmtNum(byP[p].n)+'</div><div class="ts">'+pctOf(byP[p].n,tot.n)+' of orders · '+fmtMoney(byP[p].v,c)+'</div></div>').join('')+'</div>';
+  // Ad spend for the same days, from the campaign-level spend Meta and Google report. It does not
+  // change with the Payment filter (spend is not split by how the customer paid), so the ROAS line
+  // only shows with Payment set to All.
+  const spP={Google:0,Meta:0,Other:0}; (S.spend||[]).forEach(r=>{ if(!inW(r[0])) return; const m=S.camps[r[1]]; const p=m&&m.p||String(r[1]).split(':')[0]; if(spP[p]!=null) spP[p]+=r[2]; });
+  const spAll=spP.Google+spP.Meta;
+  const spLine=(sp,v)=>sp?'<div class="ts sp">Spend <b>'+fmtMoney(sp,c)+'</b>'+(pay==='all'?' · ROAS <b>'+fmtX(v/sp)+'</b>':'')+'</div>':'';
+  h+='<div class="srctiles"><div class="srctile"><div class="tl">All orders</div><div class="tb disp">'+fmtNum(tot.n)+'</div><div class="ts">'+fmtMoney(tot.v,c)+' order value</div>'+(spAll?'<div class="ts sp">Total spend <b>'+fmtMoney(spAll,c)+'</b>'+(pay==='all'?' · ROAS <b>'+fmtX(tot.v/spAll)+'</b>':'')+'</div>':'')+'</div>'
+    +PL.map(p=>'<div class="srctile"><div class="tl"><i class="srcdot" style="background:'+SRC_COL[p]+'"></i>'+p+'</div><div class="tb disp">'+fmtNum(byP[p].n)+'</div><div class="ts">'+pctOf(byP[p].n,tot.n)+' of orders · '+fmtMoney(byP[p].v,c)+'</div>'+(p==='Other'?'<div class="ts sp">No ad spend</div>':spLine(spP[p],byP[p].v))+'</div>').join('')+'</div>';
   h+='<div class="srcbar" role="img" aria-label="Share of orders by platform">'+PL.filter(p=>byP[p].n).map(p=>'<span style="width:'+(byP[p].n/(tot.n||1)*100).toFixed(2)+'%;background:'+SRC_COL[p]+'" title="'+p+': '+fmtNum(byP[p].n)+' orders"></span>').join('')+'</div>';
   // Orders per day | Orders by channel
   const dl=[]; for(let d=w.start;d<=w.end;d=addDays(d,1)) dl.push(d);
