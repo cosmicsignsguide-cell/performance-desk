@@ -8,8 +8,9 @@ service cloud.firestore {
         && request.auth.token.email_verified == true
         && request.auth.token.email.matches('.*@per4mance[.]guru$');
     }
-    match /{document=**} {
-      allow read: if isTeam();
+    // Store connection tokens are for the backend only (they are encrypted as well).
+    match /{col}/{document=**} {
+      allow read: if isTeam() && !col.matches('.*shopTokens$');
       allow write: if false;
     }
   }

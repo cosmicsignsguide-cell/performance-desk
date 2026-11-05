@@ -34,6 +34,16 @@ export const config = {
     apiVersion: env('SHOPIFY_API_VERSION', '2026-01'),
     // Per-store tokens live in the client record as accounts.shopify.tokenEnv (name of an env var),
     // so one deployment can hold many stores: SHOPIFY_TOKEN_<CLIENTID>.
+    //
+    // Since 1 Jan 2026 a store can no longer make its own custom app in the Shopify admin, so new
+    // stores join through our own app (made in Shopify's Dev Dashboard, custom distribution). The
+    // store owner opens its install link, Shopify sends them to /shopify/install and back to
+    // /shopify/callback, and the store's token is saved in Firestore (shopTokens), never in a log.
+    app: {
+      clientId: env('SHOPIFY_APP_CLIENT_ID'),
+      clientSecret: env('SHOPIFY_APP_CLIENT_SECRET'),
+      scopes: env('SHOPIFY_APP_SCOPES', 'read_orders,read_all_orders,read_products,read_inventory,read_customers,read_reports'),
+    },
   },
 
   alerts: {
@@ -59,7 +69,11 @@ export function has(source) {
   }
 }
 
+// Tokens saved by the install flow, by myshopify domain. Filled from Firestore by loadShopTokens()
+// at start-up, before every run and after each install, so lookups here can stay synchronous.
+export const installedShopTokens = new Map();
 export function shopifyTokenFor(client) {
   const name = client?.accounts?.shopify?.tokenEnv || `SHOPIFY_TOKEN_${(client?.id || '').toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
-  return env(name);
+  // An env token wins, so the stores connected the old way keep working exactly as before.
+  return env(name) || installedShopTokens.get(String(client?.accounts?.shopify?.shop || '').toLowerCase()) || '';
 }

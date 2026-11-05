@@ -25,6 +25,7 @@ import { raise } from './alerts.js';
 import { handleChat, notesApi } from './chat/index.js';
 import { verifyShopify, verifyMeta } from './verify.js';
 import { buildSourceFeed } from './orderSources.js';
+import { handleShopifyInstall, loadShopTokens } from './shopifyInstall.js';
 import Sample from './sample.cjs';
 
 const SAMPLE_FALLBACK = /^(1|true|yes)$/i.test(process.env.DESK_SAMPLE_FALLBACK || '');
@@ -366,6 +367,7 @@ async function main() {
     const http = await import('node:http');
     const port = parseInt(process.env.PORT || '10000', 10);
     const running = new Set();
+    loadShopTokens(store).then((n) => { if (n) log(`shopTokens: ${n} store${n > 1 ? 's' : ''} connected through the install link`); });
     // Report links point at the dashboard host, which serves report.html; that page then calls
     // this API for the data. Falls back to this host so /links still returns something usable
     // before DESK_REPORT_BASE is set.
@@ -373,6 +375,7 @@ async function main() {
 
     async function runMode(mode, days, url = new URL('http://x/')) {
       await syncClientsFromFile();
+      await loadShopTokens(store);   // stores connected through the install link since the last run
       const clients = await loadClients();
       // A new client gets its report link the first time it syncs. Existing links are never
       // regenerated here, so a link already sent to a client keeps working across deploys.
@@ -515,6 +518,10 @@ async function main() {
         req.on('end', () => { if (!over && clientLogHits.length < 30) { clientLogHits.push(now); log('clientlog: ' + body.replace(/[\r\n]+/g, ' ').slice(0, 1500)); } res.writeHead(204); res.end(); });
         return;
       }
+
+      // Shopify one-click store connection (see shopifyInstall.js). Public by design: Shopify's
+      // signature and our own signed state are what protect it, not the sync key.
+      if (await handleShopifyInstall(store, req, res, url, (process.env.RENDER_EXTERNAL_URL || `https://${req.headers.host}`).replace(/\/$/, ''))) return;
 
       // GET /r/<token> — the client report feed. Public by design: the token is the credential.
       // A bad, unknown or revoked token gets the same flat 404 as a missing route, so the
