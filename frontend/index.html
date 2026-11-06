@@ -653,6 +653,12 @@ a{color:var(--cyan)}
 .srcfilters{display:flex;flex-wrap:wrap;gap:12px 28px;align-items:center;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg)}
 .fgrp{display:flex;align-items:center;gap:10px}.flab{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);font-weight:600}.srcleft{font-size:13.5px;color:var(--dim)}
 .srcfilters .crchips{margin-left:0}
+.srcgrid.scl{margin:14px 0;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:900px){.srcgrid.scl{grid-template-columns:1fr}}
+.scl-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:2px 0 10px}
+.scl-stats div{display:flex;flex-direction:column;gap:1px}.scl-stats span{font-size:12px;color:var(--faint)}.scl-stats b{font-size:19px;font-weight:700;letter-spacing:-.01em}
+.scl-chg{font-size:12px;font-weight:600;color:var(--faint)}.scl-chg.up{color:#1f8a4c}.scl-chg.dn{color:#c2412d}
+.scl-line{display:inline-block;width:14px;height:2px;background:var(--text);vertical-align:middle;margin-right:4px;border-radius:1px}
 .srctiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .srctile{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--panel)}
 .srctile .tl{font-size:13px;color:var(--faint);font-weight:600;display:flex;align-items:center;gap:6px}
@@ -2781,6 +2787,43 @@ function srcSample(today){
 // share bar, orders per day beside orders by channel, campaigns with spend, the full UTM table, and
 // the Direct bucket beside the sorting rules. Every number is built from the ledger (one row per
 // UTM combination per day, COD and prepaid kept apart), so the Payment filter moves all of it.
+// Spend, sales and ROAS per day for Meta and for Google, side by side, over the range picked at the
+// top, with each total set against the period just before it so scaling up or down is plain.
+// Sales here are the UTM-attributed order value of every order (all payment types), the same
+// figure the tiles use for ROAS, so the two always agree.
+function srcScale(S,c,w,spec){
+  const pw=window_(D.today,spec.prev), PLS=['Meta','Google'];
+  const agg=(a,b)=>{ const o={}; PLS.forEach(p=>o[p]={}); (S.ledger||[]).forEach(r=>{ if(r[0]<a||r[0]>b||!o[r[1]]) return; const y=o[r[1]][r[0]]||(o[r[1]][r[0]]={s:0,v:0}); y.v+=r[10]||0; });
+    (S.spend||[]).forEach(r=>{ if(r[0]<a||r[0]>b) return; const m=S.camps[r[1]]; const p=m&&m.p||String(r[1]).split(':')[0]; if(!o[p]) return; const y=o[p][r[0]]||(o[p][r[0]]={s:0,v:0}); y.s+=r[2]; }); return o; };
+  const cur=agg(w.start,w.end), prev=agg(pw.start,pw.end);
+  const sum=o=>Object.values(o).reduce((a,y)=>(a.s+=y.s,a.v+=y.v,a),{s:0,v:0});
+  const dl=[]; for(let d=w.start;d<=w.end;d=addDays(d,1)) dl.push(d);
+  const short=v=>{ const a=Math.abs(v); if((c.currency||'INR')==='INR'){ if(a>=1e5) return (v/1e5).toFixed(a>=1e6?0:1)+'L'; if(a>=1e3) return Math.round(v/1e3)+'k'; return Math.round(v)+''; } return a>=1e6?(v/1e6).toFixed(1)+'M':a>=1e3?Math.round(v/1e3)+'K':Math.round(v)+''; };
+  const chg=(a,b)=>{ if(!b) return '<span class="scl-chg">new</span>'; const pc=(a-b)/b*100; return '<span class="scl-chg '+(pc>=0?'up':'dn')+'">'+(pc>=0?'▲ ':'▼ ')+Math.abs(pc).toFixed(0)+'%</span>'; };
+  const panel=p=>{
+    const t=sum(cur[p]), q=sum(prev[p]), col=SRC_COL[p], r=t.s?t.v/t.s:null, qr=q.s?q.v/q.s:null;
+    const stats='<div class="scl-stats"><div><span>Spend</span><b>'+fmtMoney(t.s,c)+'</b>'+chg(t.s,q.s)+'</div><div><span>Sales</span><b>'+fmtMoney(t.v,c)+'</b>'+chg(t.v,q.v)+'</div><div><span>ROAS</span><b>'+(r===null?'n/a':fmtX(r))+'</b>'+(r!==null&&qr?chg(r,qr):'')+'</div></div>';
+    if(!t.s&&!t.v) return '<section class="srcpanel"><div class="srcph"><div><h3><i class="srcdot" style="background:'+col+'"></i> '+p+'</h3><p>No '+p+' spend or attributed sales in '+esc(spec.label)+'.</p></div></div></section>';
+    const W=560,H=210,ml=40,mr=34,mb=22,mt=10,ph=H-mb-mt,step=(W-ml-mr)/dl.length,bw=Math.max(2,step*0.36);
+    const mx=Math.max(1,...dl.map(d=>{const y=cur[p][d]||{};return Math.max(y.s||0,y.v||0);}));
+    const rs=dl.map(d=>{const y=cur[p][d]; return y&&y.s?y.v/y.s:null;}), rmax=Math.max(1,...rs.filter(v=>v!==null))*1.1;
+    let g=''; for(let i=0;i<=3;i++){ const yy=mt+ph-ph*i/3; g+='<line x1="'+ml+'" x2="'+(W-mr)+'" y1="'+yy.toFixed(1)+'" y2="'+yy.toFixed(1)+'" stroke="var(--line)"/><text x="'+(ml-5)+'" y="'+(yy+4).toFixed(1)+'" text-anchor="end" font-size="10" fill="var(--faint)">'+short(mx*i/3)+'</text><text x="'+(W-mr+5)+'" y="'+(yy+4).toFixed(1)+'" font-size="10" fill="var(--faint)">'+(rmax*i/3).toFixed(1)+'x</text>'; }
+    let pts=[];
+    dl.forEach((d,i)=>{ const y=cur[p][d]||{s:0,v:0}, x0=ml+i*step+step/2;
+      const hs=(y.s||0)/mx*ph, hv=(y.v||0)/mx*ph;
+      g+='<rect x="'+(x0-bw-1).toFixed(1)+'" y="'+(mt+ph-hs).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+hs.toFixed(1)+'" rx="1.5" fill="'+col+'" opacity=".35"/>';
+      g+='<rect x="'+(x0+1).toFixed(1)+'" y="'+(mt+ph-hv).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+hv.toFixed(1)+'" rx="1.5" fill="'+col+'"/>';
+      if(rs[i]!==null) pts.push([x0,mt+ph-rs[i]/rmax*ph]);
+      g+='<rect x="'+(ml+i*step).toFixed(1)+'" y="'+mt+'" width="'+step.toFixed(1)+'" height="'+ph+'" fill="transparent"><title>'+d+'\nSpend '+fmtMoney(y.s||0,c)+'\nSales '+fmtMoney(y.v||0,c)+'\nROAS '+(rs[i]===null?'n/a':fmtX(rs[i]))+'</title></rect>';
+      if(i%Math.max(1,Math.ceil(dl.length/7))===0) g+='<text x="'+x0.toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle" font-size="10" fill="var(--faint)">'+d.slice(8)+' '+MON[+d.slice(5,7)-1]+'</text>'; });
+    if(pts.length>1) g+='<polyline points="'+pts.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')+'" fill="none" stroke="var(--text)" stroke-width="1.6" stroke-linejoin="round" pointer-events="none"/>';
+    g+=pts.map(q=>'<circle cx="'+q[0].toFixed(1)+'" cy="'+q[1].toFixed(1)+'" r="2.4" fill="var(--panel)" stroke="var(--text)" stroke-width="1.4" pointer-events="none"/>').join('');
+    return '<section class="srcpanel"><div class="srcph"><div><h3><i class="srcdot" style="background:'+col+'"></i> '+p+': spend, sales and ROAS</h3><p>'+esc(spec.label)+' vs '+esc(spec.prevLabel||'the period before')+'</p></div>'
+      +'<div class="srcphr"><span class="srclegend"><span><i class="srcdot" style="background:'+col+';opacity:.35"></i>Spend</span><span><i class="srcdot" style="background:'+col+'"></i>Sales</span><span><i class="scl-line"></i>ROAS</span></span></div></div>'
+      +stats+'<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block" role="img" aria-label="'+p+' spend, sales and ROAS per day">'+g+'</svg></section>';
+  };
+  return '<div class="srcgrid scl">'+PLS.map(panel).join('')+'</div>';
+}
 function sourcesTab(x){
   const c=x.c, cid=c.id, st=SRC[cid];
   const shell=t=>'<div class="glass-panel"><h2>Order sources</h2><div class="note">'+t+'</div></div>';
@@ -2815,6 +2858,7 @@ function sourcesTab(x){
   h+='<div class="srctiles"><div class="srctile"><div class="tl">All orders</div><div class="tb disp">'+fmtNum(tot.n)+'</div><div class="ts">'+fmtMoney(tot.v,c)+' order value</div>'+(spAll?'<div class="ts sp">Total spend <b>'+fmtMoney(spAll,c)+'</b>'+(pay==='all'?' · ROAS <b>'+fmtX(tot.v/spAll)+'</b>':'')+'</div>':'')+'</div>'
     +PL.map(p=>'<div class="srctile"><div class="tl"><i class="srcdot" style="background:'+SRC_COL[p]+'"></i>'+p+'</div><div class="tb disp">'+fmtNum(byP[p].n)+'</div><div class="ts">'+pctOf(byP[p].n,tot.n)+' of orders · '+fmtMoney(byP[p].v,c)+'</div>'+(p==='Other'?'<div class="ts sp">No ad spend</div>':spLine(spP[p],byP[p].v))+'</div>').join('')+'</div>';
   h+='<div class="srcbar" role="img" aria-label="Share of orders by platform">'+PL.filter(p=>byP[p].n).map(p=>'<span style="width:'+(byP[p].n/(tot.n||1)*100).toFixed(2)+'%;background:'+SRC_COL[p]+'" title="'+p+': '+fmtNum(byP[p].n)+' orders"></span>').join('')+'</div>';
+  h+=srcScale(S,c,w,spec);
   // Orders per day | Orders by channel
   const dl=[]; for(let d=w.start;d<=w.end;d=addDays(d,1)) dl.push(d);
   const perDay={}; L.forEach(o=>{ const y=perDay[o.r[0]]||(perDay[o.r[0]]={Google:0,Meta:0,Other:0}); y[o.r[1]]=(y[o.r[1]]||0)+o.n; });
