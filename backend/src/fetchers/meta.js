@@ -15,6 +15,7 @@
 // ENTITY_DAYS days, so the dashboard can show any date range (today, yesterday, 7d...) per campaign, ad set and ad
 // without another API call. The flat 30 day totals stay on the object for fatigue and ranking logic.
 
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { config } from '../config.js';
 import { emptyDaily, log, num, nowIso, round, addDays } from '../util.js';
 
@@ -29,7 +30,13 @@ function act(v, types) {
   for (const t of types) { const hit = v.find((x) => x.action_type === t); if (hit) return num(hit.value); }
   return 0;
 }
-const PURCHASE = ['omni_purchase', 'purchase', 'offsite_conversion.fb_pixel_purchase'];
+const STD_PURCHASE = ['omni_purchase', 'purchase', 'offsite_conversion.fb_pixel_purchase'];
+// The purchase action types for the account being pulled right now. Usually the standard ones; for
+// a client with metaPurchase set, its custom conversion (see each() below). Carried in async
+// context so the many places that read purchases need no extra argument and parallel runs for
+// different clients cannot mix them up.
+const purchaseCtx = new AsyncLocalStorage();
+const PURCHASE_ = () => purchaseCtx.getStore() || STD_PURCHASE;
 const LEAD = ['lead', 'onsite_conversion.lead_grouped', 'offsite_conversion.fb_pixel_lead'];
 const INSTALL = ['omni_app_install', 'mobile_app_install', 'app_install'];
 const LPV = ['landing_page_view'];
@@ -182,7 +189,7 @@ function insightsUrl(accountId, params) {
 function rowFromInsight(clientId, r, platform = 'meta') {
   const row = emptyDaily(clientId, r.date_start, platform);
   row.spend = num(r.spend); row.impressions = num(r.impressions); row.clicks = num(r.clicks);
-  row.purchases = act(r.actions, PURCHASE); row.revenue = act(r.action_values, PURCHASE);
+  row.purchases = act(r.actions, PURCHASE_()); row.revenue = act(r.action_values, PURCHASE_());
   row.leads = act(r.actions, LEAD);
   row.installs = act(r.actions, INSTALL);
   row.lpv = act(r.actions, LPV); row.atc = act(r.actions, ATC); row.ic = act(r.actions, IC);
@@ -215,7 +222,7 @@ function metrics(r) {
   const spend = num(r.spend), imp = num(r.impressions), clicks = num(r.clicks);
   return {
     spend, impressions: imp, clicks,
-    purchases: act(r.actions, PURCHASE), revenue: act(r.action_values, PURCHASE), leads: act(r.actions, LEAD),
+    purchases: act(r.actions, PURCHASE_()), revenue: act(r.action_values, PURCHASE_()), leads: act(r.actions, LEAD),
     installs: act(r.actions, INSTALL),
     freq: round(num(r.frequency), 2),
     ctr: imp ? round(clicks / imp * 100, 2) : 0,
@@ -226,7 +233,7 @@ function metrics(r) {
   };
 }
 // Seventh slot is installs. Appended rather than inserted so tuples already stored stay readable.
-const dayTuple = (r) => [round(num(r.spend)), num(r.impressions), num(r.clicks), act(r.actions, PURCHASE), round(act(r.action_values, PURCHASE)), act(r.actions, LEAD), act(r.actions, INSTALL)];
+const dayTuple = (r) => [round(num(r.spend)), num(r.impressions), num(r.clicks), act(r.actions, PURCHASE_()), round(act(r.action_values, PURCHASE_())), act(r.actions, LEAD), act(r.actions, INSTALL)];
 function daysMap(rows, idKey) {
   const out = {};
   for (const r of rows) { const m = (out[r[idKey]] = out[r[idKey]] || {}); m[r.date_start] = dayTuple(r); }
@@ -409,7 +416,30 @@ async function testTokenOne(client) {
 // merged here, so nothing above this line and nothing in the sync had to change.
 export const metaIds = (client) => String(client?.accounts?.meta || '').split(/[\s,]+/).map((x) => x.replace(/^act_/, '')).filter(Boolean);
 const forAccount = (client, id) => ({ ...client, accounts: { ...client.accounts, meta: id } });
-async function each(client, fn) { const ids = metaIds(client); const out = []; for (const id of ids) out.push(await fn(forAccount(client, id))); return out; }
+// A custom conversion is found by its name on each account, once per process.
+const convCache = new Map();
+async function purchaseTypes(client, id) {
+  if (!client.metaPurchase) return STD_PURCHASE;
+  const key = `${id}|${client.metaPurchase.toLowerCase()}`;
+  if (!convCache.has(key)) {
+    let types = null;
+    try {
+      const q = new URLSearchParams({ access_token: config.meta.token, fields: 'id,name,custom_event_type,is_archived', limit: '200' });
+      const list = await paged(`${BASE()}/act_${id}/customconversions?${q}`);
+      const want = client.metaPurchase.toLowerCase();
+      const hit = list.filter((c) => String(c.name || '').toLowerCase() === want && !c.is_archived);
+      if (hit.length) types = hit.map((c) => `offsite_conversion.custom.${c.id}`);
+      log(`meta ${client.id}: purchases counted from custom conversion "${client.metaPurchase}"${types ? ` (${types.join(', ')})` : ' NOT FOUND on act_' + id + ', falling back to standard purchases'}`);
+    } catch (e) { log(`meta ${client.id}: could not list custom conversions (${String(e.message || e).slice(0, 120)}), using standard purchases`); }
+    if (types) convCache.set(key, types); else return STD_PURCHASE;
+  }
+  return convCache.get(key);
+}
+async function each(client, fn) {
+  const ids = metaIds(client); const out = [];
+  for (const id of ids) { const types = await purchaseTypes(client, id); out.push(await purchaseCtx.run(types, () => fn(forAccount(client, id)))); }
+  return out;
+}
 
 export async function fetchDaily(client, since, until) {
   const parts = await each(client, (c) => fetchDailyOne(c, since, until));

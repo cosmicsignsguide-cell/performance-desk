@@ -1310,6 +1310,7 @@
       "expectText": ""
     },
     "active": true,
-    "contact": ""
+    "contact": "",
+    "metaPurchase": "ConfmPageView"
   }
 ]

@@ -55,6 +55,11 @@ export function normalizeClient(c) {
         ? { cpi: Number(c.target?.cpi) > 0 ? Number(c.target.cpi) : null }
         : { cpl: Number(c.target?.cpl) > 0 ? Number(c.target.cpl) : null },
     am: c.am || '',
+    // Accounts in a restricted category (health and wellness) cannot report Meta purchases, so the
+    // brand counts sales with a custom conversion instead. metaPurchase names it (Berkowits:
+    // ConfmPageView); its count is used as Meta's purchases, it carries no value, so the dashboard
+    // shows Meta CAC (spend per conversion) in place of ROAS, and Meta sales from Shopify UTMs.
+    metaPurchase: c.metaPurchase ? String(c.metaPurchase).trim() : '',
     contact: c.contact || '',                     // the client's own person, greeted on their report
     accounts: {
       meta: c.accounts?.meta ? String(c.accounts.meta).split(/[\s,]+/).map((x) => x.replace(/^act_/, '')).filter(Boolean).join(',') : '',   // one id, or several separated by commas

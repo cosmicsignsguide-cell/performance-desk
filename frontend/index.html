@@ -2576,6 +2576,27 @@ function noDataPanel(x){
 /* ---- Ecom headline cards: four rows, coloured by where the number comes from ----
    Shopify green, Meta blue, Google cream, white where two sources are combined. Same card as
    everywhere else (label, source, value, change vs the comparison window, 14 day line). */
+// The Meta row for a client whose Meta purchases are a custom conversion (c.metaPurchase), such as
+// Berkowits in health and wellness, where Meta will not report purchases. Spend and the conversion
+// count are Meta's own; sales are the Shopify orders whose last UTM was a Meta ad (the Order
+// sources feed); and with no value on the conversion, CAC takes the place of ROAS.
+function metaCacCards(x,C,P,card,d,m14,isM,share){
+  const c=x.c, spec=x.spec, ev=c.metaPurchase;
+  const st=SRC[c.id]; if(!st){ SRC[c.id]={loading:true}; setTimeout(()=>srcLoad(c.id),0); }
+  const S=st&&st.data;
+  const cw=window_(D.today,spec), pw=spec.prev?window_(D.today,spec.prev):null;
+  const utm=(w)=>{ if(!S||!w) return null; let n=0,v=0; (S.ledger||[]).forEach(r=>{ if(r[1]==='Meta'&&r[0]>=w.start&&r[0]<=w.end){ n+=r[9]||0; v+=r[10]||0; } }); return {n,v}; };
+  const u=utm(cw), up=utm(pw);
+  const day14=fn=>{ const out=[]; for(let i=14;i>=1;i--){ const dd=addDays(D.today,-i); out.push(fn({start:dd,end:dd})||0); } return out; };
+  const cac=(o)=>o.purchases?o.spend/o.purchases:null;
+  const wait=st&&st.error?'UTM data not available':'loading UTM orders...';
+  return [
+    card('kc-meta',['meta'],ICONS.spend,'Meta spend',fmtMoney(C.m.spend,c),C.m.spend?d(C.m.spend,P.m.spend):'no spend in this period','',['Share',share(C.m.spend,C.a.spend)],m14(isM,m=>m.spend),'money'),
+    card('kc-meta',['meta','shop'],ICONS.target,'Meta sales (Shopify UTM)',u?fmtMoney(u.v,c):'--',u?(u.v||(up&&up.v)?d(u.v,up&&up.v):'no Meta UTM orders'):wait,'',['Orders · UTM ROAS',u?fmtNum(u.n)+' · '+(C.m.spend?fmtX(u.v/C.m.spend):'--'):'--'],S?day14(w=>{const z=utm(w);return z&&z.v;}):[],'money'),
+    card('kc-meta',['meta'],ICONS.trend,'Meta CAC',cac(C.m)!=null?fmtMoney(cac(C.m),c):'--',cac(C.m)!=null?d(cac(C.m),cac(P.m),true):(C.m.spend?'no '+esc(ev)+' yet':'needs spend'),'',['Spend per '+esc(ev),C.m.purchases?fmtNum(C.m.purchases)+' '+esc(ev):'--'],m14(isM,m=>m.purchases?m.spend/m.purchases:0),'money'),
+    card('kc-meta',['meta'],ICONS.bag,'Meta purchases ('+esc(ev)+')',fmtNum(C.m.purchases),C.m.purchases||P.m.purchases?d(C.m.purchases,P.m.purchases):'none reported','',['Shopify UTM orders',u?fmtNum(u.n):'--'],m14(isM,m=>m.purchases),'num'),
+  ];
+}
 function ecomKpis(x,V){
   const c=x.c, spec=x.spec, mine=r=>r.clientId===c.id;
   const cw=window_(D.today,spec), pw=spec.prev?window_(D.today,spec.prev):null;
@@ -2588,10 +2609,10 @@ function ecomKpis(x,V){
   const cvr=(s,ga)=>{ const n=sess(s,ga); return n?s.orders/n*100:null; };
   const aov=s=>s.orders?sales(s)/s.orders:null;
   const roas=(rev,sp)=>sp?rev/sp:null;
-  const SRC={meta:['meta','Meta'],google:['google','Google'],shop:['shop','Shopify']};
+  const CHIP={meta:['meta','Meta'],google:['google','Google'],shop:['shop','Shopify']};
   const card=(cls,src,icon,label,value,sub,tone,second,trend,fmt)=>{
     let h=kpi(icon,label,value,sub,tone,second,trend,fmt).replace('kpi-card','kpi-card kc2 '+cls);
-    return h.replace('</div><div class="kpi-value','</div><div class="kpi-src">'+src.map(k=>'<span><i class="'+SRC[k][0]+'"></i>'+SRC[k][1]+'</span>').join('')+'</div><div class="kpi-value');
+    return h.replace('</div><div class="kpi-value','</div><div class="kpi-src">'+src.map(k=>'<span><i class="'+CHIP[k][0]+'"></i>'+CHIP[k][1]+'</span>').join('')+'</div><div class="kpi-value');
   };
   const t=(v)=>v==null?'':kpiStatus(c,v);
   const d=(cur,prev,inv)=>(cur==null||!isFinite(cur))?'':V(cur,prev,inv);
@@ -2618,6 +2639,12 @@ function ecomKpis(x,V){
   const g=plat(C.g,P.g,isG,'kc-google',['google'],'Google');
   let h='<div class="kpi-rows">';
   h+=row('r-store','Store and blended',store);
+  if(c.metaPurchase){
+    h+=row('r-meta','Meta: spend and '+esc(c.metaPurchase)+' as Meta reports them, sales as per Shopify UTMs',metaCacCards(x,C,P,card,d,m14,isM,share));
+    h+=row('r-google','Google, as Google reports it',[g[0],g[3],g[1],g[2]]);
+    h+='<div class="note kpi-rows-note">'+esc(c.name)+' is in a category where Meta does not report purchases, so Meta counts sales with the custom conversion '+esc(c.metaPurchase)+'. It has no order value, which is why Meta shows CAC (spend per '+esc(c.metaPurchase)+') instead of ROAS, and Meta sales are the Shopify orders whose last UTM before purchase was a Meta ad. Store sales and blended ROAS come from Shopify, one count per order. The combined Meta + Google row is left out because the two platforms count different things here.</div>';
+    return h+'</div>';
+  }
   h+=row('r-meta','Meta, as Meta reports it',plat(C.m,P.m,isM,'kc-meta',['meta'],'Meta'));
   h+=row('r-google','Google, as Google reports it',[g[0],g[3],g[1],g[2]]);
   h+=row('r-mix','Meta + Google combined',plat(C.a,P.a,isA,'kc-mix',['meta','google'],'Meta + Google'));

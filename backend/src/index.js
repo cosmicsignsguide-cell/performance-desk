@@ -10,7 +10,7 @@
 import { config, has, shopifyTokenFor } from './config.js';
 import { db, dailyId, dailyIdRange } from './db.js';
 import { syncClientsFromFile, loadClients, normalizeClient } from './clients.js';
-import { todayStr, addDays, log, nowIso } from './util.js';
+import { todayStr, addDays, log, nowIso, emptyDaily } from './util.js';
 import * as meta from './fetchers/meta.js';
 import * as google from './fetchers/google.js';
 import * as shopify from './fetchers/shopify.js';
@@ -52,6 +52,14 @@ async function writeOrderDays(store, client, since, until, byDate, pick) {
 }
 const tracksOrders = (client) => client.type !== 'lead' && !!client.accounts?.shopify?.shop;
 
+// Meta and Google only return days that had activity. A day they leave out is a zero day, and it is
+// written as one, so a row from an earlier pull (a wrong ad account later corrected, a refund of
+// spend) can never linger behind a day that now has nothing.
+function withZeroDays(rows, clientId, platform, since, until) {
+  const have = new Set(rows.map((r) => r.date)); const out = rows.slice();
+  for (let d = since; d <= until; d = addDays(d, 1)) if (!have.has(d)) out.push(emptyDaily(clientId, d, platform));
+  return out;
+}
 async function writeDaily(store, rows) {
   await store.batchSet('daily', rows.map((r) => ({ id: dailyId(r.clientId, r.date, r.platform), data: { ...r, updatedAt: nowIso() } })));
 }
@@ -152,7 +160,7 @@ async function syncClient(store, client, { mode, days, sources: onlySources = nu
         : mode === 'hourly' ? addDays(today, -1)
         : (await firstRun(store, client, source)) ? addDays(today, -config.historyDays) : restateSince;
       if (source === 'meta') {
-        const rows = await meta.fetchDaily(client, since, today);
+        const rows = withZeroDays(await meta.fetchDaily(client, since, today), client.id, 'meta', since, today);
         await writeDaily(store, rows);
         if (tracksOrders(client)) {
           try { const sp = await meta.fetchCampaignSpend(client, since, today); await writeOrderDays(store, client, since, today, sp, (x) => ({ spendMeta: (x || []).flat() })); }
@@ -175,7 +183,7 @@ async function syncClient(store, client, { mode, days, sources: onlySources = nu
           } catch (e) { log(`${client.id}/meta: today top-up skipped: ${(e.message || e).toString().slice(0, 120)}`); }
         }
       } else if (source === 'google') {
-        const rows = await google.fetchDaily(client, since, today);
+        const rows = withZeroDays(await google.fetchDaily(client, since, today), client.id, 'google', since, today);
         await writeDaily(store, rows);
         if (tracksOrders(client)) {
           try { const sp = await google.fetchCampaignSpend(client, since, today); await writeOrderDays(store, client, since, today, sp, (x) => ({ spendGoogle: (x || []).flat() })); }
