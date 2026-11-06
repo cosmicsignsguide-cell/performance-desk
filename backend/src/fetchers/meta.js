@@ -419,8 +419,16 @@ const forAccount = (client, id) => ({ ...client, accounts: { ...client.accounts,
 // A custom conversion is found by its name on each account, once per process.
 const convCache = new Map();
 async function purchaseTypes(client, id) {
-  if (!client.metaPurchase) return STD_PURCHASE;
-  const key = `${id}|${client.metaPurchase.toLowerCase()}`;
+  if (!client.metaPurchase && !client.metaPurchaseId) return STD_PURCHASE;
+  const key = `${id}|${String(client.metaPurchase).toLowerCase()}|${client.metaPurchaseId || ''}`;
+  if (!convCache.has(key) && client.metaPurchaseId) {
+    // Given by id: use it, and log what Meta calls it so the mapping can be checked.
+    let label = '';
+    try { const q = new URLSearchParams({ access_token: config.meta.token, fields: 'name,rule,custom_event_type' }); const b = await metaGet(`${BASE()}/${client.metaPurchaseId}?${q}`); label = ` = "${b.name || '?'}" rule ${String(b.rule || '').slice(0, 160)}`; }
+    catch (e) { label = ` (name not readable: ${String(e.message || e).slice(0, 80)})`; }
+    log(`meta ${client.id}: purchases counted from custom conversion ${client.metaPurchaseId}${label}`);
+    convCache.set(key, [`offsite_conversion.custom.${client.metaPurchaseId}`]);
+  }
   if (!convCache.has(key)) {
     let types = null;
     try {
@@ -429,7 +437,7 @@ async function purchaseTypes(client, id) {
       const want = client.metaPurchase.toLowerCase();
       const hit = list.filter((c) => String(c.name || '').toLowerCase() === want && !c.is_archived);
       if (hit.length) types = hit.map((c) => `offsite_conversion.custom.${c.id}`);
-      log(`meta ${client.id}: purchases counted from custom conversion "${client.metaPurchase}"${types ? ` (${types.join(', ')})` : ' NOT FOUND on act_' + id + ', falling back to standard purchases'}`);
+      log(`meta ${client.id}: purchases counted from custom conversion "${client.metaPurchase}"${types ? ` (${types.join(', ')})` : ' NOT FOUND on act_' + id + ' (it has: ' + list.map((c) => `${c.name} ${c.id}`).join(', ').slice(0, 300) + '), falling back to standard purchases'}`);
     } catch (e) { log(`meta ${client.id}: could not list custom conversions (${String(e.message || e).slice(0, 120)}), using standard purchases`); }
     if (types) convCache.set(key, types); else return STD_PURCHASE;
   }
