@@ -51,7 +51,85 @@
       "expectText": ""
     },
     "active": true,
-    "contact": ""
+    "contact": "",
+    "categories": [
+      [
+        "Quilted Sofa Cover",
+        [
+          "quilted"
+        ]
+      ],
+      [
+        "Recliner",
+        [
+          "recliner"
+        ]
+      ],
+      [
+        "Sofa Mat",
+        [
+          "sofa mat",
+          "sofamat"
+        ]
+      ],
+      [
+        "Sofa Throw",
+        [
+          "throw"
+        ]
+      ],
+      [
+        "Sofa Cover",
+        [
+          "sofa cover",
+          "sofacover",
+          "stretchable",
+          "stretch",
+          "plain sofa",
+          "sofa"
+        ]
+      ],
+      [
+        "Cushion Cover",
+        [
+          "cushion"
+        ]
+      ],
+      [
+        "Blanket / AC Blanket",
+        [
+          "blanket"
+        ]
+      ],
+      [
+        "Table Cloth + Runner",
+        [
+          "table cloth",
+          "tablecloth",
+          "table runner",
+          "runner",
+          "table"
+        ]
+      ],
+      [
+        "Bedsheet",
+        [
+          "bedsheet",
+          "bed sheet"
+        ]
+      ],
+      [
+        "Other Home",
+        [
+          "storage",
+          "wooden",
+          "floor mat",
+          "box",
+          "organiser",
+          "organizer"
+        ]
+      ]
+    ]
   },
   {
     "id": "frankly",

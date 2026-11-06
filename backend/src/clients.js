@@ -60,6 +60,9 @@ export function normalizeClient(c) {
     // ConfmPageView); its count is used as Meta's purchases, it carries no value, so the dashboard
     // shows Meta CAC (spend per conversion) in place of ROAS, and Meta sales from Shopify UTMs.
     metaPurchase: c.metaPurchase ? String(c.metaPurchase).trim() : '',
+    // Product categories read from ad set, ad and campaign names (and from order UTMs), for the
+    // "Meta by category" view: [name, [keywords...]], first match wins, so put specific ones first.
+    categories: Array.isArray(c.categories) ? c.categories.filter((x) => Array.isArray(x) && x[0] && Array.isArray(x[1])) : [],
     metaPurchaseId: c.metaPurchaseId ? String(c.metaPurchaseId).trim() : '',   // the custom conversion's id, when its name cannot be looked up
     contact: c.contact || '',                     // the client's own person, greeted on their report
     accounts: {

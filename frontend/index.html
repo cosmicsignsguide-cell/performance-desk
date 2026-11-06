@@ -659,6 +659,14 @@ a{color:var(--cyan)}
 .scl-stats div{display:flex;flex-direction:column;gap:1px}.scl-stats span{font-size:12px;color:var(--faint)}.scl-stats b{font-size:19px;font-weight:700;letter-spacing:-.01em}
 .scl-chg{font-size:12px;font-weight:600;color:var(--faint)}.scl-chg.up{color:#1f8a4c}.scl-chg.dn{color:#c2412d}
 .scl-line{display:inline-block;width:14px;height:2px;background:var(--text);vertical-align:middle;margin-right:4px;border-radius:1px}
+.catpanel{margin:0 0 14px}
+.cat-bars{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.cat-r{display:grid;grid-template-columns:minmax(120px,190px) 1fr minmax(120px,170px);gap:12px;align-items:center}
+.cat-n{font-size:13.5px;font-weight:600}.cat-b{display:flex;flex-direction:column;gap:3px}
+.cat-b span{display:block;height:9px;border-radius:3px;min-width:2px}.cat-b .cs{background:#2f6bd9;opacity:.35}.cat-b .cv{background:#2f6bd9}
+.cat-v{text-align:right;font-size:13px;line-height:1.25}.cat-v b{display:block;font-weight:650}.cat-v small{color:var(--faint)}
+.cat-t th.grp{border-bottom:1px solid var(--border);text-align:center}.cat-t tr.cat-tot td{font-weight:700;border-top:2px solid var(--border)}.cat-t tr.cat-unt td{color:var(--dim)}.cat-t td.dim{color:var(--faint)}
+@media (max-width:700px){.cat-r{grid-template-columns:1fr;gap:4px}.cat-v{text-align:left}}
 .srctiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .srctile{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--panel)}
 .srctile .tl{font-size:13px;color:var(--faint);font-weight:600;display:flex;align-items:center;gap:6px}
@@ -2818,6 +2826,59 @@ function srcSample(today){
 // top, with each total set against the period just before it so scaling up or down is plain.
 // Sales here are the UTM-attributed order value of every order (all payment types), the same
 // figure the tiles use for ROAS, so the two always agree.
+// Meta spend and Meta UTM sales by product category, for the last 3, 7, 14 and 30 days. Categories
+// come from the client's own naming (c.categories: [name, keywords]), first match wins.
+//   Spend: each Meta ad set by its name; an ad set whose name says no category is split by its ads'
+//   names, and whatever is still unnamed falls to the campaign name, then "Untagged / mixed".
+//   Sales: every Shopify order whose last UTM was Meta, by its utm_content (the ad), then utm_term
+//   (the ad set), then the campaign. UTMs that carry ids instead of names are looked up in the tree.
+function metaByCategory(x,S){
+  const c=x.c, ent=x.ent||{}, CATS=c.categories||[], UNT='Untagged / mixed';
+  const norm=t=>' '+String(t||'').toLowerCase().replace(/[_|\-\/.:+,#()\[\]]+/g,' ').replace(/\s+/g,' ')+' ';
+  const catOf=t=>{ if(!t) return null; const n=norm(t); for(const [name,kws] of CATS) if(kws.some(k=>n.includes(String(k).toLowerCase()))) return name; return null; };
+  const W=[['3d',3],['7d',7],['14d',14],['30d',30]].map(([k,n])=>{ const end=addDays(D.today,-1); return {k,n,start:addDays(end,-(n-1)),end}; });
+  const names=[...CATS.map(z=>z[0]),UNT];
+  const sp={}, sa={}, so={}; names.forEach(n=>{ sp[n]=W.map(()=>0); sa[n]=W.map(()=>0); so[n]=W.map(()=>0); });
+  const addDaysTo=(acc,cat,days,mult=1)=>{ for(const d in days||{}){ const v=(days[d]||[])[0]||0; if(!v) continue; W.forEach((w,i)=>{ if(d>=w.start&&d<=w.end) acc[cat][i]+=v*mult; }); } };
+  const metaCamps=(ent.campaigns||[]).filter(e=>e.platform==='meta'), campName={}; metaCamps.forEach(e=>campName[e.id]=e.name);
+  const sets=(ent.adsets||[]), ads=(ent.ads||[]);
+  const setIds=new Set();
+  sets.forEach(st=>{ setIds.add(st.campaignId);
+    const k=catOf(st.name); if(k){ addDaysTo(sp,k,st.days); return; }
+    // No category in the ad set name: split by its ads, the rest by the campaign name.
+    const left=Object.assign({},...Object.entries(st.days||{}).map(([d,t])=>({[d]:[(t||[])[0]||0]})));
+    ads.filter(a=>a.adsetId===st.id).forEach(a=>{ const ka=catOf(a.name); if(!ka) return; addDaysTo(sp,ka,a.days); for(const d in a.days||{}) if(left[d]) left[d][0]-=((a.days[d]||[])[0]||0); });
+    addDaysTo(sp,catOf(st.campaignName||campName[st.campaignId])||UNT,left);
+  });
+  // Campaigns with spend but no ad set rows (rare: tree trimmed) count by campaign name.
+  metaCamps.forEach(e=>{ if(!setIds.has(e.id)) addDaysTo(sp,catOf(e.name)||UNT,e.days); });
+  // Sales from the order ledger.
+  const idName={}; [...metaCamps,...sets,...ads].forEach(e=>{ if(e.id) idName[String(e.id)]=e.name; });
+  const look=v=>{ const t=String(v||'').trim(); return /^\d{6,}$/.test(t)&&idName[t]?idName[t]:t; };
+  (S.ledger||[]).forEach(r=>{ if(r[1]!=='Meta') return; const m=S.camps&&S.camps[r[12]];
+    const k=catOf(look(r[7]))||catOf(look(r[6]))||catOf(m&&m.name)||catOf(look(r[5]))||UNT;
+    W.forEach((w,i)=>{ if(r[0]>=w.start&&r[0]<=w.end){ sa[k][i]+=r[10]||0; so[k][i]+=r[9]||0; } }); });
+  // Meta's own account spend for each window, so the table can show whether the split adds up.
+  const acct=W.map(w=>D.daily.filter(r=>r.clientId===c.id&&r.platform==='meta'&&r.date>=w.start&&r.date<=w.end).reduce((a,r)=>a+(r.spend||0),0));
+  const tot=(o,i)=>names.reduce((a,n)=>a+o[n][i],0);
+  const ci=Math.max(0,W.findIndex(w=>w.k===(state.catWin||'7d')));
+  const rows=names.filter(n=>W.some((_,i)=>sp[n][i]||sa[n][i])).sort((a,b)=>(a===UNT)-(b===UNT)||sp[b][3]-sp[a][3]);
+  if(!rows.length) return '';
+  const money=v=>fmtMoney(v,c), roasT=(v,s2)=>s2?fmtX(v/s2):'--';
+  // Chart: spend and sales per category for the picked window, with ROAS at the end of each row.
+  const mx=Math.max(1,...rows.map(n=>Math.max(sp[n][ci],sa[n][ci])));
+  const bars=rows.map(n=>'<div class="cat-r"><div class="cat-n">'+esc(n)+'</div><div class="cat-b"><span class="cs" style="width:'+(sp[n][ci]/mx*100).toFixed(1)+'%"></span><span class="cv" style="width:'+(sa[n][ci]/mx*100).toFixed(1)+'%"></span></div><div class="cat-v"><b>'+money(sp[n][ci])+'</b><small>'+money(sa[n][ci])+' · '+roasT(sa[n][ci],sp[n][ci])+'</small></div></div>').join('');
+  const seg='<div class="crchips">'+W.map(w=>'<button class="crchip'+(W[ci].k===w.k?' on':'')+'" data-act="catwin" data-v="'+w.k+'">Last '+w.k+'</button>').join('')+'</div>';
+  const th=W.map(w=>'<th class="num">'+w.k+'</th>').join('');
+  const tr=n=>'<tr'+(n===UNT?' class="cat-unt"':'')+'><td class="row-title">'+esc(n)+'</td>'+W.map((_,i)=>'<td class="num">'+money(sp[n][i])+'</td>').join('')+'<td class="num dim">'+(tot(sp,3)?fmtPct(sp[n][3]/tot(sp,3)*100):'--')+'</td>'+W.map((_,i)=>'<td class="num">'+money(sa[n][i])+'</td>').join('')+'<td class="num">'+fmtNum(so[n][1])+' / '+fmtNum(so[n][3])+'</td><td class="num">'+roasT(sa[n][1],sp[n][1])+'</td><td class="num">'+roasT(sa[n][3],sp[n][3])+'</td></tr>';
+  const totRow='<tr class="cat-tot"><td class="row-title">Total</td>'+W.map((_,i)=>'<td class="num">'+money(tot(sp,i))+'</td>').join('')+'<td class="num dim">100%</td>'+W.map((_,i)=>'<td class="num">'+money(tot(sa,i))+'</td>').join('')+'<td class="num">'+fmtNum(tot(so,1))+' / '+fmtNum(tot(so,3))+'</td><td class="num">'+roasT(tot(sa,1),tot(sp,1))+'</td><td class="num">'+roasT(tot(sa,3),tot(sp,3))+'</td></tr>';
+  const gap=W.map((w,i)=>acct[i]-tot(sp,i)), off=gap.some((g,i)=>Math.abs(g)>Math.max(500,acct[i]*0.02));
+  const check=off?'Meta account spend for the same days is '+W.map((w,i)=>w.k+' '+money(acct[i])).join(', ')+'. The difference is spend the campaign tree does not break down yet (it refreshes nightly).':'Spend totals match Meta\'s account spend for each window, so nothing is missing or counted twice.';
+  return '<section class="srcpanel catpanel"><div class="srcph"><div><h3><i class="srcdot" style="background:'+SRC_COL.Meta+'"></i> Meta by category</h3><p>Spend from ad set and ad names. Sales are Shopify orders whose last UTM was a Meta ad, placed by the ad, ad set or campaign in that UTM. Windows end yesterday.</p></div><div class="srcphr"><span class="srclegend"><span><i class="srcdot" style="background:'+SRC_COL.Meta+';opacity:.35"></i>Spend</span><span><i class="srcdot" style="background:'+SRC_COL.Meta+'"></i>Sales (UTM)</span></span>'+seg+'</div></div>'
+    +'<div class="cat-bars">'+bars+'</div>'
+    +'<div class="data-table-wrap" style="overflow:auto;margin-top:14px"><table class="dtable cat-t"><thead><tr><th rowspan="2">Category</th><th class="num grp" colspan="5">Meta spend</th><th class="num grp" colspan="4">Sales, Shopify UTM</th><th class="num grp">Orders</th><th class="num grp" colspan="2">ROAS</th></tr><tr>'+th+'<th class="num">% of 30d</th>'+th+'<th class="num">7d / 30d</th><th class="num">7d</th><th class="num">30d</th></tr></thead><tbody>'+rows.map(tr).join('')+totRow+'</tbody></table></div>'
+    +'<div class="note" style="margin-top:8px">'+check+' Untagged / mixed is spend and orders whose names carry no category, such as catalog and sale campaigns.</div></section>';
+}
 function srcScale(S,c,w,spec){
   const pw=window_(D.today,spec.prev), PLS=['Meta','Google'];
   const agg=(a,b)=>{ const o={}; PLS.forEach(p=>o[p]={}); (S.ledger||[]).forEach(r=>{ if(r[0]<a||r[0]>b||!o[r[1]]) return; const y=o[r[1]][r[0]]||(o[r[1]][r[0]]={s:0,v:0}); y.v+=r[10]||0; });
@@ -2886,6 +2947,7 @@ function sourcesTab(x){
     +PL.map(p=>'<div class="srctile"><div class="tl"><i class="srcdot" style="background:'+SRC_COL[p]+'"></i>'+p+'</div><div class="tb disp">'+fmtNum(byP[p].n)+'</div><div class="ts">'+pctOf(byP[p].n,tot.n)+' of orders · '+fmtMoney(byP[p].v,c)+'</div>'+(p==='Other'?'<div class="ts sp">No ad spend</div>':spLine(spP[p],byP[p].v))+'</div>').join('')+'</div>';
   h+='<div class="srcbar" role="img" aria-label="Share of orders by platform">'+PL.filter(p=>byP[p].n).map(p=>'<span style="width:'+(byP[p].n/(tot.n||1)*100).toFixed(2)+'%;background:'+SRC_COL[p]+'" title="'+p+': '+fmtNum(byP[p].n)+' orders"></span>').join('')+'</div>';
   h+=srcScale(S,c,w,spec);
+  if((c.categories||[]).length) h+=metaByCategory(x,S);
   // Orders per day | Orders by channel
   const dl=[]; for(let d=w.start;d<=w.end;d=addDays(d,1)) dl.push(d);
   const perDay={}; L.forEach(o=>{ const y=perDay[o.r[0]]||(perDay[o.r[0]]={Google:0,Meta:0,Other:0}); y[o.r[1]]=(y[o.r[1]]||0)+o.n; });
@@ -3246,6 +3308,7 @@ document.addEventListener('click',e=>{
   else if(act==='srccpf'){ state.srcCpf=el.dataset.v; render(); }
   else if(act==='srccsort'){ const k=el.dataset.k, o=state.srcCsort||{k:'v',dir:-1}; state.srcCsort={k,dir:o.k===k?-o.dir:-1}; render(); }
   else if(act==='srcpay'){ state.srcPay=el.dataset.v; render(); }
+  else if(act==='catwin'){ state.catWin=el.dataset.v; render(); }
   else if(act==='srcview'){ state.srcView=el.dataset.v; render(); }
   else if(act==='srcsort'){ const k=el.dataset.k, o=state.srcSort||{k:'n',dir:-1}; state.srcSort={k,dir:o.k===k?-o.dir:(k==='p'?1:-1)}; render(); }
   else if(act==='srcreload'){ delete SRC[el.dataset.client]; render(); }

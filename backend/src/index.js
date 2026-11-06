@@ -217,6 +217,10 @@ async function syncClient(store, client, { mode, days, sources: onlySources = nu
             const list = Object.entries(agg).map(([k, x]) => ({ k, ...x, name: f.camps[k]?.name || '', matched: !!f.camps[k]?.id })).sort((a2, b2) => b2.v - a2.v);
             const um = list.filter((x) => !x.matched);
             log(`${client.id}/sources campaigns: ${list.filter((x) => x.matched).length} matched, paid order value unmatched ${Math.round(um.reduce((t, x) => t + x.v, 0))} of ${Math.round(list.reduce((t, x) => t + x.v, 0))}`);
+            // What Meta orders carry in utm_term and utm_content (ad set and ad, when the URL template
+            // passes them), so the category split can be checked against real values.
+            const tc = {}; for (const r of (f.ledger || [])) { if (r[1] !== 'Meta') continue; const k2 = `term "${String(r[6] || '').slice(0, 40)}" content "${String(r[7] || '').slice(0, 40)}"`; tc[k2] = (tc[k2] || 0) + (r[9] || 0); }
+            log(`${client.id}/sources meta utm: ${Object.entries(tc).sort((a2, b2) => b2[1] - a2[1]).slice(0, 8).map(([k2, n]) => `${k2} x${n}`).join(' | ') || 'none'}`);
             for (const x of list.slice(0, 12)) log(`${client.id}/sources camp ${x.matched ? 'OK ' : 'NO '}${x.k.slice(0, 60)} "${String(x.name).slice(0, 50)}" orders ${x.n} value ${Math.round(x.v)} spend ${Math.round(x.s)} roas ${x.s ? (x.v / x.s).toFixed(2) : '-'}`);
           } catch (e) { log(`${client.id}/sources campaigns check failed: ${String(e.message || e).slice(0, 120)}`); }
         }
