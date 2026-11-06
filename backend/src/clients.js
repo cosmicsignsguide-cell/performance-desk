@@ -63,6 +63,9 @@ export function normalizeClient(c) {
     // Product categories read from ad set, ad and campaign names (and from order UTMs), for the
     // "Meta by category" view: [name, [keywords...]], first match wins, so put specific ones first.
     categories: Array.isArray(c.categories) ? c.categories.filter((x) => Array.isArray(x) && x[0] && Array.isArray(x[1])) : [],
+    // No advice on this client's page: explanatory notes, "What to fix" and the Scale / Watch calls on
+    // creatives are hidden, for clients who want the numbers only (Berkowits).
+    noAdvice: c.noAdvice === true,
     metaPurchaseId: c.metaPurchaseId ? String(c.metaPurchaseId).trim() : '',   // the custom conversion's id, when its name cannot be looked up
     contact: c.contact || '',                     // the client's own person, greeted on their report
     accounts: {

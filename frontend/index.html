@@ -659,6 +659,7 @@ a{color:var(--cyan)}
 .scl-stats div{display:flex;flex-direction:column;gap:1px}.scl-stats span{font-size:12px;color:var(--faint)}.scl-stats b{font-size:19px;font-weight:700;letter-spacing:-.01em}
 .scl-chg{font-size:12px;font-weight:600;color:var(--faint)}.scl-chg.up{color:#1f8a4c}.scl-chg.dn{color:#c2412d}
 .scl-line{display:inline-block;width:14px;height:2px;background:var(--text);vertical-align:middle;margin-right:4px;border-radius:1px}
+.noadvice .note:not(.keep),.noadvice .kpi-rows-note,.noadvice .crcalls,.noadvice .chip.crcall{display:none!important}
 .catpanel{margin:0 0 14px}
 .cat-bars{display:flex;flex-direction:column;gap:8px;margin-top:6px}
 .cat-r{display:grid;grid-template-columns:minmax(120px,190px) 1fr minmax(120px,170px);gap:12px;align-items:center}
@@ -2495,9 +2496,10 @@ function clientView(x){
   const body=state.tab==='site'?sitePanel(x):state.tab==='weekly'?weeklyPanel(x):state.tab==='campaigns'?campaignTree(x):state.tab==='orders'?ordersPanel(x):state.tab==='sources'?sourcesTab(x):entityTable(x);
   h+='<div class="section"><div class="tab-row" style="margin-bottom:12px">'+tabs.map(t=>'<button class="tab-btn '+(state.tab===t[0]?'active':'')+'" data-act="tab" data-tab="'+t[0]+'">'+t[1]+'</button>').join('')+'</div>'+body+'</div>';
   // What to fix and the Shopify by-day check sit at the very bottom, under the tabs.
-  if(x.flags.length) h+='<div class="section"><div class="section-head"><h2>What to fix</h2></div><div class="attn-list">'+groupFlags(x.flags).map(f=>attnItem(f.sev,groupMeta(f,''),f.text,'')).join('')+'</div></div>';
+  if(x.flags.length&&!c.noAdvice) h+='<div class="section"><div class="section-head"><h2>What to fix</h2></div><div class="attn-list">'+groupFlags(x.flags).map(f=>attnItem(f.sev,groupMeta(f,''),f.text,'')).join('')+'</div></div>';
   if(isE&&x.cur.hasShop) h+=shopDaysPanel(x);
-  return h;
+  // A client set to noAdvice gets numbers only: notes, What to fix and creative calls are hidden.
+  return c.noAdvice?'<div class="noadvice">'+h+'</div>':h;
 }
 // Ad spend on this page is Meta and Google added together, which hides the first thing an AM
 // asks: where did the money go, and what came back from each. Two platforms with the same total
@@ -2914,7 +2916,7 @@ function srcScale(S,c,w,spec){
 }
 function sourcesTab(x){
   const c=x.c, cid=c.id, st=SRC[cid];
-  const shell=t=>'<div class="glass-panel"><h2>Order sources</h2><div class="note">'+t+'</div></div>';
+  const shell=t=>'<div class="glass-panel"><h2>Order sources</h2><div class="note keep">'+t+'</div></div>';
   if(!st){ SRC[cid]={loading:true}; setTimeout(()=>srcLoad(cid),0); return shell('Loading the last visit behind every order...'); }
   if(st.loading) return shell('Loading the last visit behind every order...');
   if(st.error) return shell('Could not load ('+esc(st.error)+'). <button class="crchip" data-act="srcreload" data-client="'+esc(cid)+'">Try again</button>');
