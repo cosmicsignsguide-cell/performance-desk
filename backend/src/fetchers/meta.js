@@ -57,6 +57,7 @@ const keyOf = (url) => (String(url).match(/\/act_(\d+)/) || [])[1] || 'global';
 const cdUntil = (k) => cooldowns.get(k) || 0;
 const hold = (k, t) => cooldowns.set(k, Math.max(cdUntil(k), t));
 
+const lastUsageLog = new Map();
 function readUsage(headers, k) {
   const raw = headers.get('x-business-use-case-usage') || headers.get('x-ad-account-usage') || headers.get('x-app-usage');
   if (!raw) return;
@@ -66,6 +67,12 @@ function readUsage(headers, k) {
     if (!u || typeof u !== 'object') continue;
     const pct = Math.max(num(u.call_count), num(u.total_cputime), num(u.total_time));
     const regain = num(u.estimated_time_to_regain_access);
+    // Say which of Meta's budgets is running out (insights, management...), once a minute at most,
+    // so a slow account can be told apart from one that is simply too big for a single pull.
+    if ((pct >= 75 || regain > 0) && Date.now() - (lastUsageLog.get(k) || 0) > 60000) {
+      lastUsageLog.set(k, Date.now());
+      log(`meta: act_${k} usage ${u.type || 'app'} calls ${num(u.call_count)}% cpu ${num(u.total_cputime)}% time ${num(u.total_time)}%${regain ? `, Meta says wait ${regain} min` : ''}`);
+    }
     if (regain > 0) hold(k, Date.now() + Math.min(regain * 60000, MAX_WAIT_MS));
     else if (pct >= 90) hold(k, Date.now() + 60000);
     else if (pct >= 75) hold(k, Date.now() + 15000);
@@ -76,12 +83,16 @@ function readUsage(headers, k) {
 // fails for that account only, so one heavily throttled account (Firvt, Whimsy) cannot hold up
 // every client queued behind it in a full sync; it is picked up again on the next run.
 const WAIT_BUDGET_MS = 20 * 60 * 1000;
-const waited = new Map();   // account -> { since, ms }
+// Charged in real time, not per request: when several requests to one account wait out the same
+// cooldown side by side, that is one stretch of waiting, not several. (Counting each request's wait
+// separately had a busy account like Berkowits "use up" 20 minutes in about 10.)
+const waited = new Map();   // account -> { since, ms, until }
 function chargeWait(k, ms) {
   const now = Date.now(), w = waited.get(k);
-  const cur = !w || now - w.since > 60 * 60 * 1000 ? { since: now, ms: 0 } : w;
-  if (cur.ms + ms > WAIT_BUDGET_MS) { waited.set(k, cur); return false; }
-  cur.ms += ms; waited.set(k, cur); return true;
+  const cur = !w || now - w.since > 60 * 60 * 1000 ? { since: now, ms: 0, until: 0 } : w;
+  const end = now + ms, extra = Math.max(0, end - Math.max(now, cur.until || 0));
+  if (cur.ms + extra > WAIT_BUDGET_MS) { waited.set(k, cur); return false; }
+  cur.ms += extra; cur.until = Math.max(cur.until || 0, end); waited.set(k, cur); return true;
 }
 
 async function metaGet(url) {
