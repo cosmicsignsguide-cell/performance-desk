@@ -388,6 +388,14 @@ export async function recentSpend(actId) {
   const b = await metaGet(`${BASE()}/act_${actId}/insights?${q}`);
   return Number(b.data?.[0]?.spend || 0);
 }
+// Every action type the account recorded over the last 30 days, for the access check: shows what a
+// purchase is called on an account whose sales come through as zero. Read only.
+export async function recentActions(actId) {
+  const q = new URLSearchParams({ access_token: config.meta.token, fields: 'actions,action_values', date_preset: 'last_30d' });
+  const b = await metaGet(`${BASE()}/act_${actId}/insights?${q}`);
+  const r = b.data?.[0] || {}; const vals = Object.fromEntries((r.action_values || []).map((x) => [x.action_type, num(x.value)]));
+  return (r.actions || []).map((x) => ({ type: x.action_type, n: num(x.value), v: vals[x.action_type] || 0 })).sort((a, b) => b.n - a.n);
+}
 async function testTokenOne(client) {
   const q = new URLSearchParams({ access_token: config.meta.token, fields: 'name,currency,account_status,timezone_name' });
   const body = await metaGet(`${BASE()}/act_${client.accounts.meta}?${q}`);
