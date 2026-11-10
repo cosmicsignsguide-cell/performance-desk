@@ -2482,7 +2482,21 @@ function clientView(x){
       +ks('A',kpi(ICONS.bag,'CTR',fmtPct(a.ctr),'','',['CPM',fmtMoney(a.cpm,c)]))
       +ks('A',kpi(ICONS.shield,'Impressions',fmtNum(a.impressions),''));
   }
-  h+='</div>'; }
+  h+='</div>';
+  // Lead and app clients get the same Google "by conversion time" view as ecom clients: each
+  // conversion on the day it happened, not on the day of the click behind it.
+  { const gsum=sp=>rowsIn(x.rows,D.today,sp).filter(r=>r.platform==='google').reduce((o,r)=>{ o.spend+=r.spend||0; o.t+=r.gConvT||0; o.v+=r.gValT||0; o.k+=(r.leads||0)+(r.installs||0)+(r.purchases||0); return o; },{spend:0,t:0,v:0,k:0});
+    const G=gsum(spec), PG=spec.prev?gsum(spec.prev):{spend:0,t:0,v:0,k:0}, isG=r=>r.clientId===c.id&&r.platform==='google';
+    if(G.spend||PG.spend){
+      const ct=v=>Math.round(v*100)/100;
+      h+='<div class="kpi-row r-google" style="margin-top:14px"><div class="kpi-row-h"><i></i>Google, by conversion time</div><div class="kpi-grid v2" style="grid-template-columns:repeat(4,minmax(0,1fr))">'
+        +kpi(ICONS.users,'Conversions (by conv. time)',fmtNum(ct(G.t)),G.t||PG.t?V(G.t,PG.t):'none reported','',['Conversions (by click time)',fmtNum(G.k)],series14(isG,m=>m.gConvT||0),'num')
+        +kpi(ICONS.target,'Cost / conv. (by conv. time)',G.t?fmtMoney(G.spend/G.t,c):'--',G.t?V(G.spend/G.t,PG.t?PG.spend/PG.t:null,true):'needs conversions','',['Google spend',fmtMoney(G.spend,c)],series14(isG,m=>m.gConvT?m.spend/m.gConvT:0),'money')
+        +kpi(ICONS.trend,'Conv. value (by conv. time)',fmtMoney(G.v,c),G.v||PG.v?V(G.v,PG.v):'no value set on conversions','',['ROAS (by conv. time)',G.spend&&G.v?fmtX(G.v/G.spend):'--'],series14(isG,m=>m.gValT||0),'money')
+        +kpi(ICONS.spend,'Google spend',fmtMoney(G.spend,c),G.spend?V(G.spend,PG.spend):'no spend in this period','',['Conv. rate (by conv. time)',G.t?fmtPct(G.t/Math.max(1,rowsIn(x.rows,D.today,spec).filter(r=>r.platform==='google').reduce((a,r)=>a+(r.clicks||0),0))*100):'--'],series14(isG,m=>m.spend),'money')
+        +'</div></div>';
+    } }
+  }
   h+=platformSplit(x);
   h+='<div class="two">'+intradayPanel(x)+pacePanel(x)+'</div>';
   h+='<div class="section"><div class="glass-panel"><h2>Spend and '+kpiLabel(c)+' by day</h2><div class="legend"><span><i class="bar"></i>Spend</span><span><i class="line"></i>'+kpiLabel(c)+'</span><span><i class="tgt"></i>Target</span></div>'+trendChart(x)+'</div></div>';
