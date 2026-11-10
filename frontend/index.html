@@ -1460,7 +1460,7 @@ function window_(today,spec){ const end=addDays(today,-spec.offset); return {sta
 function rowsIn(rows,today,spec){ const w=window_(today,spec); return rows.filter(r=>r.date>=w.start&&r.date<=w.end); }
 function daysIn(days,today,spec){ const w=window_(today,spec); const o={spend:0,impressions:0,clicks:0,purchases:0,revenue:0,leads:0,installs:0}; for(const d in days){ if(d>=w.start&&d<=w.end){ const t=days[d]; o.spend+=t[0]||0; o.impressions+=t[1]||0; o.clicks+=t[2]||0; o.purchases+=t[3]||0; o.revenue+=t[4]||0; o.leads+=t[5]||0; o.installs+=t[6]||0; } } return o; }
 const ADS=['meta','google'];
-const SUMS=['spend','impressions','clicks','purchases','revenue','leads','lpv','atc','ic','orders','grossSales','netSales','totalSales','taxes','shSessions','shAtc','shReached','refunds','newCustomerOrders','units','checkoutsStarted','installs','sessions','srcMeta','srcGoogle','srcDirect','srcOther','srcUnknown','srcNone','ga4Atc','ga4Checkouts','ga4Purchases','gLpv','gAtc','gIc'];
+const SUMS=['spend','impressions','clicks','purchases','revenue','leads','lpv','atc','ic','orders','grossSales','netSales','totalSales','taxes','shSessions','shAtc','shReached','refunds','newCustomerOrders','units','checkoutsStarted','installs','sessions','srcMeta','srcGoogle','srcDirect','srcOther','srcUnknown','srcNone','ga4Atc','ga4Checkouts','ga4Purchases','gLpv','gAtc','gIc','gConvT','gValT'];
 function agg(rows){ const o={}; SUMS.forEach(k=>o[k]=0); let hasShop=false,hasGa=false; rows.forEach(r=>{ SUMS.forEach(k=>{o[k]+=r[k]||0}); if(r.platform==='shopify') hasShop=true; if(r.platform==='ga4') hasGa=true; }); o.hasShop=hasShop; o.hasGa=hasGa; return derive(o); }
 function derive(o){
   o.ctr=o.impressions?o.clicks/o.impressions*100:0; o.cpm=o.impressions?o.spend/o.impressions*1000:0; o.cpc=o.clicks?o.spend/o.clicks:Infinity;
@@ -2647,16 +2647,28 @@ function ecomKpis(x,V){
     card(cls,src,ICONS.bag,name+' orders',fmtNum(o.purchases),o.purchases||po.purchases?d(o.purchases,po.purchases):'none reported','',['CPA',o.purchases?fmtMoney(o.spend/o.purchases,c):'--'],m14(pf,m=>m.purchases),'num'),
   ];
   const g=plat(C.g,P.g,isG,'kc-google',['google'],'Google');
+  // Google by conversion time: each conversion sits on the day it happened rather than on the day of
+  // the click that led to it, so a day's numbers stop moving once the day is over.
+  const gt=C.g, pgt=P.g, ct=v=>Math.round(v*100)/100;
+  const gTime=[
+    card('kc-google',['google'],ICONS.target,'Conv. value (by conv. time)',fmtMoney(gt.gValT||0,c),gt.gValT||pgt.gValT?d(gt.gValT||0,pgt.gValT||0):'none reported','',['Conv. value (by click time)',fmtMoney(gt.revenue||0,c)],m14(isG,m=>m.gValT||0),'money'),
+    card('kc-google',['google'],ICONS.bag,'Conversions (by conv. time)',fmtNum(ct(gt.gConvT||0)),gt.gConvT||pgt.gConvT?d(gt.gConvT||0,pgt.gConvT||0):'none reported','',['Conversions (by click time)',fmtNum(gt.purchases||0)],m14(isG,m=>m.gConvT||0),'num'),
+    card('kc-google',['google'],ICONS.trend,'ROAS (by conv. time)',gt.spend?fmtX((gt.gValT||0)/gt.spend):'--',gt.spend?d((gt.gValT||0)/gt.spend,pgt.spend?(pgt.gValT||0)/pgt.spend:null):'needs spend',gt.spend?t((gt.gValT||0)/gt.spend):'',tgt,m14(isG,m=>m.spend?(m.gValT||0)/m.spend:0),'x'),
+    card('kc-google',['google'],ICONS.spend,'Cost / conv. (by conv. time)',gt.gConvT?fmtMoney(gt.spend/gt.gConvT,c):'--',gt.gConvT?d(gt.spend/gt.gConvT,pgt.gConvT?pgt.spend/pgt.gConvT:null,true):'needs conversions','',['Spend',fmtMoney(gt.spend||0,c)],m14(isG,m=>m.gConvT?m.spend/m.gConvT:0),'money'),
+  ];
+  const gTimeRow=()=>gt.spend||pgt.spend?row('r-google','Google, by conversion time',gTime):'';
   let h='<div class="kpi-rows">';
   h+=row('r-store','Store and blended',store);
   if(c.metaPurchase){
     h+=row('r-meta','Meta: spend and '+esc(c.metaPurchase)+' as Meta reports them, sales as per Shopify UTMs',metaCacCards(x,C,P,card,d,m14,isM,share));
     h+=row('r-google','Google, as Google reports it',[g[0],g[3],g[1],g[2]]);
+    h+=gTimeRow();
     h+='<div class="note kpi-rows-note">'+esc(c.name)+' is in a category where Meta does not report purchases, so Meta counts sales with the custom conversion '+esc(c.metaPurchase)+'. It has no order value, which is why Meta shows CAC (spend per '+esc(c.metaPurchase)+') instead of ROAS, and Meta sales are the Shopify orders whose last UTM before purchase was a Meta ad. Store sales and blended ROAS come from Shopify, one count per order. The combined Meta + Google row is left out because the two platforms count different things here.</div>';
     return h+'</div>';
   }
   h+=row('r-meta','Meta, as Meta reports it',plat(C.m,P.m,isM,'kc-meta',['meta'],'Meta'));
   h+=row('r-google','Google, as Google reports it',[g[0],g[3],g[1],g[2]]);
+  h+=gTimeRow();
   h+=row('r-mix','Meta + Google combined',plat(C.a,P.a,isA,'kc-mix',['meta','google'],'Meta + Google'));
   h+='<div class="note kpi-rows-note">Platform sales and orders are what Meta and Google each claim inside their own attribution window, so an order seen by both is counted twice in the combined row. Store sales and blended ROAS come from Shopify, one count per order.</div>';
   return h+'</div>';

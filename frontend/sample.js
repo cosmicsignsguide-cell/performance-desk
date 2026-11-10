@@ -98,7 +98,7 @@
           row.revenue = Math.round(platRev * share * eff);
           row.purchases = Math.round(platPur * share * eff);
           if (plat === 'meta') { row.lpv = Math.round(row.clicks * 0.8); row.atc = Math.round(row.clicks * 0.11 * driftMul); row.ic = Math.round(row.atc * 0.45); }
-          if (plat === 'google') { row.gLpv = Math.round(row.clicks * 0.78); row.gAtc = Math.round(row.clicks * 0.09 * driftMul); row.gIc = Math.round(row.gAtc * 0.5); }
+          if (plat === 'google') { row.gLpv = Math.round(row.clicks * 0.78); row.gAtc = Math.round(row.clicks * 0.09 * driftMul); row.gIc = Math.round(row.gAtc * 0.5); row.gConvT = Math.round((row.purchases || 0) * 0.93); row.gValT = Math.round((row.revenue || 0) * 0.95); }
         }
       } else {
         for (const plat of Object.keys(pf)) {

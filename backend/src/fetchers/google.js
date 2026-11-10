@@ -32,7 +32,8 @@ const micros = (v) => num(v) / 1e6;
 
 export async function fetchDaily(client, since, until) {
   const rows = await gaql(client.accounts.google, `
-    SELECT segments.date, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value
+    SELECT segments.date, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value,
+           metrics.conversions_by_conversion_date, metrics.conversions_value_by_conversion_date
     FROM customer WHERE segments.date BETWEEN '${since}' AND '${until}'`);
   const isE = client.type !== 'lead';
   const funnel = isE ? await funnelByDay(client, since, until) : {};
@@ -41,6 +42,9 @@ export async function fetchDaily(client, since, until) {
     row.spend = round(micros(r.metrics.costMicros)); row.impressions = num(r.metrics.impressions); row.clicks = num(r.metrics.clicks);
     const conv = num(r.metrics.conversions);
     if (isE) { row.purchases = Math.round(conv); row.revenue = round(num(r.metrics.conversionsValue)); } else { row.leads = Math.round(conv); }
+    // Google's "by conversion time" columns: each conversion is put on the day it happened, not on
+    // the day of the ad click behind it (the default above). Kept apart in gConvT and gValT.
+    row.gConvT = round(num(r.metrics.conversionsByConversionDate), 2); row.gValT = round(num(r.metrics.conversionsValueByConversionDate));
     // Explicit zeros on days without funnel actions, so a merge never leaves a stale count behind.
     if (isE) Object.assign(row, { gLpv: 0, gAtc: 0, gIc: 0 }, funnel[r.segments.date] || {});
     return row;
