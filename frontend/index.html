@@ -2698,6 +2698,7 @@ function ecomKpis(x,V){
     card('kc-shop',['shop'],ICONS.users,'Conversion rate',hasShop&&cvr(C.s,C.ga)!=null?fmtPct(cvr(C.s,C.ga)):'--',hasShop?(sess(C.s,C.ga)?d(cvr(C.s,C.ga),cvr(P.s,P.ga)):'needs store sessions'):none,'',hasShop?['Sessions',fmtNum(sess(C.s,C.ga))]:null,series14(r=>mine(r)&&(isS(r)||isGa(r)),m=>{const n=m.shSessions||m.sessions||0; return n?m.orders/n*100:0;}),'pct'),
     card('kc-shop',['shop'],ICONS.bag,'Average order value',hasShop&&aov(C.s)!=null?fmtMoney(aov(C.s),c):'--',hasShop?d(aov(C.s),aov(P.s)):none,'',hasShop?['Orders',fmtNum(C.s.orders)]:null,m14(isS,m=>m.orders?Math.max(m.totalSales||0,m.netSales||0)/m.orders:0),'money'),
   ];
+  if((c.hide||[]).includes('cvr')) store.splice(3,1);   // Berkowits: store sessions are not tracked fully, so no conversion rate
   const plat=(o,po,pf,cls,src,name)=>[
     card(cls,src,ICONS.spend,name+' spend',fmtMoney(o.spend,c),o.spend?d(o.spend,po.spend):'no spend in this period','',cls==='kc-mix'?['Meta \u00b7 Google',fmtMoney(C.m.spend,c)+' \u00b7 '+fmtMoney(C.g.spend,c)]:['Share',share(o.spend,C.a.spend)],m14(pf,m=>m.spend),'money'),
     card(cls,src,ICONS.target,name+' sales',fmtMoney(o.revenue,c),o.revenue||po.revenue?d(o.revenue,po.revenue):'none reported','',['AOV',o.purchases?fmtMoney(o.revenue/o.purchases,c):'--'],m14(pf,m=>m.revenue),'money'),
