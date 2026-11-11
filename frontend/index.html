@@ -1597,7 +1597,8 @@ let animateNext=true;   // first paint, and every render the user asked for. Nev
 //   is seg and <other> is the row minus seg. A platform matched with '*' is all <name>.
 const SEG_ZERO=['spend','impressions','clicks','purchases','revenue','leads','installs','lpv','atc','ic','gLpv','gAtc','gIc','gConvT','gValT'];
 const SEG_KEYS=['spend','impressions','clicks','purchases','revenue','leads','gConvT','gValT'];
-function segMode(c){ return c&&c.segment?((state.seg||{})[c.id]||'all'):'all'; }
+// segment.only = 'seg' pins the client to its segment (Berkowits: ecomm only) and hides the switch.
+function segMode(c){ if(!c||!c.segment) return 'all'; if(c.segment.only) return c.segment.only; return (state.seg||{})[c.id]||'all'; }
 // A campaign is in the segment when its name has the text, unless its channel is excluded
 // (Berkowits: YouTube video campaigns titled after "products" videos are not ecomm).
 function segKeep(c,platform,name,channel){ const m=segMode(c); if(m==='all') return true; const rule=(c.segment.match||{})[String(platform||'').toLowerCase()]; if(!rule) return true;
@@ -1623,7 +1624,7 @@ function applySeg(){
   D.entities=ents; D._segKey=key; D._segFrom=D._raw.daily;
 }
 function segBar(c){
-  if(!c.segment) return '';
+  if(!c.segment||c.segment.only) return '';
   const m=segMode(c), nm=c.segment.name||'Segment', ot=c.segment.other||'Other';
   return '<div class="crsort segbar"><span>Campaigns</span>'+[['all','All'],['seg',nm],['other',ot]].map(([k,l])=>'<button class="crchip'+(m===k?' on':'')+'" data-act="seg" data-client="'+esc(c.id)+'" data-v="'+k+'">'+esc(l)+'</button>').join('')+'</div>';
 }
