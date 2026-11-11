@@ -44,11 +44,13 @@ export async function fetchDaily(client, since, until) {
   const segByDay = {};
   if (segText(client)) {
     const camp = await gaql(client.accounts.google, `
-      SELECT campaign.name, segments.date, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value,
+      SELECT campaign.name, campaign.advertising_channel_type, segments.date, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value,
              metrics.conversions_by_conversion_date, metrics.conversions_value_by_conversion_date
       FROM campaign WHERE segments.date BETWEEN '${since}' AND '${until}'`);
+    const ex = (client.segment?.excludeChannels || []).map((x) => String(x).toUpperCase());
     for (const r of camp) {
       if (!String(r.campaign?.name || '').toLowerCase().includes(segText(client))) continue;
+      if (ex.includes(String(r.campaign?.advertisingChannelType || '').toUpperCase())) continue;
       const d = (segByDay[r.segments.date] = segByDay[r.segments.date] || {});
       for (const k of SEG_METRICS) d[k] = num(d[k]) + num(r.metrics[k]);
     }

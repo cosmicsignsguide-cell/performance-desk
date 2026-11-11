@@ -1598,8 +1598,11 @@ let animateNext=true;   // first paint, and every render the user asked for. Nev
 const SEG_ZERO=['spend','impressions','clicks','purchases','revenue','leads','installs','lpv','atc','ic','gLpv','gAtc','gIc','gConvT','gValT'];
 const SEG_KEYS=['spend','impressions','clicks','purchases','revenue','leads','gConvT','gValT'];
 function segMode(c){ return c&&c.segment?((state.seg||{})[c.id]||'all'):'all'; }
-function segKeep(c,platform,name){ const m=segMode(c); if(m==='all') return true; const rule=(c.segment.match||{})[String(platform||'').toLowerCase()]; if(!rule) return true;
-  const hit=rule==='*'||String(name||'').toLowerCase().includes(String(rule).toLowerCase()); return m==='seg'?hit:!hit; }
+// A campaign is in the segment when its name has the text, unless its channel is excluded
+// (Berkowits: YouTube video campaigns titled after "products" videos are not ecomm).
+function segKeep(c,platform,name,channel){ const m=segMode(c); if(m==='all') return true; const rule=(c.segment.match||{})[String(platform||'').toLowerCase()]; if(!rule) return true;
+  const ex=(c.segment.excludeChannels||[]).map(x=>String(x).toUpperCase());
+  const hit=rule==='*'||(String(name||'').toLowerCase().includes(String(rule).toLowerCase())&&!ex.includes(String(channel||'').toUpperCase())); return m==='seg'?hit:!hit; }
 function applySeg(){
   if(!D) return;
   if(!D._raw) D._raw={daily:D.daily,entities:D.entities};
@@ -1614,7 +1617,7 @@ function applySeg(){
     SEG_KEYS.forEach(k=>{ o[k]=m==='seg'?(sg[k]||0):Math.max(0,(r[k]||0)-(sg[k]||0)); }); return o; });
   const ents={...D._raw.entities};
   segClients.forEach(c=>{ const e=D._raw.entities[c.id]; if(!e||segMode(c)==='all') return;
-    const camps=(e.campaigns||[]).filter(k=>segKeep(c,k.platform,k.name)), ids=new Set(camps.map(k=>k.id));
+    const camps=(e.campaigns||[]).filter(k=>segKeep(c,k.platform,k.name,k.channel)), ids=new Set(camps.map(k=>k.id));
     const inCamp=x=>{ const k=(e.campaigns||[]).find(z=>z.id===x.campaignId); return k?ids.has(k.id):segKeep(c,'meta',x.campaignName); };
     ents[c.id]={...e,campaigns:camps,adsets:(e.adsets||[]).filter(inCamp),ads:(e.ads||[]).filter(inCamp)}; });
   D.entities=ents; D._segKey=key; D._segFrom=D._raw.daily;

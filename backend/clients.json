@@ -1398,7 +1398,10 @@
       "match": {
         "google": "products",
         "meta": "*"
-      }
+      },
+      "excludeChannels": [
+        "VIDEO"
+      ]
     }
   }
 ]
