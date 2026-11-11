@@ -1403,6 +1403,9 @@
         "VIDEO"
       ],
       "only": "seg"
-    }
+    },
+    "hide": [
+      "funnel"
+    ]
   }
 ]

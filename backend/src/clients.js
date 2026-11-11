@@ -66,6 +66,7 @@ export function normalizeClient(c) {
     // No advice on this client's page: explanatory notes, "What to fix" and the Scale / Watch calls on
     // creatives are hidden, for clients who want the numbers only (Berkowits).
     noAdvice: c.noAdvice === true,
+    hide: Array.isArray(c.hide) ? c.hide.map(String) : [],   // page sections to leave out for this client, e.g. ['funnel']
     // Two kinds of campaign in one account (Berkowits Google: clinic lead gen next to "Products"
     // shopping). The dashboard gets a switch: All / <name> / <other>. match says, per platform,
     // which campaigns are <name>: text in the campaign name (case-insensitive), or '*' for all.

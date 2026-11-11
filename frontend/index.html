@@ -2546,7 +2546,7 @@ function clientView(x){
   h+='<div class="section"><div class="glass-panel"><h2>Spend and '+kpiLabel(c)+' by day</h2><div class="legend"><span><i class="bar"></i>Spend</span><span><i class="line"></i>'+kpiLabel(c)+'</span><span><i class="tgt"></i>Target</span></div>'+trendChart(x)+'</div></div>';
   // The old first-visit panel ("Where the orders came from") was removed on request; the
   // Order sources (UTM) tab is the answer to that question now.
-  if(isE) h+=funnelPanel(x);
+  if(isE&&!(c.hide||[]).includes('funnel')) h+=funnelPanel(x);   // c.hide: sections a client's page leaves out
   // Orders, Order sources, Reports and Site Watch were taken off this row on request; their panels
   // (ordersPanel, sourcesTab, weeklyPanel) are still here, so adding a tab back is one line.
   const tabs=isE?[['campaigns','Campaigns'],['ads','Creatives'],['products','Best seller products'],...(c.accounts?.shopify?.shop||!LIVE?[['sources','Order sources (UTM)']]:[])]:[['campaigns','Campaigns'],['ads','Creatives']];
