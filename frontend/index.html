@@ -1628,6 +1628,9 @@ function segBar(c){
   const m=segMode(c), nm=c.segment.name||'Segment', ot=c.segment.other||'Other';
   return '<div class="crsort segbar"><span>Campaigns</span>'+[['all','All'],['seg',nm],['other',ot]].map(([k,l])=>'<button class="crchip'+(m===k?' on':'')+'" data-act="seg" data-client="'+esc(c.id)+'" data-v="'+k+'">'+esc(l)+'</button>').join('')+'</div>';
 }
+// The "Google, by conversion time" row is hidden for every client for now; the data keeps syncing,
+// so setting this to true brings the row back with full history.
+const SHOW_GTIME=false;
 function render(){
   applySeg();
   computeAll();
@@ -2528,7 +2531,7 @@ function clientView(x){
   // conversion on the day it happened, not on the day of the click behind it.
   { const gsum=sp=>rowsIn(x.rows,D.today,sp).filter(r=>r.platform==='google').reduce((o,r)=>{ o.spend+=r.spend||0; o.t+=r.gConvT||0; o.v+=r.gValT||0; o.k+=(r.leads||0)+(r.installs||0)+(r.purchases||0); return o; },{spend:0,t:0,v:0,k:0});
     const G=gsum(spec), PG=spec.prev?gsum(spec.prev):{spend:0,t:0,v:0,k:0}, isG=r=>r.clientId===c.id&&r.platform==='google';
-    if(G.spend||PG.spend){
+    if(SHOW_GTIME&&(G.spend||PG.spend)){
       const ct=v=>Math.round(v*100)/100;
       h+='<div class="kpi-row r-google" style="margin-top:14px"><div class="kpi-row-h"><i></i>Google, by conversion time</div><div class="kpi-grid v2" style="grid-template-columns:repeat(4,minmax(0,1fr))">'
         +kpi(ICONS.users,'Conversions (by conv. time)',fmtNum(ct(G.t)),G.t||PG.t?V(G.t,PG.t):'none reported','',['Conversions (by click time)',fmtNum(G.k)],series14(isG,m=>m.gConvT||0),'num')
@@ -2711,7 +2714,7 @@ function ecomKpis(x,V){
     card('kc-google',['google'],ICONS.trend,'ROAS (by conv. time)',gt.spend?fmtX((gt.gValT||0)/gt.spend):'--',gt.spend?d((gt.gValT||0)/gt.spend,pgt.spend?(pgt.gValT||0)/pgt.spend:null):'needs spend',gt.spend?t((gt.gValT||0)/gt.spend):'',tgt,m14(isG,m=>m.spend?(m.gValT||0)/m.spend:0),'x'),
     card('kc-google',['google'],ICONS.spend,'Cost / conv. (by conv. time)',gt.gConvT?fmtMoney(gt.spend/gt.gConvT,c):'--',gt.gConvT?d(gt.spend/gt.gConvT,pgt.gConvT?pgt.spend/pgt.gConvT:null,true):'needs conversions','',['Spend',fmtMoney(gt.spend||0,c)],m14(isG,m=>m.gConvT?m.spend/m.gConvT:0),'money'),
   ];
-  const gTimeRow=()=>gt.spend||pgt.spend?row('r-google','Google, by conversion time',gTime):'';
+  const gTimeRow=()=>SHOW_GTIME&&(gt.spend||pgt.spend)?row('r-google','Google, by conversion time',gTime):'';
   let h='<div class="kpi-rows">';
   h+=row('r-store','Store and blended',store);
   if(c.metaPurchase){
