@@ -1392,8 +1392,13 @@
     "metaPurchase": "ConfmPageView",
     "metaPurchaseId": "1434330091796529",
     "noAdvice": true,
-    "campaignFilter": {
-      "google": "products"
+    "segment": {
+      "name": "Products",
+      "other": "Lead gen",
+      "match": {
+        "google": "products",
+        "meta": "*"
+      }
     }
   }
 ]

@@ -660,6 +660,7 @@ a{color:var(--cyan)}
 .scl-chg{font-size:12px;font-weight:600;color:var(--faint)}.scl-chg.up{color:#1f8a4c}.scl-chg.dn{color:#c2412d}
 .scl-line{display:inline-block;width:14px;height:2px;background:var(--text);vertical-align:middle;margin-right:4px;border-radius:1px}
 .noadvice .note:not(.keep),.noadvice .kpi-rows-note,.noadvice .crcalls,.noadvice .chip.crcall{display:none!important}
+.segbar{margin:-4px 0 14px}
 .catpanel{margin:0 0 14px}
 .cat-bars{display:flex;flex-direction:column;gap:8px;margin-top:6px}
 .cat-r{display:grid;grid-template-columns:minmax(120px,190px) 1fr minmax(120px,170px);gap:12px;align-items:center}
@@ -1589,7 +1590,42 @@ function go(id){ if(id){location.hash='#c/'+id} else { try{history.replaceState(
 window.addEventListener('hashchange',()=>{readHash();render();window.scrollTo(0,0);});
 function computeAll(){ S={}; D.clients.forEach(c=>S[c.id]=summarize(D,c,state.range)); }
 let animateNext=true;   // first paint, and every render the user asked for. Never a poll.
+// Campaign segments: a client whose account runs two kinds of campaign (c.segment) gets a switch,
+// All / <name> / <other>. The raw rows and campaign tree stay as loaded (D._raw); what the page reads
+// (D.daily, D.entities) is rebuilt from them whenever the switch or the data changes.
+//   Google rows carry seg, the part of each day that belongs to the matching campaigns, so <name>
+//   is seg and <other> is the row minus seg. A platform matched with '*' is all <name>.
+const SEG_ZERO=['spend','impressions','clicks','purchases','revenue','leads','installs','lpv','atc','ic','gLpv','gAtc','gIc','gConvT','gValT'];
+const SEG_KEYS=['spend','impressions','clicks','purchases','revenue','leads','gConvT','gValT'];
+function segMode(c){ return c&&c.segment?((state.seg||{})[c.id]||'all'):'all'; }
+function segKeep(c,platform,name){ const m=segMode(c); if(m==='all') return true; const rule=(c.segment.match||{})[String(platform||'').toLowerCase()]; if(!rule) return true;
+  const hit=rule==='*'||String(name||'').toLowerCase().includes(String(rule).toLowerCase()); return m==='seg'?hit:!hit; }
+function applySeg(){
+  if(!D) return;
+  if(!D._raw) D._raw={daily:D.daily,entities:D.entities};
+  const segClients=(D.clients||[]).filter(c=>c.segment), key=JSON.stringify(segClients.map(c=>[c.id,segMode(c)]));
+  if(D._segKey===key&&D._segFrom===D._raw.daily) return;
+  const byId={}; segClients.forEach(c=>byId[c.id]=c);
+  D.daily=D._raw.daily.map(r=>{ const c=byId[r.clientId], m=c&&segMode(c); if(!c||m==='all') return r;
+    const rule=(c.segment.match||{})[r.platform]; if(!rule) return r;
+    const o={...r};
+    if(rule==='*'){ if(m!=='seg') SEG_ZERO.forEach(k=>o[k]=0); return o; }
+    const sg=r.seg||{}; ['gLpv','gAtc','gIc','lpv','atc','ic'].forEach(k=>o[k]=0);
+    SEG_KEYS.forEach(k=>{ o[k]=m==='seg'?(sg[k]||0):Math.max(0,(r[k]||0)-(sg[k]||0)); }); return o; });
+  const ents={...D._raw.entities};
+  segClients.forEach(c=>{ const e=D._raw.entities[c.id]; if(!e||segMode(c)==='all') return;
+    const camps=(e.campaigns||[]).filter(k=>segKeep(c,k.platform,k.name)), ids=new Set(camps.map(k=>k.id));
+    const inCamp=x=>{ const k=(e.campaigns||[]).find(z=>z.id===x.campaignId); return k?ids.has(k.id):segKeep(c,'meta',x.campaignName); };
+    ents[c.id]={...e,campaigns:camps,adsets:(e.adsets||[]).filter(inCamp),ads:(e.ads||[]).filter(inCamp)}; });
+  D.entities=ents; D._segKey=key; D._segFrom=D._raw.daily;
+}
+function segBar(c){
+  if(!c.segment) return '';
+  const m=segMode(c), nm=c.segment.name||'Segment', ot=c.segment.other||'Other';
+  return '<div class="crsort segbar"><span>Campaigns</span>'+[['all','All'],['seg',nm],['other',ot]].map(([k,l])=>'<button class="crchip'+(m===k?' on':'')+'" data-act="seg" data-client="'+esc(c.id)+'" data-v="'+k+'">'+esc(l)+'</button>').join('')+'</div>';
+}
 function render(){
+  applySeg();
   computeAll();
   const anim=animateNext; animateNext=true; METRICS={}; METRIC_N=0;
   root.innerHTML='<div class="app-shell'+(anim?' intro':'')+'">'+topRail()+'<main class="main'+(state.view==='client'?' main-client':' main-wall')+'">'+(state.view==='client'?clientView(S[state.clientId]):overviewView())+'</main></div>'; if(window.__plRefresh) window.__plRefresh();
@@ -2451,6 +2487,7 @@ function clientView(x){
   let h='<button class="detail-back" data-act="nav" data-client="">'+ICONS.back+'Command Center</button>';
   h+='<div class="page-head"><div><h1 class="disp">'+esc(c.name)+'</h1><p class="subtitle">'+typeLabel(c)+' · '+esc(pfLabel(c))+(c.budget?' · '+fmtMoney(c.budget,c)+' per month':'')+(kpiTarget(c)?' · target '+kpiFmt(c,kpiTarget(c))+' '+kpiLabel(c):' · <span class="faint">no target set</span>')+(c.am?' · AM '+esc(c.am):'')+(acct&&acct.statusCode&&acct.statusCode!==1?' <span class="chip bad">Meta account: '+esc(acct.status)+'</span>':'')+'</p></div><div class="meta">'+niceDate(D.today)+'<br>'+syncChips(x)+'</div></div>';
   h+='<div class="toolbar">'+rangeBar()+'<select class="mobile-pick" id="mobilePick"><option value="">All clients</option>'+D.clients.map(k=>'<option value="'+k.id+'">'+esc(k.name)+'</option>').join('')+'</select><div class="grow"></div>'+(LIVE&&CFG.syncUrl?'<button class="btn btn-ghost btn-small" data-act="syncnow">'+ICONS.refresh+' Sync now</button>':'')+'<button class="btn btn-ghost btn-small" data-act="clientlink">'+ICONS.copy+' Copy client dashboard link</button><button class="btn btn-primary btn-small" data-act="update">'+ICONS.copy+' Copy client update</button></div>';
+  h+=segBar(c);
   if(!x.hasData) return h+noDataPanel(x);
   const V=(cur,prev,inv)=>vs(cur,prev,inv)+' vs '+spec.prevLabel;
   // Where each card's number comes from: which ad platforms actually spent in this range, and whether Shopify is connected.
@@ -2941,7 +2978,9 @@ function srcScale(S,c,w,spec){
   return '<div class="srcgrid scl">'+PLS.map(panel).join('')+'</div>';
 }
 function sourcesTab(x){
-  const c=x.c, cid=c.id, st=SRC[cid];
+  const c=x.c, cid=c.id, st0=SRC[cid];
+  // With the campaign switch on a segment, ad spend only counts the campaigns in that segment.
+  const st=st0&&st0.data&&segMode(c)!=='all'?{...st0,data:{...st0.data,spend:(st0.data.spend||[]).filter(r=>{ const m=st0.data.camps&&st0.data.camps[r[1]]; const pf=(m&&m.p)||String(r[1]).split(':')[0]; return segKeep(c,pf,m&&m.name); })}}:st0;
   const shell=t=>'<div class="glass-panel"><h2>Order sources</h2><div class="note keep">'+t+'</div></div>';
   if(!st){ SRC[cid]={loading:true}; setTimeout(()=>srcLoad(cid),0); return shell('Loading the last visit behind every order...'); }
   if(st.loading) return shell('Loading the last visit behind every order...');
@@ -3336,6 +3375,7 @@ document.addEventListener('click',e=>{
   else if(act==='srccpf'){ state.srcCpf=el.dataset.v; render(); }
   else if(act==='srccsort'){ const k=el.dataset.k, o=state.srcCsort||{k:'v',dir:-1}; state.srcCsort={k,dir:o.k===k?-o.dir:-1}; render(); }
   else if(act==='srcpay'){ state.srcPay=el.dataset.v; render(); }
+  else if(act==='seg'){ state.seg=Object.assign({},state.seg,{[el.dataset.client]:el.dataset.v}); render(); }
   else if(act==='catwin'){ state.catWin=el.dataset.v; render(); }
   else if(act==='srcview'){ state.srcView=el.dataset.v; render(); }
   else if(act==='srcsort'){ const k=el.dataset.k, o=state.srcSort||{k:'n',dir:-1}; state.srcSort={k,dir:o.k===k?-o.dir:(k==='p'?1:-1)}; render(); }

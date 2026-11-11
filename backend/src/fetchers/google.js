@@ -29,33 +29,29 @@ async function gaql(customerId, query) {
 }
 
 const micros = (v) => num(v) / 1e6;
-
-// A client can limit Google to campaigns whose name contains some text (campaignFilter.google).
-const campFilter = (client) => String(client.campaignFilter?.google || '').trim().toLowerCase();
-const keepCamp = (client, name) => { const f = campFilter(client); return !f || String(name || '').toLowerCase().includes(f); };
 const DAY_METRICS = ['costMicros', 'impressions', 'clicks', 'conversions', 'conversionsValue', 'conversionsByConversionDate', 'conversionsValueByConversionDate'];
 
+// A client with a segment on Google gets, on every day row, the share of that day that belongs to
+// the matching campaigns (row.seg), so the dashboard can show All, the segment, or the rest.
+const segText = (client) => { const m = client.segment?.match?.google; return m && m !== '*' ? String(m).toLowerCase() : ''; };
+const SEG_METRICS = ['costMicros', 'impressions', 'clicks', 'conversions', 'conversionsValue', 'conversionsByConversionDate', 'conversionsValueByConversionDate'];
+
 export async function fetchDaily(client, since, until) {
-  let rows;
-  if (!campFilter(client)) {
-    rows = await gaql(client.accounts.google, `
-      SELECT segments.date, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value,
-             metrics.conversions_by_conversion_date, metrics.conversions_value_by_conversion_date
-      FROM customer WHERE segments.date BETWEEN '${since}' AND '${until}'`);
-  } else {
-    // Filtered: pull per campaign and day, keep the matching campaigns, add them up per day.
+  const rows = await gaql(client.accounts.google, `
+    SELECT segments.date, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value,
+           metrics.conversions_by_conversion_date, metrics.conversions_value_by_conversion_date
+    FROM customer WHERE segments.date BETWEEN '${since}' AND '${until}'`);
+  const segByDay = {};
+  if (segText(client)) {
     const camp = await gaql(client.accounts.google, `
       SELECT campaign.name, segments.date, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value,
              metrics.conversions_by_conversion_date, metrics.conversions_value_by_conversion_date
       FROM campaign WHERE segments.date BETWEEN '${since}' AND '${until}'`);
-    const byDay = {};
     for (const r of camp) {
-      if (!keepCamp(client, r.campaign?.name)) continue;
-      const d = (byDay[r.segments.date] = byDay[r.segments.date] || { segments: { date: r.segments.date }, metrics: {} });
-      for (const k of DAY_METRICS) d.metrics[k] = num(d.metrics[k]) + num(r.metrics[k]);
+      if (!String(r.campaign?.name || '').toLowerCase().includes(segText(client))) continue;
+      const d = (segByDay[r.segments.date] = segByDay[r.segments.date] || {});
+      for (const k of SEG_METRICS) d[k] = num(d[k]) + num(r.metrics[k]);
     }
-    rows = Object.values(byDay);
-    log(`google ${client.id}: only campaigns containing "${campFilter(client)}" (${new Set(camp.filter((r) => keepCamp(client, r.campaign?.name)).map((r) => r.campaign.name)).size} of ${new Set(camp.map((r) => r.campaign?.name)).size} with activity)`);
   }
   const isE = client.type !== 'lead';
   const funnel = isE ? await funnelByDay(client, since, until) : {};
@@ -67,6 +63,12 @@ export async function fetchDaily(client, since, until) {
     // Google's "by conversion time" columns: each conversion is put on the day it happened, not on
     // the day of the ad click behind it (the default above). Kept apart in gConvT and gValT.
     row.gConvT = round(num(r.metrics.conversionsByConversionDate), 2); row.gValT = round(num(r.metrics.conversionsValueByConversionDate));
+    if (segText(client)) {
+      const m = segByDay[r.segments.date] || {}, sc = num(m.conversions);
+      row.seg = { spend: round(micros(m.costMicros)), impressions: num(m.impressions), clicks: num(m.clicks),
+        purchases: isE ? Math.round(sc) : 0, revenue: isE ? round(num(m.conversionsValue)) : 0, leads: isE ? 0 : Math.round(sc),
+        gConvT: round(num(m.conversionsByConversionDate), 2), gValT: round(num(m.conversionsValueByConversionDate)) };
+    }
     // Explicit zeros on days without funnel actions, so a merge never leaves a stale count behind.
     if (isE) Object.assign(row, { gLpv: 0, gAtc: 0, gIc: 0 }, funnel[r.segments.date] || {});
     return row;
@@ -81,15 +83,12 @@ export async function fetchDaily(client, since, until) {
 // dashboard says so instead of guessing.
 async function funnelByDay(client, since, until) {
   try {
-    const rows = await gaql(client.accounts.google, campFilter(client) ? `
-      SELECT campaign.name, segments.date, segments.conversion_action_category, metrics.all_conversions
-      FROM campaign WHERE segments.date BETWEEN '${since}' AND '${until}'` : `
+    const rows = await gaql(client.accounts.google, `
       SELECT segments.date, segments.conversion_action_category, metrics.all_conversions
       FROM customer WHERE segments.date BETWEEN '${since}' AND '${until}'`);
     const key = { PAGE_VIEW: 'gLpv', ADD_TO_CART: 'gAtc', BEGIN_CHECKOUT: 'gIc' };
     const out = {};
     for (const r of rows) {
-      if (r.campaign && !keepCamp(client, r.campaign.name)) continue;
       const k = key[r.segments.conversionActionCategory]; if (!k) continue;
       const d = (out[r.segments.date] = out[r.segments.date] || { gLpv: 0, gAtc: 0, gIc: 0 });
       d[k] += Math.round(num(r.metrics.allConversions));
@@ -107,7 +106,7 @@ export async function fetchCampaignSpend(client, since, until) {
     SELECT campaign.id, campaign.name, segments.date, metrics.cost_micros
     FROM campaign WHERE segments.date BETWEEN '${since}' AND '${until}' AND metrics.cost_micros > 0`);
   const out = {};
-  for (const r of rows) { const sp = round(micros(r.metrics.costMicros)); if (!sp || !keepCamp(client, r.campaign.name)) continue; (out[r.segments.date] = out[r.segments.date] || []).push([String(r.campaign.id), r.campaign.name || '', sp]); }
+  for (const r of rows) { const sp = round(micros(r.metrics.costMicros)); if (!sp) continue; (out[r.segments.date] = out[r.segments.date] || []).push([String(r.campaign.id), r.campaign.name || '', sp]); }
   return out;
 }
 
@@ -123,8 +122,6 @@ export async function fetchEntities(client, until) {
       SELECT campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, segments.date, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value
       FROM campaign WHERE segments.date BETWEEN '${addDays(until, -(ENTITY_DAYS - 1))}' AND '${addDays(until, 1)}' AND metrics.cost_micros > 0`),
   ]);
-  // Campaigns outside the client's filter are dropped from the tree as well.
-  for (const list of [camp, campDaily]) for (let i = list.length - 1; i >= 0; i--) if (!keepCamp(client, list[i].campaign?.name)) list.splice(i, 1);
   const days = {};
   for (const r of campDaily) {
     const id = String(r.campaign.id); const m = (days[id] = days[id] || {}); const conv = num(r.metrics.conversions);

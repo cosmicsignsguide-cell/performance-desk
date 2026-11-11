@@ -66,10 +66,11 @@ export function normalizeClient(c) {
     // No advice on this client's page: explanatory notes, "What to fix" and the Scale / Watch calls on
     // creatives are hidden, for clients who want the numbers only (Berkowits).
     noAdvice: c.noAdvice === true,
-    // Only campaigns whose name contains this text count, per platform (case-insensitive), for an
-    // ad account that also runs campaigns this dashboard should not report (Berkowits Google runs
-    // clinic lead gen next to its "Products" shopping campaigns). { google: 'products' }
-    campaignFilter: c.campaignFilter && typeof c.campaignFilter === 'object' ? c.campaignFilter : {},
+    // Two kinds of campaign in one account (Berkowits Google: clinic lead gen next to "Products"
+    // shopping). The dashboard gets a switch: All / <name> / <other>. match says, per platform,
+    // which campaigns are <name>: text in the campaign name (case-insensitive), or '*' for all.
+    // { name: 'Products', other: 'Lead gen', match: { google: 'products', meta: '*' } }
+    segment: c.segment && typeof c.segment === 'object' && c.segment.match ? c.segment : null,
     metaPurchaseId: c.metaPurchaseId ? String(c.metaPurchaseId).trim() : '',   // the custom conversion's id, when its name cannot be looked up
     contact: c.contact || '',                     // the client's own person, greeted on their report
     accounts: {
