@@ -1,0 +1,52 @@
+# The clock that keeps the dashboard fresh.
+#
+# GitHub drops scheduled runs when it is busy: the old "every hour at :05" schedule fired only two
+# or three times on some days, so "Today so far" could be hours old. A single run of this workflow
+# instead stays up for almost six hours and calls the hourly sync itself at :05 of every hour, and
+# the nightly daily sync at 02:05 IST. It is started every three hours, so even if GitHub drops
+# several of those starts, one survivor keeps the hours covered. A new start takes over from the
+# running one (concurrency below), so there is only ever one clock.
+#
+# The API answers 409 when the same sync is already running, so overlapping with a manual Sync or
+# with sync.yml is harmless. The repo is public, so these Actions minutes are free.
+name: desk-keeper
+on:
+  schedule:
+    - cron: "11 */3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: desk-keeper
+  cancel-in-progress: true
+
+jobs:
+  keep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - name: Hourly and nightly syncs for the next six hours
+        env:
+          DESK_SYNC_KEY: ${{ secrets.DESK_SYNC_KEY }}
+          API: https://desk-api-si2w.onrender.com
+        run: |
+          if [ -z "$DESK_SYNC_KEY" ]; then echo "DESK_SYNC_KEY secret is not set"; exit 1; fi
+          end=$(( $(date +%s) + 5*3600 + 45*60 ))
+          last_daily=""
+          call() {   # $1 route, $2 mode
+            curl -sS --max-time 90 "$API/health" >/dev/null || true
+            code=$(curl -sS -o out.txt -w "%{http_code}" --max-time 1500 -X POST -H "Authorization: Bearer $DESK_SYNC_KEY" "$API/$1?mode=$2")
+            echo "$(date -u +%H:%M) $2 -> HTTP $code"
+          }
+          while [ "$(date +%s)" -lt "$end" ]; do
+            # Sleep to the next :05.
+            now=$(date +%s); m=$(( 10#$(date -u +%M) )); s=$(( 10#$(date -u +%S) ))
+            wait=$(( (5 - m) * 60 - s )); [ "$wait" -le 0 ] && wait=$(( wait + 3600 ))
+            [ $(( now + wait )) -ge "$end" ] && break
+            sleep "$wait"
+            call sync hourly
+            # 20:35 UTC is 02:05 IST: the nightly daily sync, once per UTC date, through /run (it takes long).
+            if [ "$(date -u +%H)" = "20" ] && [ "$last_daily" != "$(date -u +%F)" ]; then
+              sleep 1800; call run daily; last_daily=$(date -u +%F)
+            fi
+          done
+          echo "done; the next scheduled start takes over"

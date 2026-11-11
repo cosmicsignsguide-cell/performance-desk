@@ -1,5 +1,6 @@
 # Keeps the dashboard fresh without anyone pressing Sync.
-#   every hour       : hourly sync (today and yesterday, ad spend and Shopify), at minute 05
+#   every hour       : hourly sync, now driven by keeper.yml (GitHub dropped most of the hourly
+#                      schedules here); this workflow keeps the nightly backup and manual runs
 #   once a night     : daily sync at 02:05 IST (restates the last 7 days, refreshes ads and orders)
 #                      and the API checks the stored Shopify figures against Shopify
 # The repo is public, so Actions minutes are free and unlimited. If it is ever made private again
@@ -8,7 +9,6 @@
 name: desk-sync
 on:
   schedule:
-    - cron: "5 * * * *"     # every hour at :05
     - cron: "35 20 * * *"   # 02:05 IST, the nightly daily sync
   workflow_dispatch:
     inputs:
