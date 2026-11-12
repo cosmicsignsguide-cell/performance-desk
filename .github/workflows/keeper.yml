@@ -44,7 +44,7 @@ jobs:
             [ $(( now + wait )) -ge "$end" ] && break
             sleep "$wait"
             call sync hourly
-            # On the 25th at 10:05 IST, the monthly targets reminder email (sent once per month by the API).
+            # On the 25th, after the 09:35 IST hourly sync, the monthly targets reminder email (sent once per month by the API).
             if [ "$(date -u +%d)" = "25" ] && [ "$(date -u +%H)" = "04" ]; then
               code=$(curl -sS -o out.txt -w "%{http_code}" --max-time 120 -X POST -H "Authorization: Bearer $DESK_SYNC_KEY" "$API/targets/remind"); echo "targets reminder -> HTTP $code $(head -c 200 out.txt)"
             fi
