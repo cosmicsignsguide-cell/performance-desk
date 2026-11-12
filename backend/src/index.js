@@ -623,7 +623,7 @@ async function main() {
 
       const isCreatorRoute = url.pathname.startsWith('/creator/');
       const isChatRoute = url.pathname === '/chat' || url.pathname.startsWith('/chat/');
-      if (!isCreatorRoute && !isChatRoute && !['/sync', '/run', '/links', '/rotate', '/creators', '/creators/today', '/sources'].includes(url.pathname)) { res.writeHead(404); res.end('not found'); return; }
+      if (!isCreatorRoute && !isChatRoute && !['/sync', '/run', '/links', '/rotate', '/creators', '/creators/today', '/sources', '/targets', '/targets/remind'].includes(url.pathname)) { res.writeHead(404); res.end('not found'); return; }
 
       // Two ways in, and only one of them may ever reach a browser.
       //
