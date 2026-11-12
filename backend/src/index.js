@@ -26,6 +26,7 @@ import { handleChat, notesApi } from './chat/index.js';
 import { verifyShopify, verifyMeta } from './verify.js';
 import { buildSourceFeed } from './orderSources.js';
 import { handleShopifyInstall, loadShopTokens } from './shopifyInstall.js';
+import { saveTarget, remind as remindTargets, withMonthTargets } from './targets.js';
 import Sample from './sample.cjs';
 
 const SAMPLE_FALLBACK = /^(1|true|yes)$/i.test(process.env.DESK_SAMPLE_FALLBACK || '');
@@ -588,8 +589,9 @@ async function main() {
           // client and nothing about any other: the client record (without the store token name
           // or the AM), its daily rows, entity tree, signals, sync state, intraday and order
           // sources. The token is the only key, exactly like the report link.
-          const c = await store.get('clients', clientId);
-          if (!c || c.active === false) { res.writeHead(404); res.end('not found'); return; }
+          const c0 = await store.get('clients', clientId);
+          if (!c0 || c0.active === false) { res.writeHead(404); res.end('not found'); return; }
+          const [c] = await withMonthTargets(store, [c0]);   // this month's targets form, if filled
           const until = todayStr(), since = addDays(until, -95);
           const roll = await store.get('rollup', clientId).catch(() => null);
           let daily = Array.isArray(roll?.rows) ? roll.rows : (await store.list('daily', [['clientId', '==', clientId]]));
@@ -695,6 +697,27 @@ async function main() {
       }
 
       // GET /links — every client's report URL, for pasting into an email. Behind the sync key.
+      // Monthly targets (see targets.js). POST /targets saves one client's form (a signed-in
+      // teammate only, so the record says who filled it). POST /targets/remind emails the pending
+      // list for next month; the keeper calls it on the 25th with the sync key.
+      if (url.pathname === '/targets' || url.pathname === '/targets/remind') {
+        if (req.method !== 'POST') { res.writeHead(405); res.end('method not allowed'); return; }
+        let body = '';
+        await new Promise((resolve) => { req.on('data', (ch) => { body += ch; if (body.length > 20000) req.destroy(); }); req.on('end', resolve); req.on('close', resolve); });
+        let payload = {}; try { payload = body ? JSON.parse(body) : {}; } catch { res.writeHead(400); res.end('bad json'); return; }
+        const clients = await loadClients();
+        let out;
+        if (url.pathname === '/targets') {
+          if (!who.includes('@')) { res.writeHead(403); res.end('sign in with your own account'); return; }
+          out = await saveTarget(store, who, payload, clients);
+        } else {
+          out = await remindTargets(store, clients, { force: url.searchParams.get('force') === '1', dashboardUrl: process.env.DASHBOARD_URL || 'https://desk-dashboard-q8io.onrender.com' });
+        }
+        res.writeHead(out.status, { 'Content-Type': typeof out.body === 'string' ? 'text/plain' : 'application/json' });
+        res.end(typeof out.body === 'string' ? out.body : JSON.stringify(out.body));
+        return;
+      }
+
       // GET /sources?client=<id>&days=95 — the team's Order sources view for one client: raw UTM
       // values, the ledger and the Direct bucket evidence. Same sign-in as Sync now.
       if (url.pathname === '/sources') {

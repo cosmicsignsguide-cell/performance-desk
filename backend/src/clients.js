@@ -111,5 +111,7 @@ export async function syncClientsFromFile() {
 export async function loadClients() {
   const store = await db();
   const rows = await store.list('clients');
-  return rows.filter((c) => c.active !== false).map((c) => ({ ...c, id: c.id }));
+  // This month's targets form (budget, ROAS) replaces the clients.json values for the month.
+  const { withMonthTargets } = await import('./targets.js');
+  return withMonthTargets(store, rows.filter((c) => c.active !== false).map((c) => ({ ...c, id: c.id })));
 }

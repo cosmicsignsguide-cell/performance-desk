@@ -3,7 +3,7 @@
 # GitHub drops scheduled runs when it is busy: the old "every hour at :05" schedule fired only two
 # or three times on some days, so "Today so far" could be hours old. A single run of this workflow
 # instead stays up for almost six hours and calls the hourly sync itself at :05 of every hour, and
-# the nightly daily sync at 02:05 IST. It is started every three hours, so even if GitHub drops
+# the nightly daily sync at 02:05 IST, and on the 25th the monthly targets reminder email. It is started every three hours, so even if GitHub drops
 # several of those starts, one survivor keeps the hours covered. A new start takes over from the
 # running one (concurrency below), so there is only ever one clock.
 #
@@ -44,6 +44,10 @@ jobs:
             [ $(( now + wait )) -ge "$end" ] && break
             sleep "$wait"
             call sync hourly
+            # On the 25th at 10:05 IST, the monthly targets reminder email (sent once per month by the API).
+            if [ "$(date -u +%d)" = "25" ] && [ "$(date -u +%H)" = "04" ]; then
+              code=$(curl -sS -o out.txt -w "%{http_code}" --max-time 120 -X POST -H "Authorization: Bearer $DESK_SYNC_KEY" "$API/targets/remind"); echo "targets reminder -> HTTP $code $(head -c 200 out.txt)"
+            fi
             # 20:35 UTC is 02:05 IST: the nightly daily sync, once per UTC date, through /run (it takes long).
             if [ "$(date -u +%H)" = "20" ] && [ "$last_daily" != "$(date -u +%F)" ]; then
               sleep 1800; call run daily; last_daily=$(date -u +%F)

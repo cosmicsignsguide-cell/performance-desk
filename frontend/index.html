@@ -662,6 +662,16 @@ a{color:var(--cyan)}
 .noadvice .note:not(.keep),.noadvice .kpi-rows-note,.noadvice .crcalls,.noadvice .chip.crcall{display:none!important}
 .segbar{margin:-4px 0 14px}
 .catpanel{margin:0 0 14px}
+.tg-wrap{max-width:1180px;margin:0 auto;padding:6px 0 40px}
+.tg-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.tg-month{display:flex;align-items:center;gap:10px;font-size:15px}
+.tg-progress{display:flex;align-items:center;gap:12px;margin:0 0 14px;font-size:13.5px}.tg-bar{flex:1;max-width:320px;height:8px;border-radius:5px;background:var(--line);overflow:hidden}.tg-bar i{display:block;height:100%;background:#1f8a4c}
+.tg-form{margin-bottom:14px}.tg-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-top:6px}
+.tg-f{display:flex;flex-direction:column;justify-content:flex-end;gap:5px;font-size:12.5px;font-weight:600;color:var(--dim)}.tg-f input{font:inherit;font-size:15px;font-weight:600;color:var(--text);padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.tg-actions{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:12px}.tg-actions [data-tsum]{margin-right:auto;font-size:12.5px}
+.tg-chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700;background:#fdecea;color:#c2412d}.tg-chip.ok{background:#e6f4ec;color:#1f8a4c}
+.tg-table tr.tg-on td{background:rgba(255,90,31,.06)}
+@media (max-width:900px){.tg-grid{grid-template-columns:1fr 1fr}}
 .cat-bars{display:flex;flex-direction:column;gap:8px;margin-top:6px}
 .cat-r{display:grid;grid-template-columns:minmax(120px,190px) 1fr minmax(120px,170px);gap:12px;align-items:center}
 .cat-n{font-size:13.5px;font-weight:600}.cat-b{display:flex;flex-direction:column;gap:3px}
@@ -1429,8 +1439,10 @@ async function loadLive(){
   // numbers, not a summary of them. If it is missing, or covers fewer clients than we have, the
   // page falls back to reading daily directly and is merely slower. Correct and slow beats fast
   // and wrong, and this way a deploy that lands before the first sync still works.
-  const [clients,rollups,ents,sigs,sws,syncsArr,alerts,intra,meta,reports,weekly]=await Promise.all([col('clients'),col('rollup').catch(()=>[]),col('entities'),col('signals'),col('sitewatch'),col('syncs'),col('alerts',r=>r.where('at','>=',new Date(Date.now()-48*3600000).toISOString())),col('intraday',r=>r.where('date','>=',addDays(today,-8))),fb.db.collection(PFX+'meta').doc('lastRun').get().then(d=>d.exists?d.data():{}),col('reports').catch(()=>[]),col('weekly').catch(()=>[])]);
-  const live=clients.filter(c=>c.active!==false);
+  const [clients,rollups,ents,sigs,sws,syncsArr,alerts,intra,meta,reports,weekly,monthT]=await Promise.all([col('clients'),col('rollup').catch(()=>[]),col('entities'),col('signals'),col('sitewatch'),col('syncs'),col('alerts',r=>r.where('at','>=',new Date(Date.now()-48*3600000).toISOString())),col('intraday',r=>r.where('date','>=',addDays(today,-8))),fb.db.collection(PFX+'meta').doc('lastRun').get().then(d=>d.exists?d.data():{}),col('reports').catch(()=>[]),col('weekly').catch(()=>[]),col('targets',r=>r.where('month','==',today.slice(0,7))).catch(()=>[])]);
+  // This month's targets form replaces each client's budget and ROAS target (see Monthly targets).
+  const tBy=Object.fromEntries((monthT||[]).map(t=>[t.clientId,t]));
+  const live=clients.filter(c=>c.active!==false).map(c=>applyMonthTargets(c,tBy[c.id]));
   const covered=new Set(rollups.filter(r=>Array.isArray(r.rows)).map(r=>r.clientId||r.id));
   let daily=[];
   if(live.length && live.every(c=>covered.has(c.id))){
@@ -1585,11 +1597,65 @@ const state={plRange:'7d',plSort:{key:'dev',dir:'asc'},view:'overview',clientId:
 const root=document.getElementById('root');
 // #c/<client> opens a client; #c/<client>/<tab> also opens that tab, so a tab can be linked to.
 const TAB_SLUG={campaigns:'campaigns',creatives:'ads',products:'products',sources:'sources',utm:'sources'};
-function readHash(){ if(SHARE&&D&&D.clients[0]){ const t=location.hash.match(/^#c\/[a-z0-9-]+\/([a-z]+)/); state.view='client'; state.clientId=D.clients[0].id; if(t&&TAB_SLUG[t[1]]) state.tab=TAB_SLUG[t[1]]; return; } const m=location.hash.match(/^#c\/([a-z0-9-]+)(?:\/([a-z]+))?/); if(m&&D&&D.clients.some(c=>c.id===m[1])){state.view='client';state.clientId=m[1]; if(m[2]&&TAB_SLUG[m[2]]) state.tab=TAB_SLUG[m[2]];} else {state.view='overview';state.clientId=null} }
+function readHash(){ if(SHARE&&D&&D.clients[0]){ const t=location.hash.match(/^#c\/[a-z0-9-]+\/([a-z]+)/); state.view='client'; state.clientId=D.clients[0].id; if(t&&TAB_SLUG[t[1]]) state.tab=TAB_SLUG[t[1]]; return; } const tm=location.hash.match(/^#targets(?:\/(\d{4}-\d{2}))?/); if(tm&&!SHARE){ state.view='targets'; state.clientId=null; if(tm[1]) state.tMonth=tm[1]; return; }
+  const m=location.hash.match(/^#c\/([a-z0-9-]+)(?:\/([a-z]+))?/); if(m&&D&&D.clients.some(c=>c.id===m[1])){state.view='client';state.clientId=m[1]; if(m[2]&&TAB_SLUG[m[2]]) state.tab=TAB_SLUG[m[2]];} else {state.view='overview';state.clientId=null} }
 function go(id){ if(id){location.hash='#c/'+id} else { try{history.replaceState(null,'',location.href.split('#')[0])}catch(e){location.hash=''} readHash(); render(); window.scrollTo(0,0); } }
 window.addEventListener('hashchange',()=>{readHash();render();window.scrollTo(0,0);});
 function computeAll(){ S={}; D.clients.forEach(c=>S[c.id]=summarize(D,c,state.range)); }
 let animateNext=true;   // first paint, and every render the user asked for. Never a poll.
+/* ============================== MONTHLY TARGETS ========================== */
+// One form per client per month (Monthly targets page, #targets/<YYYY-MM>). A filled form is the
+// client's budget and ROAS target for that month, here and on the backend (targets.js), and its
+// Meta, Google and sales numbers show in the pacing panel.
+function applyMonthTargets(c,t){ if(!c||!t) return c; const o={...c,target:{...(c.target||{})}}; if(t.totalSpend>0) o.budget=t.totalSpend; if(t.roas>0) o.target.roas=t.roas;
+  o.monthTargets={month:t.month,totalSpend:t.totalSpend||0,metaSpend:t.metaSpend||0,googleSpend:t.googleSpend||0,roas:t.roas||0,sales:t.sales||0,filledBy:t.filledBy||'',filledAt:t.filledAt||''}; return o; }
+function monthAdd(m,n){ let [y,mm]=m.split('-').map(Number); mm+=n; while(mm>12){mm-=12;y++;} while(mm<1){mm+=12;y--;} return y+'-'+String(mm).padStart(2,'0'); }
+function monthLabel(m){ return MONTHS_FULL[+m.slice(5,7)-1]+' '+m.slice(0,4); }
+function defaultTargetMonth(){ const t=(D&&D.today)||new Date().toISOString().slice(0,10); return parseInt(t.slice(8),10)>=20?monthAdd(t.slice(0,7),1):t.slice(0,7); }
+async function loadTargets(m){
+  state.tLoading=m;
+  try{ const rows=LIVE&&fb&&fb.db?(await fb.db.collection(PFX+'targets').where('month','==',m).get()).docs.map(d=>d.data()):[];
+    state.tData={month:m,by:Object.fromEntries(rows.map(r=>[r.clientId,r]))}; }
+  catch(e){ state.tData={month:m,by:{},error:String(e.message||e)}; }
+  state.tLoading=null; if(state.view==='targets') render();
+}
+function targetsView(){
+  const m=state.tMonth||defaultTargetMonth();
+  if(!state.tData||state.tData.month!==m){ if(state.tLoading!==m) setTimeout(()=>loadTargets(m),0); return '<div class="loading">Loading targets for '+monthLabel(m)+'…</div>'; }
+  const by=state.tData.by, list=D.clients.filter(c=>!LIVE||!c.sample).slice().sort((a,b)=>(by[a.id]?1:0)-(by[b.id]?1:0)||String(a.name).localeCompare(String(b.name)));
+  const filled=list.filter(c=>by[c.id]).length;
+  const money=(v,c)=>v?fmtMoney(v,c):'<span class="faint">--</span>';
+  let h='<div class="tg-head"><div><h1 class="disp" style="margin:0">Monthly targets</h1><div class="faint" style="margin-top:4px">Fill each client once a month. Saving updates that client\'s budget, pacing and ROAS target for the month, on the dashboard and the client link.</div></div>'
+    +'<div class="tg-month"><button class="btn btn-ghost btn-small" data-act="tmonth" data-v="'+monthAdd(m,-1)+'">&larr;</button><b>'+monthLabel(m)+'</b><button class="btn btn-ghost btn-small" data-act="tmonth" data-v="'+monthAdd(m,1)+'">&rarr;</button></div></div>';
+  h+='<div class="tg-progress"><div class="tg-bar"><i style="width:'+(list.length?filled/list.length*100:0).toFixed(1)+'%"></i></div><span><b>'+filled+'</b> of '+list.length+' clients filled for '+monthLabel(m)+'</span></div>';
+  if(state.tData.error) h+='<div class="note keep">Could not load targets: '+esc(state.tData.error)+'</div>';
+  const ed=state.tEdit&&list.find(c=>c.id===state.tEdit);
+  if(ed){ const t=by[ed.id]||{}, prev=ed.monthTargets||{}, v=k=>t[k]!=null?t[k]:(prev[k]||'');
+    const f=(k,l,hint,step)=>'<label class="tg-f"><span>'+l+'</span><input type="number" min="0" step="'+(step||'1')+'" name="'+k+'" value="'+esc(String(v(k)||''))+'" placeholder="'+hint+'"></label>';
+    h+='<form class="glass-panel tg-form" data-tform="'+esc(ed.id)+'"><h2>'+esc(ed.name)+' <span class="sub">targets for '+monthLabel(m)+'</span></h2><div class="tg-grid">'
+      +f('totalSpend','Total spend ('+(ed.currency||'INR')+')','e.g. 1500000')+f('metaSpend','Projected Meta spend','e.g. 900000')+f('googleSpend','Projected Google spend','e.g. 600000')
+      +f('roas','Target ROAS (x)','e.g. 3.5','0.01')+f('sales','Target sales ('+(ed.currency||'INR')+')','e.g. 5000000')+'</div>'
+      +'<div class="tg-actions"><span class="faint" data-tsum></span><button type="button" class="btn btn-ghost btn-small" data-act="tcancel">Cancel</button><button type="submit" class="btn btn-primary btn-small">Save targets</button></div></form>'; }
+  h+='<div class="glass-panel" style="padding:0;overflow:auto"><table class="dtable tg-table"><thead><tr><th>Client</th><th>Status</th><th class="num">Total spend</th><th class="num">Meta</th><th class="num">Google</th><th class="num">Target ROAS</th><th class="num">Target sales</th><th></th></tr></thead><tbody>'
+    +list.map(c=>{ const t=by[c.id]; return '<tr'+(state.tEdit===c.id?' class="tg-on"':'')+'><td class="row-title">'+esc(c.name)+'<div class="faint" style="font-size:12px">'+esc(c.type||'ecom')+'</div></td><td>'+(t?'<span class="tg-chip ok">Filled</span><div class="faint" style="font-size:12px">'+esc(String(t.filledBy||'').split('@')[0])+' · '+esc(String(t.filledAt||'').slice(0,10))+'</div>':'<span class="tg-chip">Pending</span>')+'</td>'
+      +'<td class="num">'+money(t&&t.totalSpend,c)+'</td><td class="num">'+money(t&&t.metaSpend,c)+'</td><td class="num">'+money(t&&t.googleSpend,c)+'</td><td class="num">'+(t&&t.roas?fmtX(t.roas):'<span class="faint">--</span>')+'</td><td class="num">'+money(t&&t.sales,c)+'</td>'
+      +'<td class="num"><button class="btn btn-'+(t?'ghost':'primary')+' btn-small" data-act="tedit" data-client="'+esc(c.id)+'">'+(t?'Edit':'Fill')+'</button></td></tr>'; }).join('')+'</tbody></table></div>';
+  return '<div class="tg-wrap">'+h+'</div>';
+}
+async function saveTargets(form){
+  const cid=form.dataset.tform, m=state.tMonth||defaultTargetMonth(), body={clientId:cid,month:m};
+  ['totalSpend','metaSpend','googleSpend','roas','sales'].forEach(k=>{ body[k]=form.elements[k].value; });
+  if(!body.totalSpend&&!(+body.metaSpend||+body.googleSpend)){ toast('Fill total spend, or Meta and Google spend'); return; }
+  try{ const u=fb&&fb.auth&&fb.auth.currentUser; if(!u||!API_BASE) throw new Error('Sign in first'); const tok=await u.getIdToken();
+    const r=await fetch(API_BASE+'/targets',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!r.ok) throw new Error(await r.text()); const doc=await r.json();
+    state.tData.by[cid]=doc; state.tEdit=null; toast('Targets saved for '+((D.clients.find(c=>c.id===cid)||{}).name||cid));
+    // The month being filled may be this month: apply it to the open dashboard at once.
+    if(m===D.today.slice(0,7)) D.clients=D.clients.map(c=>c.id===cid?applyMonthTargets(c,doc):c);
+    render();
+  }catch(e){ toast('Could not save: '+String(e.message||e).slice(0,120)); }
+}
+
 // Campaign segments: a client whose account runs two kinds of campaign (c.segment) gets a switch,
 // All / <name> / <other>. The raw rows and campaign tree stay as loaded (D._raw); what the page reads
 // (D.daily, D.entities) is rebuilt from them whenever the switch or the data changes.
@@ -1635,7 +1701,7 @@ function render(){
   applySeg();
   computeAll();
   const anim=animateNext; animateNext=true; METRICS={}; METRIC_N=0;
-  root.innerHTML='<div class="app-shell'+(anim?' intro':'')+'">'+topRail()+'<main class="main'+(state.view==='client'?' main-client':' main-wall')+'">'+(state.view==='client'?clientView(S[state.clientId]):overviewView())+'</main></div>'; if(window.__plRefresh) window.__plRefresh();
+  root.innerHTML='<div class="app-shell'+(anim?' intro':'')+'">'+topRail()+'<main class="main'+(state.view==='client'?' main-client':' main-wall')+'">'+(state.view==='client'?clientView(S[state.clientId]):state.view==='targets'?targetsView():overviewView())+'</main></div>'; if(window.__plRefresh) window.__plRefresh();
   const sel=root.querySelector('#mobilePick'); if(sel) sel.value=state.clientId||'';
   const q=root.querySelector('#q'); if(q) q.value=state.q;
   if(anim){ countUp(); drawSparks(); }
@@ -1728,6 +1794,7 @@ function topRail(){
       +(bad&&!SHARE?'<span class="sep">/</span><span class="rail-bad">'+bad+' critical</span>':'')+'</div>'
     +'<div class="rail-mid">'+rangeBar()+'</div>'
     +'<button class="rail-search" data-act="cmdk"><span>'+ICONS.search+'Jump to client</span><kbd>Ctrl K</kbd></button>'
+    +'<button class="btn btn-ghost btn-small" data-act="targets" title="Fill each client\'s monthly targets">Monthly targets</button>'
     +'<button class="btn btn-ghost btn-small" data-act="alllinks" title="Secret report link for each client">Client dashboards</button>'
     +(LIVE&&CFG.syncUrl?'<button class="icon-btn" data-act="syncnow" title="Sync now">'+ICONS.refresh+'</button><button class="icon-btn" data-act="syncall" title="Full refresh of all clients, last 30 days. Slow, use sparingly." style="font-size:12px;font-weight:700">30d</button>':'')
     +'<button class="icon-btn" data-act="theme" title="Switch theme" aria-label="Switch theme">'+(currentTheme()==='dark'?ICONS.sun:ICONS.moon)+'</button>'
@@ -1745,6 +1812,7 @@ function sidebar(){
   h+='<div class="status-row '+(LIVE?'on':'demo')+'"><span class="dot"></span>'+(LIVE?'<span>LIVE · updated </span><span data-ago="'+esc(lastAt)+'">'+ago(lastAt)+'</span>':'<span>DEMO · SAMPLE DATA</span>')+'</div>';
   h+='<div class="side-search">'+ICONS.search+'<input id="q" type="search" placeholder="Find a client" autocomplete="off" aria-label="Find a client"></div>';
   h+='<ul class="nav-list"><li><button class="nav-item'+(state.view==='overview'?' active':'')+'" data-act="nav" data-client="">'+ICONS.grid+'<span class="nm">Command Center</span>'+(bad?'<span class="nav-badge">'+bad+'</span>':'')+'</button></li>';
+  h+='<li><button class="nav-item'+(state.view==='targets'?' active':'')+'" data-act="targets"><span class="nm">Monthly targets</span></button></li>';
   h+='<li><button class="nav-item" data-act="alllinks"><span class="nm">Client dashboards</span></button></li>';
   h+='<li class="nav-sep">Clients · '+D.clients.length+'</li>';
   if(!list.length) h+='<li class="empty-note" style="padding:12px">No client matches.</li>';
@@ -2745,7 +2813,26 @@ function syncChips(x){ const s=x.sync||{}; const order=['meta','google','shopify
   const items=order.filter(k=>s[k]&&typeof s[k]==='object').map(k=>{ const v=s[k]; const tone=v.mode==='sample'?'warn':v.ok?'good':(v.mode==='waiting'?'neutral':'bad'); const label=v.mode==='sample'?'sample':v.mode==='waiting'?'waiting':v.ok?ago(v.at):'failed'; return '<span class="sb-item '+tone+'" title="'+esc(v.error||'')+'"><i></i>'+cap(k==='ga4'?'GA4':k==='sitewatch'?'Site':k)+' <b>'+label+'</b></span>'; }).join('');
   const ns=nextSync();
   return '<div class="syncbox">'+(items||'<span class="sb-item neutral"><i></i>no sources</span>')+'<span class="sb-next" title="Hourly sync runs about :35 past every hour. Full 7 day refresh nightly around '+hhmm(ns.full)+'."><span data-next>'+nextSyncTxt()+'</span></span></div>'; }
-function pacePanel(x){ const c=x.c; const dom=parseInt(D.today.slice(8),10), dim=new Date(parseInt(D.today.slice(0,4)),parseInt(D.today.slice(5,7)),0).getDate(); const tone=x.paceRatio>1.15?'bad':(x.paceRatio<0.85?'warn':'');
+// Pacing, plus the month's targets form when one is filled: Meta and Google budgets against their
+// spend so far, and the sales target against store sales so far and the month-end projection.
+function pacePanel(x){ const base=pacePanelBase(x), t=x.c.monthTargets; const c=x.c;
+  const setBtn='<div style="margin-top:10px"><button class="btn btn-ghost btn-small" data-act="targets">'+(t?'Edit':'Set')+' monthly targets</button></div>';
+  if(SHARE) return base;
+  if(!t) return base.replace(/<\/div>$/,setBtn+'</div>');
+  const ms=D.today.slice(0,7)+'-01', mine=r=>r.clientId===c.id&&r.date>=ms&&r.date<=D.today;
+  const sp=p=>D.daily.filter(r=>mine(r)&&r.platform===p).reduce((a,r)=>a+(r.spend||0),0);
+  const sales=D.daily.filter(r=>mine(r)&&r.platform==='shopify').reduce((a,r)=>a+(r.netSales||0),0);
+  const dom=parseInt(D.today.slice(8),10), dim=new Date(parseInt(D.today.slice(0,4)),parseInt(D.today.slice(5,7)),0).getDate(), proj=v=>dom>1?v/(dom-1)*dim:v;
+  const ln=(k,v)=>'<span class="k">'+k+'</span><span class="v">'+v+'</span>';
+  let extra='<div class="pacelist" style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">';
+  if(t.metaSpend) extra+=ln('Meta budget · spent',fmtMoney(t.metaSpend,c)+' · '+fmtMoney(sp('meta'),c));
+  if(t.googleSpend) extra+=ln('Google budget · spent',fmtMoney(t.googleSpend,c)+' · '+fmtMoney(sp('google'),c));
+  if(t.sales) extra+=ln('Sales target',fmtMoney(t.sales,c))+ln('Sales so far · projected',fmtMoney(sales,c)+' · '+fmtMoney(proj(sales),c)+' <span class="rpace-day '+(proj(sales)>=t.sales?'good':'bad')+'">'+fmtPct(t.sales?proj(sales)/t.sales*100:null)+'</span>');
+  if(t.roas) extra+=ln('Target ROAS',fmtX(t.roas));
+  extra+='</div><div class="faint" style="font-size:12px;margin-top:6px">From the '+monthLabel(t.month)+' targets form'+(t.filledBy?', filled by '+esc(String(t.filledBy).split('@')[0]):'')+'.</div>';
+  return base.replace(/<\/div>$/,extra+setBtn+'</div>');
+}
+function pacePanelBase(x){ const c=x.c; const dom=parseInt(D.today.slice(8),10), dim=new Date(parseInt(D.today.slice(0,4)),parseInt(D.today.slice(5,7)),0).getDate(); const tone=x.paceRatio>1.15?'bad':(x.paceRatio<0.85?'warn':'');
   return '<div class="glass-panel"><h2>Pacing, month to date</h2>'+(c.budget?'<div class="pacelist"><span class="k">Budget</span><span class="v">'+fmtMoney(c.budget,c)+'</span><span class="k">Spent so far</span><span class="v">'+fmtMoney(x.mtd.spend,c)+'</span><span class="k">Daily budget</span><span class="v">'+fmtMoney(x.dailyPlan,c)+'</span><span class="k">Yesterday spent</span><span class="v">'+fmtMoney(x.yest.spend,c)+(dayPace(x)?' <span class="rpace-day '+dayPace(x).t+'">'+dayPace(x).txt+'</span>':'')+'</span><span class="k">Needed per day from today</span><span class="v">'+fmtMoney(x.needPerDay,c)+'</span><span class="k">Should be at by today</span><span class="v">'+fmtMoney(x.expected,c)+'</span><span class="k">Projected month end</span><span class="v">'+fmtMoney(x.projected,c)+'</span></div><div class="pace big"><div class="pace-track"><div class="pace-fill '+tone+'" style="width:'+Math.min(100,x.mtd.spend/c.budget*100).toFixed(1)+'%"></div><div class="pace-mark" style="left:'+(dom/dim*100).toFixed(1)+'%"></div></div><span class="pace-num">'+Math.round(x.paceRatio*100)+'%</span></div><div class="note">'+(x.paceRatio>1.15?'Running hot. Either the client approved extra budget or daily caps drifted. Confirm before the invoice does.':(x.paceRatio<0.85?'Running cold. Unspent budget reads as lost opportunity to the client. Scale winners or say why you are holding.':'On track. Day '+dom+' of '+dim+'.'))+'</div>':'<div class="note">No monthly budget set. Add it in clients.json to get pacing.</div>')+'</div>'; }
 function intradayPanel(x){
   const c=x.c, isE=c.type==='ecom', t=x.intraToday, w=x.intraWeek; const hours=t?Object.keys(t.hours).sort():[];
@@ -3365,6 +3452,10 @@ cmdkResults.addEventListener('click',e=>{ const b=e.target.closest('.cmdk-result
 cmdk.addEventListener('click',e=>{ if(e.target===cmdk) closeCmdk(); });
 
 /* events */
+// Monthly targets form: save on submit, and show Meta + Google against the total as it is typed.
+document.addEventListener('submit',e=>{ const f=e.target.closest&&e.target.closest('form[data-tform]'); if(!f) return; e.preventDefault(); saveTargets(f); });
+document.addEventListener('input',e=>{ const f=e.target.closest&&e.target.closest('form[data-tform]'); if(!f) return; const n=k=>+f.elements[k].value||0, sum=n('metaSpend')+n('googleSpend'), tot=n('totalSpend'), o=f.querySelector('[data-tsum]'); if(!o) return;
+  o.textContent=!sum?'':!tot?'Total will be Meta + Google = '+sum.toLocaleString('en-IN'):Math.abs(sum-tot)>1?'Meta + Google = '+sum.toLocaleString('en-IN')+', '+(sum>tot?'more':'less')+' than the total by '+Math.abs(sum-tot).toLocaleString('en-IN'):'Meta + Google matches the total'; });
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]'); if(!el) return; const act=el.dataset.act;
   if(SHARE&&['nav','cmdk','alllinks','clientlink','update','syncnow','syncall','syncclient','signout','closecmdk'].includes(act)) return;
@@ -3417,6 +3508,10 @@ document.addEventListener('click',e=>{
   else if(act==='update'){ showUpdate(S[state.clientId]); }
   else if(act==='clientlink'){ const u=reportLink(state.clientId); if(!u){ toast('No link yet for this client. Run a sync first.','warn'); } else { navigator.clipboard?.writeText(u).then(()=>toast('Client dashboard link copied. Anyone with it sees this page for this client only, no login.')).catch(()=>window.prompt('Copy this link',u)); } }
   else if(act==='alllinks'){ showLinks(); }
+  else if(act==='targets'){ location.hash='#targets'+(state.tMonth?'/'+state.tMonth:''); }
+  else if(act==='tmonth'){ state.tMonth=el.dataset.v; state.tEdit=null; try{ history.replaceState(null,'','#targets/'+state.tMonth); }catch(err){} render(); }
+  else if(act==='tedit'){ state.tEdit=el.dataset.client; render(); const f=root.querySelector('.tg-form'); if(f){ f.scrollIntoView({behavior:'smooth',block:'center'}); const i=f.querySelector('input'); if(i) i.focus(); } }
+  else if(act==='tcancel'){ state.tEdit=null; render(); }
   else if(act==='copylink'){ navigator.clipboard?.writeText(el.dataset.url).then(()=>toast('Link copied')).catch(()=>toast('Copy failed')); }
   else if(act==='copyalllinks'){ const m=el.closest('.modal'); navigator.clipboard?.writeText(m._text||'').then(()=>toast('Links copied')).catch(()=>toast('Copy failed')); }
   else if(act==='metric'){ metricModal(el.dataset.metric); }
