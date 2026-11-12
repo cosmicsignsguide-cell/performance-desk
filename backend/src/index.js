@@ -421,6 +421,15 @@ async function main() {
         log(`access q="${q}": meta ${out.metaMatch} of ${out.meta}, google ${out.googleMatch} of ${out.google}`);
         // With a client id as the search, also list that client's campaigns from the stored tree
         // (name, platform, status, 30 day spend), to check naming before filtering on it.
+        // q = "adsets": for every active client, its Meta ad set names by 30 day spend, to write the
+        // product categories for the "Meta by category" view.
+        if (q === 'adsets') {
+          for (const cl of (await loadClients()).filter((x) => x.active !== false)) {
+            const e = await store.get('entities', cl.id).catch(() => null); if (!e) continue;
+            const sets = (e.adsets || []).slice().sort((a2, b2) => (b2.spend || 0) - (a2.spend || 0)).slice(0, 45);
+            log(`access adsets ${cl.id}: ` + sets.map((x) => `"${String(x.name).slice(0, 70)}" ${Math.round(x.spend || 0)}`).join(' | '));
+          }
+        }
         const ce = q && await store.get('entities', q).catch(() => null);
         if (ce && Array.isArray(ce.campaigns)) {
           const list = ce.campaigns.slice().sort((a2, b2) => (b2.spend || 0) - (a2.spend || 0));
