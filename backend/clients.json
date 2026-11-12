@@ -24,7 +24,53 @@
       "expectText": ""
     },
     "active": true,
-    "contact": "Swapnil"
+    "contact": "Swapnil",
+    "categories": [
+      [
+        "Denim",
+        [
+          "denim"
+        ]
+      ],
+      [
+        "Waffle / Henley",
+        [
+          "waffle",
+          "henley"
+        ]
+      ],
+      [
+        "Sweatpants",
+        [
+          "sweatpant"
+        ]
+      ],
+      [
+        "Shirts",
+        [
+          "shirt"
+        ]
+      ],
+      [
+        "Tanks",
+        [
+          "tank"
+        ]
+      ],
+      [
+        "Polo",
+        [
+          "polo"
+        ]
+      ],
+      [
+        "Basic Tee",
+        [
+          "basic tee",
+          "tee"
+        ]
+      ]
+    ]
   },
   {
     "id": "hokipo",
@@ -204,7 +250,73 @@
       "expectText": ""
     },
     "active": true,
-    "contact": ""
+    "contact": "",
+    "categories": [
+      [
+        "Babyclan",
+        [
+          "babyclan",
+          "nappies",
+          "nappy",
+          "nursing",
+          "maternity",
+          "changing mat",
+          "sensory"
+        ]
+      ],
+      [
+        "Potty Training Pants",
+        [
+          "potty"
+        ]
+      ],
+      [
+        "Pyjamas and Sleepwear",
+        [
+          "pjs",
+          "pj ",
+          "pyjama",
+          "sleepwear",
+          "night"
+        ]
+      ],
+      [
+        "Boxers",
+        [
+          "boxer"
+        ]
+      ],
+      [
+        "Leak Proof",
+        [
+          "leak proof",
+          "leakproof"
+        ]
+      ],
+      [
+        "Camisoles",
+        [
+          "camisole"
+        ]
+      ],
+      [
+        "Innerwear",
+        [
+          "innerwear",
+          "inner wear",
+          "brief",
+          "vest",
+          "panties"
+        ]
+      ],
+      [
+        "Playtime Bundles",
+        [
+          "playtime",
+          "bundle"
+        ]
+      ]
+    ]
   },
   {
     "id": "mackly-active",
@@ -283,7 +395,53 @@
       "expectText": ""
     },
     "active": true,
-    "contact": ""
+    "contact": "",
+    "categories": [
+      [
+        "Wallpaper",
+        [
+          "wallpaper"
+        ]
+      ],
+      [
+        "Pichwai",
+        [
+          "pichwai"
+        ]
+      ],
+      [
+        "Block Print",
+        [
+          "block print",
+          "bagru"
+        ]
+      ],
+      [
+        "Maharani Collection",
+        [
+          "maharani"
+        ]
+      ],
+      [
+        "Furniture",
+        [
+          "furniture"
+        ]
+      ],
+      [
+        "Build your Box",
+        [
+          "build your box"
+        ]
+      ],
+      [
+        "Festive Decor",
+        [
+          "festive",
+          "decor"
+        ]
+      ]
+    ]
   },
   {
     "id": "zayma",
@@ -361,7 +519,50 @@
       "expectText": ""
     },
     "active": true,
-    "contact": ""
+    "contact": "",
+    "categories": [
+      [
+        "Formal Shoes",
+        [
+          "formal",
+          "brogue",
+          "oxford",
+          "derby"
+        ]
+      ],
+      [
+        "Loafers",
+        [
+          "loafer"
+        ]
+      ],
+      [
+        "Boots",
+        [
+          "boot"
+        ]
+      ],
+      [
+        "Sneakers",
+        [
+          "sneaker"
+        ]
+      ],
+      [
+        "Casual Shoes",
+        [
+          "casual"
+        ]
+      ],
+      [
+        "Slides and Sandals",
+        [
+          "slide",
+          "sandal",
+          "slipper"
+        ]
+      ]
+    ]
   },
   {
     "id": "whimsy",
@@ -1217,7 +1418,66 @@
       "expectText": ""
     },
     "active": true,
-    "contact": ""
+    "contact": "",
+    "categories": [
+      [
+        "Watch Boxes",
+        [
+          "watch"
+        ]
+      ],
+      [
+        "Desk Sets",
+        [
+          "desktop",
+          "desk set"
+        ]
+      ],
+      [
+        "Bags",
+        [
+          "bag"
+        ]
+      ],
+      [
+        "Trunks",
+        [
+          "trunk"
+        ]
+      ],
+      [
+        "Luxury Games",
+        [
+          "games",
+          "game"
+        ]
+      ],
+      [
+        "Bar and Trolley",
+        [
+          "crobar",
+          "bar tray",
+          "bar stool",
+          "trolley",
+          "bar"
+        ]
+      ],
+      [
+        "Tables",
+        [
+          "nested",
+          "tabletop",
+          "table"
+        ]
+      ],
+      [
+        "Furniture",
+        [
+          "furniture",
+          "cabinet"
+        ]
+      ]
+    ]
   },
   {
     "id": "singh-legacy",
@@ -1292,7 +1552,49 @@
       "expectText": ""
     },
     "active": true,
-    "contact": ""
+    "contact": "",
+    "categories": [
+      [
+        "Potli",
+        [
+          "potli"
+        ]
+      ],
+      [
+        "Nazuri Kit",
+        [
+          "nazuri"
+        ]
+      ],
+      [
+        "Phone Charm",
+        [
+          "phone charm",
+          "charm"
+        ]
+      ],
+      [
+        "Diwali Gift Box",
+        [
+          "gift box",
+          "diwali box",
+          "barkat box"
+        ]
+      ],
+      [
+        "Bracelets",
+        [
+          "bracelet",
+          "braclet"
+        ]
+      ],
+      [
+        "Pyrite",
+        [
+          "pyrite"
+        ]
+      ]
+    ]
   },
   {
     "id": "eldercare",
