@@ -61,14 +61,16 @@ export async function fetchDaily(client, since, until) {
     const row = emptyDaily(client.id, r.segments.date, 'google');
     row.spend = round(micros(r.metrics.costMicros)); row.impressions = num(r.metrics.impressions); row.clicks = num(r.metrics.clicks);
     const conv = num(r.metrics.conversions);
-    if (isE) { row.purchases = Math.round(conv); row.revenue = round(num(r.metrics.conversionsValue)); } else { row.leads = Math.round(conv); }
+    if (isE) { row.purchases = Math.round(conv); row.revenue = round(num(r.metrics.conversionsValueByConversionDate)); } else { row.leads = Math.round(conv); }
+    // Revenue (and so Google ROAS everywhere) is Google's "Conv. value (by conv. time)", the column
+    // the team reports ROAS by; conversion counts stay on the default (by click time) column.
     // Google's "by conversion time" columns: each conversion is put on the day it happened, not on
     // the day of the ad click behind it (the default above). Kept apart in gConvT and gValT.
     row.gConvT = round(num(r.metrics.conversionsByConversionDate), 2); row.gValT = round(num(r.metrics.conversionsValueByConversionDate));
     if (segText(client)) {
       const m = segByDay[r.segments.date] || {}, sc = num(m.conversions);
       row.seg = { spend: round(micros(m.costMicros)), impressions: num(m.impressions), clicks: num(m.clicks),
-        purchases: isE ? Math.round(sc) : 0, revenue: isE ? round(num(m.conversionsValue)) : 0, leads: isE ? 0 : Math.round(sc),
+        purchases: isE ? Math.round(sc) : 0, revenue: isE ? round(num(m.conversionsValueByConversionDate)) : 0, leads: isE ? 0 : Math.round(sc),
         gConvT: round(num(m.conversionsByConversionDate), 2), gValT: round(num(m.conversionsValueByConversionDate)) };
     }
     // Explicit zeros on days without funnel actions, so a merge never leaves a stale count behind.
@@ -118,16 +120,16 @@ export async function fetchEntities(client, until) {
   const [camp, campDaily] = await Promise.all([
     gaql(client.accounts.google, `
       SELECT campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign_budget.amount_micros,
-             metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value
+             metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value_by_conversion_date
       FROM campaign WHERE segments.date BETWEEN '${since}' AND '${until}' AND campaign.status != 'REMOVED'`),
     gaql(client.accounts.google, `
-      SELECT campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, segments.date, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value
+      SELECT campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, segments.date, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value_by_conversion_date
       FROM campaign WHERE segments.date BETWEEN '${addDays(until, -(ENTITY_DAYS - 1))}' AND '${addDays(until, 1)}' AND metrics.cost_micros > 0`),
   ]);
   const days = {};
   for (const r of campDaily) {
     const id = String(r.campaign.id); const m = (days[id] = days[id] || {}); const conv = num(r.metrics.conversions);
-    m[r.segments.date] = [round(micros(r.metrics.costMicros)), num(r.metrics.impressions), num(r.metrics.clicks), isE ? Math.round(conv) : 0, isE ? round(num(r.metrics.conversionsValue)) : 0, isE ? 0 : Math.round(conv)];
+    m[r.segments.date] = [round(micros(r.metrics.costMicros)), num(r.metrics.impressions), num(r.metrics.clicks), isE ? Math.round(conv) : 0, isE ? round(num(r.metrics.conversionsValueByConversionDate)) : 0, isE ? 0 : Math.round(conv)];
   }
   // Campaigns that spent only before the last 30 days (last month) come from the per-day rows.
   const seen = new Set(camp.map((r) => String(r.campaign.id)));
@@ -137,7 +139,7 @@ export async function fetchEntities(client, until) {
     const id = String(r.campaign.id);
     return {
       id, name: r.campaign.name, platform: 'google', status: r.campaign.status === 'ENABLED' ? 'ACTIVE' : r.campaign.status, channel: r.campaign.advertisingChannelType, dailyBudget: round(micros(r.campaignBudget?.amountMicros)), budgetLevel: 'campaign',
-      spend, impressions: imp, clicks, purchases: isE ? Math.round(conv) : 0, revenue: isE ? round(num(r.metrics.conversionsValue)) : 0, leads: isE ? 0 : Math.round(conv),
+      spend, impressions: imp, clicks, purchases: isE ? Math.round(conv) : 0, revenue: isE ? round(num(r.metrics.conversionsValueByConversionDate)) : 0, leads: isE ? 0 : Math.round(conv),
       ctr: imp ? round(clicks / imp * 100, 2) : 0, cpm: imp ? round(spend / imp * 1000, 2) : 0, days: days[id] || {},
     };
   });
