@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "hourly, daily, verify or access (client = search text)"
+        description: "hourly, daily, verify, access (client = search text) or purge (client = exact id; removes stored Shopify data of a client that no longer has a store)"
         default: "hourly"
       client:
         description: "optional client id (one client only, short request)"

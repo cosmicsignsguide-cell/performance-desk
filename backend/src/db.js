@@ -59,6 +59,13 @@ async function firestoreImpl() {
         await b.commit();
       }
     },
+    async batchDelete(col, ids) {
+      for (let i = 0; i < ids.length; i += 400) {
+        const b = fs_.batch();
+        ids.slice(i, i + 400).forEach((id) => b.delete(fs_.collection(C(col)).doc(id)));
+        await b.commit();
+      }
+    },
   };
 }
 
@@ -83,6 +90,7 @@ function fileImpl() {
       return opts.limit ? rows.slice(0, opts.limit) : rows;
     },
     async batchSet(col, rows) { const o = read(col); rows.forEach(({ id, data }) => { o[id] = { ...(o[id] || {}), ...data }; }); write(col, o); },
+    async batchDelete(col, ids) { const o = read(col); ids.forEach((id) => { delete o[id]; }); write(col, o); },
   };
 }
 

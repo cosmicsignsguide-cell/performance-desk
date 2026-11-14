@@ -238,10 +238,7 @@
     "accounts": {
       "meta": "2999205000182683,439345888148374",
       "google": "5988201478",
-      "shopify": {
-        "shop": "aavwri-g3.myshopify.com",
-        "tokenEnv": "SHOPIFY_TOKEN_MACKLY"
-      },
+      "shopify": null,
       "ga4": ""
     },
     "site": {
@@ -316,7 +313,8 @@
           "bundle"
         ]
       ]
-    ]
+    ],
+    "note": "Shopify aavwri-g3 moved to mackly-sl on 2026-11-14: it is the Sri Lanka store. India store pending."
   },
   {
     "id": "mackly-active",
@@ -1516,16 +1514,85 @@
     "accounts": {
       "meta": "473695534935031",
       "google": "",
-      "shopify": null,
+      "shopify": {
+        "shop": "aavwri-g3.myshopify.com",
+        "tokenEnv": "SHOPIFY_TOKEN_MACKLY"
+      },
       "ga4": ""
     },
     "site": {
-      "url": "",
+      "url": "https://mackly.lk",
       "productPath": "",
       "expectText": ""
     },
     "active": true,
-    "contact": ""
+    "contact": "",
+    "categories": [
+      [
+        "Babyclan",
+        [
+          "babyclan",
+          "nappies",
+          "nappy",
+          "nursing",
+          "maternity",
+          "changing mat",
+          "sensory"
+        ]
+      ],
+      [
+        "Potty Training Pants",
+        [
+          "potty"
+        ]
+      ],
+      [
+        "Pyjamas and Sleepwear",
+        [
+          "pjs",
+          "pj ",
+          "pyjama",
+          "sleepwear",
+          "night"
+        ]
+      ],
+      [
+        "Boxers",
+        [
+          "boxer"
+        ]
+      ],
+      [
+        "Leak Proof",
+        [
+          "leak proof",
+          "leakproof"
+        ]
+      ],
+      [
+        "Camisoles",
+        [
+          "camisole"
+        ]
+      ],
+      [
+        "Innerwear",
+        [
+          "innerwear",
+          "inner wear",
+          "brief",
+          "vest",
+          "panties"
+        ]
+      ],
+      [
+        "Playtime Bundles",
+        [
+          "playtime",
+          "bundle"
+        ]
+      ]
+    ]
   },
   {
     "id": "maayam",

@@ -408,6 +408,26 @@ async function main() {
         await store.merge('meta', 'lastRun', { verify: nowIso(), verifySummary: `${r.clean} clean, ${r.mismatched} mismatched, ${r.skipped} skipped` });
         return { mode, ...r };
       }
+      if (mode === 'purge') {
+        // Removes one client's stored Shopify data: daily store rows, order sources and the product
+        // and recent order lists. Used when a store was connected to the wrong client (Mackly had
+        // the Sri Lanka store on the India client). It only runs for a client that no longer has a
+        // store in clients.json, so a slip of the client id cannot wipe a live store's history.
+        const id = String(url.searchParams.get('client') || '').trim().toLowerCase();
+        const c = clients.find((x) => x.id === id);
+        if (!c) return { mode, error: 'client id needed (exact id)' };
+        if (c.accounts?.shopify?.shop) return { mode, client: id, error: 'client still has a store in clients.json; remove it there first' };
+        const daily = (await store.list('daily', dailyIdRange(id, '2000-01-01', '2999-12-31'))).filter((r) => r.clientId === id && r.platform === 'shopify').map((r) => r.id);
+        const od = (await store.list('orderdays', dailyIdRange(id, '2000-01-01', '2999-12-31'))).filter((r) => r.clientId === id).map((r) => r.id);
+        await store.batchDelete('daily', daily);
+        await store.batchDelete('orderdays', od);
+        const ent = await store.get('entities', id);
+        if (ent) await store.set('entities', id, { ...ent, products: [], recentOrders: [], sources: {} });
+        const sy = await store.get('syncs', id);
+        if (sy && sy.shopify) { const { shopify: _s, ...rest } = sy; await store.set('syncs', id, rest); }
+        log(`purge: ${id} shopify data removed (${daily.length} daily rows, ${od.length} order days)`);
+        return { mode, client: id, daily: daily.length, orderdays: od.length };
+      }
       if (mode === 'access') {
         // Which ad accounts the dashboard's own credentials can read, filtered by ?q=. Names and
         // ids go to the server log only; the answer carries counts, because the Actions log that
@@ -845,7 +865,7 @@ async function main() {
       }
 
       const asked = url.searchParams.get('mode');
-      const mode = ['daily', 'hourly', 'sitewatch', 'weekly', 'verify', 'verifymeta', 'creators', 'access'].includes(asked) ? asked : 'hourly';
+      const mode = ['daily', 'hourly', 'sitewatch', 'weekly', 'verify', 'verifymeta', 'creators', 'access', 'purge'].includes(asked) ? asked : 'hourly';
       // ?days=N restates N days of history instead of the usual 7. Ignored for hourly and
       // sitewatch, which have nothing to restate.
       const days = mode === 'daily' ? parseInt(url.searchParams.get('days') || '', 10) : NaN;
