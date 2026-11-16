@@ -1309,12 +1309,13 @@
       "ga4": ""
     },
     "site": {
-      "url": "",
+      "url": "https://tankhapay.com",
       "productPath": "",
       "expectText": ""
     },
-    "active": false,
-    "contact": ""
+    "active": true,
+    "contact": "",
+    "note": "Ad accounts are named Akal Info in Meta and Google Ads. Meta id from Sept onboarding, to be confirmed against the Akal Info account; Google id pending."
   },
   {
     "id": "jjv",
