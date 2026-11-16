@@ -471,8 +471,23 @@ export async function fetchTodayDays(client, today) {
   if (parts.length === 1) return parts[0];
   return parts.reduce((a, p) => ({ campaign: { ...a.campaign, ...p.campaign }, adset: { ...a.adset, ...p.adset }, ad: { ...a.ad, ...p.ad } }), { campaign: {}, adset: {}, ad: {} });
 }
+// With two or more accounts on one client, one account that Meta throttles no longer costs the
+// others their campaigns, ad sets and ads: the accounts that answered are returned, each row tagged
+// with its account (acct), and the ones that did not are listed in failed so the caller can keep
+// what it already had for them. Only when every account fails does this throw.
 export async function fetchEntities(client, until) {
-  const parts = await each(client, (c) => fetchEntitiesOne(c, until));
+  const ids = metaIds(client);
+  if (ids.length === 1) { const one = await fetchEntitiesOne(client, until); return tagAcct(one, ids[0]); }
+  const parts = [], failed = []; let last = null;
+  for (const id of ids) {
+    try { const types = await purchaseTypes(client, id); parts.push(tagAcct(await purchaseCtx.run(types, () => fetchEntitiesOne(forAccount(client, id), until)), id)); }
+    catch (e) { failed.push(id); last = e; log(`${client.id}/meta: creatives for act_${id} skipped (${String(e.message || e).slice(0, 100)})`); }
+  }
+  if (!parts.length) throw last;
+  const res = mergeEntityParts(parts); res.failed = failed; return res;
+}
+const tagAcct = (p, id) => { for (const k of ['campaigns', 'adsets', 'ads']) for (const x of p[k] || []) x.acct = id; return p; };
+function mergeEntityParts(parts) {
   if (parts.length === 1) return parts[0];
   const cat = (k) => parts.flatMap((p) => p[k] || []);
   // The account card shows the worst status of the set, so a disabled second account is not hidden.

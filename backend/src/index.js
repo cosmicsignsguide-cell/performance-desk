@@ -106,6 +106,8 @@ async function seedSampleFor(store, client, until, sources) {
 // limit budget again. DESK_ENTITY_MIN_MINUTES=0 turns this off.
 const MIN_HISTORY = 30;
 const ENTITY_MIN_MIN = Number(process.env.DESK_ENTITY_MIN_MINUTES ?? 60);
+// One Meta creatives catch-up per hourly run across all clients, so the hourly sync stays short.
+const entityCatchUp = { used: false };
 function entitiesDue(ent, source) {
   if (!ENTITY_MIN_MIN) return true;
   const at = ent?.entitiesAt?.[source];
@@ -167,12 +169,24 @@ async function syncClient(store, client, { mode, days, sources: onlySources = nu
           try { const sp = await meta.fetchCampaignSpend(client, since, today); await writeOrderDays(store, client, since, today, sp, (x) => ({ spendMeta: (x || []).flat() })); }
           catch (e) { log(`${client.id}/meta: campaign spend for order sources skipped: ${String(e.message || e).slice(0, 120)}`); }
         }
-        if (mode === 'daily' && entitiesDue(ent, source)) {
-          const e = await meta.fetchEntities(client, untilFull);
-          ent.campaigns = [...(ent.campaigns || []).filter((c) => c.platform !== 'meta'), ...e.campaigns];
-          ent.adsets = e.adsets; ent.ads = e.ads; ent.since = e.since; ent.until = e.until;
-          ent.issues = e.issues; ent.account = e.account;
-          ent.entitiesAt = { ...(ent.entitiesAt || {}), meta: nowIso() };
+        // Campaigns, ad sets and ads (the creatives) are pulled in the nightly run. A big account can
+        // run out of Meta's hourly insights allowance there (Mackly Store did, night after night, and
+        // its creatives never arrived), so a failure here no longer fails the whole Meta sync, and an
+        // hourly run picks the tree up later, one client per run, while it is missing or over a day old.
+        const metaAt = ent?.entitiesAt?.meta, metaStale = !metaAt || Date.now() - new Date(metaAt).getTime() > 30 * 3600 * 1000;
+        const catchUp = mode === 'hourly' && metaStale && !entityCatchUp.used;
+        if ((mode === 'daily' && entitiesDue(ent, source)) || catchUp) {
+          if (catchUp) { entityCatchUp.used = true; log(`${client.id}/meta: creatives missing or old, pulling them in this hourly run`); }
+          try {
+            const e = await meta.fetchEntities(client, untilFull);
+            const failed = new Set(e.failed || []);
+            const keep = (list) => (failed.size ? (list || []).filter((x) => failed.has(x.acct)) : []);
+            ent.campaigns = [...(ent.campaigns || []).filter((c) => c.platform !== 'meta'), ...keep((ent.campaigns || []).filter((c) => c.platform === 'meta')), ...e.campaigns];
+            ent.adsets = [...keep(ent.adsets), ...e.adsets]; ent.ads = [...keep(ent.ads), ...e.ads]; ent.since = e.since; ent.until = e.until;
+            ent.issues = e.issues; ent.account = e.account;
+            // A partial pull is not marked fresh, so the missing account is tried again in an hourly run.
+            if (!failed.size) ent.entitiesAt = { ...(ent.entitiesAt || {}), meta: nowIso() };
+          } catch (e) { log(`${client.id}/meta: creatives skipped this run, kept the previous ones (${String(e.message || e).slice(0, 120)})`); }
         } else if (mode === 'hourly' && (ent.ads || []).length) {
           // Keep today's per-day tuples fresh between daily runs. Failure here must not fail the sync.
           try {
@@ -490,6 +504,7 @@ async function main() {
       if (only && !list.length) return { mode, clients: 0, error: `no client with id "${only}"` };
 
       const failures = [];
+      entityCatchUp.used = false;
       log(`run ${mode}: ${list.length} client${list.length === 1 ? '' : 's'} to sync${only ? ` (only ${only})` : ''}`);
       if (!list.length) log(`run ${mode}: the store returned no clients, so nothing was synced`);
       for (const c of list) {
