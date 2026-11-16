@@ -1303,8 +1303,8 @@
     },
     "am": "",
     "accounts": {
-      "meta": "10201164623511130",
-      "google": "",
+      "meta": "",
+      "google": "6071790557",
       "shopify": null,
       "ga4": ""
     },
@@ -1315,7 +1315,7 @@
     },
     "active": true,
     "contact": "",
-    "note": "Ad accounts are named Akal Info in Meta and Google Ads. Meta id from Sept onboarding, to be confirmed against the Akal Info account; Google id pending."
+    "note": "Ad accounts named Akal: Google 6071790557 \"Akal technologies\". Meta Akal Info account not yet shared with the per4mance-desk system user (old id 10201164623511130 not accessible either)."
   },
   {
     "id": "jjv",
