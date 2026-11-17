@@ -1496,6 +1496,8 @@ function kpiOf(c,a){ return c.type==='ecom'?a.roas:isApp(c)?a.cpi:a.cpl }
 function kpiTarget(c){ return c.type==='ecom'?(c.target?.roas||0):isApp(c)?(c.target?.cpi||0):(c.target?.cpl||0) }
 function kpiStatus(c,v){ const t=kpiTarget(c); if(!t) return 'neutral'; if(!isFinite(v)||v===0) return 'bad'; if(c.type==='ecom') return v>=t?'good':(v>=t*0.85?'warn':'bad'); return v<=t?'good':(v<=t*1.15?'warn':'bad'); }
 // Lower is better for both CPL and CPI, so the delta is flipped for each.
+// Chat-led brands (metaLead 'conversations') count WhatsApp/Messenger conversations as leads.
+function LW(c){ return c&&c.metaLead==='conversations'?'Leads + chats':'Leads'; }
 function kpiLabel(c){ return c.type==='ecom'?'ROAS':isApp(c)?'CPI':'CPL' }
 function kpiFmt(c,v,cc){ return c.type==='ecom'?fmtX(v):fmtMoney(v,cc||c) }
 function kpiDelta(c,now,prev){ if(!isFinite(now)||!isFinite(prev)||!prev) return 0; const d=(now-prev)/prev*100; return c.type==='ecom'?d:-d; }
@@ -2006,7 +2008,7 @@ function plChart(x){ const c=x.c, isE=c.type==='ecom', sh=isE&&x.cur.hasShop, g=
   const v=series14(sh?(r=>r.clientId===c.id&&r.platform==='shopify'):(r=>r.clientId===c.id&&ADS.includes(r.platform)),g).map(n=>isFinite(n)?n:0); if(v.length<2||!v.some(n=>n)) return '<div class="pf-chart empty">No daily data yet</div>';
   const W=300,H=84,max=Math.max(...v)||1, X=i=>i/(v.length-1)*W, Y=n=>H-6-(n/max)*(H-16);
   const pts=v.map((n,i)=>X(i).toFixed(1)+','+Y(n).toFixed(1)), last=v.length-1;
-  return '<div class="pf-chart"><div class="pf-chart-h"><span>'+(sh?'Net sales':isE?'Revenue':isApp(c)?'Installs':'Leads')+', last 14 days</span><b>'+(isE?fmtMoney(v[last],c):fmtNum(v[last]))+' yesterday</b></div>'
+  return '<div class="pf-chart"><div class="pf-chart-h"><span>'+(sh?'Net sales':isE?'Revenue':isApp(c)?'Installs':LW(c))+', last 14 days</span><b>'+(isE?fmtMoney(v[last],c):fmtNum(v[last]))+' yesterday</b></div>'
     +'<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="pfg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".28"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>'
     +'<path class="pf-area" d="M0,'+H+' L'+pts.join(' L')+' L'+W+','+H+' Z" fill="url(#pfg)"/>'
     +'<polyline class="pf-line" pathLength="1" points="'+pts.join(' ')+'" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>'
@@ -2075,7 +2077,7 @@ function portfolioTiles(all0,spec0){
    when it is clicked. It lives outside the app root, so a refresh of the data does not close it. */
 function plCardHTML(o){
   const x=o.x, c=x.c, isE=c.type==='ecom', t=kpiTarget(c), r=o.r;
-  const res=isE?x.cur.salesCount:isApp(c)?x.cur.installs:x.cur.leads, resLab=isE?'Orders':isApp(c)?'Installs':'Leads';
+  const res=isE?x.cur.salesCount:isApp(c)?x.cur.installs:x.cur.leads, resLab=isE?'Orders':isApp(c)?'Installs':LW(c);
   const pos=gaugePos(r.dev);
   const cell=(l,v)=>'<div><dt>'+l+'</dt><dd>'+v+'</dd></div>';
   return '<div class="pf-head"><div><div class="pf-name">'+esc(c.name.replace(' (sample)',''))+'</div><div class="pf-sub">'+typeLabel(c)+' &middot; '+esc(pfLabel(c))+(c.am?' &middot; '+esc(c.am):'')+'</div></div><button class="pf-x" type="button" data-pl-close aria-label="Close">&times;</button></div>'
@@ -2232,7 +2234,7 @@ function plCardHTML(o){
     const x=summarize(D,c0,pr), c=x.c, isE=c.type==='ecom', app=isApp(c), t=kpiTarget(c);
     const r=(state.plMode==='spend'?spendRule(x,spec):targetRule(x));
     const cur=x.cur, prv=x.prev, tone=r.tone;
-    const kpiName=kpiLabel(c), res=isE?cur.salesCount:app?cur.installs:cur.leads, resP=isE?prv.salesCount:app?prv.installs:prv.leads, resLab=isE?'Orders':app?'Installs':'Leads';
+    const kpiName=kpiLabel(c), res=isE?cur.salesCount:app?cur.installs:cur.leads, resP=isE?prv.salesCount:app?prv.installs:prv.leads, resLab=isE?'Orders':app?'Installs':LW(c);
     const cell=(l,v,d,tip)=>'<div class="cd-k" title="'+esc(tip||'')+'"><span>'+l+'</span><b>'+v+'</b><u>'+(d||'')+'</u></div>';
     let h='';
     // header
@@ -2663,7 +2665,7 @@ function platformSplit(x){
     +'<td class="num">'+(a.spend&&isFinite(a.cpa)?fmtMoney(a.cpa,c):'--')+'</td>'
     +'</tr>';
   let h='<div class="section"><div class="glass-panel"><h2>Where the money went <span class="sub">'+spec.label+' · deltas vs '+spec.prevLabel+' · each platform&rsquo;s own reported '+(isE?'purchases and revenue':isApp(c)?'installs':'leads')+'</span></h2>'
-    +'<div class="data-table-wrap"><table class="dtable"><thead><tr><th>Platform</th><th class="num">Spend</th><th class="num">Share</th><th class="num">Clicks</th><th class="num">CTR</th><th class="num">'+(isE?'Purchases':isApp(c)?'Installs':'Leads')+'</th>'+(hasSrc?'<th class="num" title="Orders your store recorded as arriving from this platform, not what the platform claims">Orders, store</th>':'')+(isE?'<th class="num">Revenue</th>':'')+'<th class="num">'+kpiLabel(c)+'</th><th class="num">'+(isE?'CPA':'CPL, blended')+'</th></tr></thead><tbody>';
+    +'<div class="data-table-wrap"><table class="dtable"><thead><tr><th>Platform</th><th class="num">Spend</th><th class="num">Share</th><th class="num">Clicks</th><th class="num">CTR</th><th class="num">'+(isE?'Purchases':isApp(c)?'Installs':LW(c))+'</th>'+(hasSrc?'<th class="num" title="Orders your store recorded as arriving from this platform, not what the platform claims">Orders, store</th>':'')+(isE?'<th class="num">Revenue</th>':'')+'<th class="num">'+kpiLabel(c)+'</th><th class="num">'+(isE?'CPA':'CPL, blended')+'</th></tr></thead><tbody>';
   live.forEach(pf=>{
     const a=agg(cur.filter(r=>r.platform===pf)), p=agg(prv.filter(r=>r.platform===pf));
     h+=cell(cap(pf),a,p,tot.spend?a.spend/tot.spend*100:null,'',pf);
@@ -2842,7 +2844,7 @@ function intradayPanel(x){
   const kpiNow=isE?(now.spend?(now.netSales||now.revenue)/now.spend:0):(res?now.spend/res:Infinity), kpiWk=wk?(isE?(wk.spend?(wk.netSales||wk.revenue)/wk.spend:0):(wres?wk.spend/wres:Infinity)):null;
   let h='<div class="glass-panel"><h2>Today so far <span class="sub">as of '+lastH+':00 · vs same weekday last week</span></h2><div class="intra">'+
     '<div><div class="k">Spend</div><div class="v disp">'+fmtMoney(now.spend,c)+'</div><div class="s">'+(wk?vs(now.spend,wk.spend)+' vs '+fmtMoney(wk.spend,c):'')+'</div></div>'+
-    '<div><div class="k">'+(isE?(now.orders?'Orders':'Purchases'):isApp(c)?'Installs':'Leads')+'</div><div class="v disp">'+fmtNum(res)+'</div><div class="s">'+(wk?vs(res,wres)+' vs '+fmtNum(wres):'')+'</div></div>'+
+    '<div><div class="k">'+(isE?(now.orders?'Orders':'Purchases'):isApp(c)?'Installs':LW(c))+'</div><div class="v disp">'+fmtNum(res)+'</div><div class="s">'+(wk?vs(res,wres)+' vs '+fmtNum(wres):'')+'</div></div>'+
     '<div><div class="k">'+(isE?(now.netSales?'MER':'ROAS'):kpiLabel(c))+'</div><div class="v disp">'+kpiFmt(c,kpiNow)+'</div><div class="s">'+(wk?'last week '+kpiFmt(c,kpiWk):'')+'</div></div>'+
     (isE&&now.checkoutsStarted!==undefined?'<div><div class="k">Checkouts</div><div class="v disp">'+fmtNum(now.checkoutsStarted)+'</div><div class="s">'+fmtPct(now.checkoutsStarted?(now.orders/now.checkoutsStarted*100):null)+' completed</div></div>':'')+
     (wkEnd?'<div><div class="k">Last week, full day</div><div class="v disp">'+fmtMoney(wkEnd.spend,c)+'</div><div class="s">'+fmtNum(isE?(wkEnd.orders||wkEnd.purchases):isApp(c)?wkEnd.installs:wkEnd.leads)+' '+(isE?'orders':isApp(c)?'installs':'leads')+'</div></div>':'')+'</div>';
@@ -3291,7 +3293,7 @@ function crChips(x){
    judged by looking at it. Everything on a card is already on the page, so it costs no extra reads.
    Cards are view only. The table stays one click away for anyone who wants every column. */
 function creativeGrid(x,rows,kpiCol,title,note,empty){
-  const c=x.c, isE=c.type==='ecom', res=isE?'purchases':isApp(c)?'installs':'leads', resLab=isE?'Orders':isApp(c)?'Installs':'Leads', so=state.sort.ads;
+  const c=x.c, isE=c.type==='ecom', res=isE?'purchases':isApp(c)?'installs':'leads', resLab=isE?'Orders':isApp(c)?'Installs':LW(c), so=state.sort.ads;
   const sorts=[['spend','Spend'],[kpiCol.key,kpiCol.label],['ctr','CTR'],['hookRate','Hook'],['status','Call']];
   let h='<div class="glass-panel"><h2>'+title+crChips(x)+'</h2>';
   h+=(x._callBar||'')+'<div class="crsort"><span>Sort by</span>'+sorts.map(k=>'<button class="crchip'+(so.key===k[0]?' on':'')+'" data-act="sort" data-table="ads" data-key="'+k[0]+'">'+k[1]+(so.key===k[0]?(so.dir==='asc'?' \u2191':' \u2193'):'')+'</button>').join('')+'</div>';

@@ -38,6 +38,13 @@ const STD_PURCHASE = ['omni_purchase', 'purchase', 'offsite_conversion.fb_pixel_
 const purchaseCtx = new AsyncLocalStorage();
 const PURCHASE_ = () => purchaseCtx.getStore() || STD_PURCHASE;
 const LEAD = ['lead', 'onsite_conversion.lead_grouped', 'offsite_conversion.fb_pixel_lead'];
+// Brands whose ads start WhatsApp or Messenger chats (SkySham, SkyTours) get most of their leads as
+// conversations, not form fills. For a client with metaLead 'conversations' a lead is a form lead
+// plus a conversation started, so CPL is spend per enquiry of either kind.
+const CONV = ['onsite_conversion.messaging_conversation_started_7d'];
+const leadCtx = new AsyncLocalStorage();
+const leadsOf = (actions) => act(actions, LEAD) + (leadCtx.getStore() === 'conversations' ? act(actions, CONV) : 0);
+const inCtx = (client, types, fn) => purchaseCtx.run(types, () => leadCtx.run(client.metaLead || '', fn));
 const INSTALL = ['omni_app_install', 'mobile_app_install', 'app_install'];
 const LPV = ['landing_page_view'];
 const ATC = ['omni_add_to_cart', 'add_to_cart', 'offsite_conversion.fb_pixel_add_to_cart'];
@@ -190,7 +197,7 @@ function rowFromInsight(clientId, r, platform = 'meta') {
   const row = emptyDaily(clientId, r.date_start, platform);
   row.spend = num(r.spend); row.impressions = num(r.impressions); row.clicks = num(r.clicks);
   row.purchases = act(r.actions, PURCHASE_()); row.revenue = act(r.action_values, PURCHASE_());
-  row.leads = act(r.actions, LEAD);
+  row.leads = leadsOf(r.actions);
   row.installs = act(r.actions, INSTALL);
   row.lpv = act(r.actions, LPV); row.atc = act(r.actions, ATC); row.ic = act(r.actions, IC);
   return row;
@@ -222,7 +229,7 @@ function metrics(r) {
   const spend = num(r.spend), imp = num(r.impressions), clicks = num(r.clicks);
   return {
     spend, impressions: imp, clicks,
-    purchases: act(r.actions, PURCHASE_()), revenue: act(r.action_values, PURCHASE_()), leads: act(r.actions, LEAD),
+    purchases: act(r.actions, PURCHASE_()), revenue: act(r.action_values, PURCHASE_()), leads: leadsOf(r.actions),
     installs: act(r.actions, INSTALL),
     freq: round(num(r.frequency), 2),
     ctr: imp ? round(clicks / imp * 100, 2) : 0,
@@ -233,7 +240,7 @@ function metrics(r) {
   };
 }
 // Seventh slot is installs. Appended rather than inserted so tuples already stored stay readable.
-const dayTuple = (r) => [round(num(r.spend)), num(r.impressions), num(r.clicks), act(r.actions, PURCHASE_()), round(act(r.action_values, PURCHASE_())), act(r.actions, LEAD), act(r.actions, INSTALL)];
+const dayTuple = (r) => [round(num(r.spend)), num(r.impressions), num(r.clicks), act(r.actions, PURCHASE_()), round(act(r.action_values, PURCHASE_())), leadsOf(r.actions), act(r.actions, INSTALL)];
 function daysMap(rows, idKey) {
   const out = {};
   for (const r of rows) { const m = (out[r[idKey]] = out[r[idKey]] || {}); m[r.date_start] = dayTuple(r); }
@@ -445,7 +452,7 @@ async function purchaseTypes(client, id) {
 }
 async function each(client, fn) {
   const ids = metaIds(client); const out = [];
-  for (const id of ids) { const types = await purchaseTypes(client, id); out.push(await purchaseCtx.run(types, () => fn(forAccount(client, id)))); }
+  for (const id of ids) { const types = await purchaseTypes(client, id); out.push(await inCtx(client, types, () => fn(forAccount(client, id)))); }
   return out;
 }
 
@@ -477,10 +484,10 @@ export async function fetchTodayDays(client, today) {
 // what it already had for them. Only when every account fails does this throw.
 export async function fetchEntities(client, until) {
   const ids = metaIds(client);
-  if (ids.length === 1) { const one = await fetchEntitiesOne(client, until); return tagAcct(one, ids[0]); }
+  if (ids.length === 1) { const types = await purchaseTypes(client, ids[0]); const one = await inCtx(client, types, () => fetchEntitiesOne(forAccount(client, ids[0]), until)); return tagAcct(one, ids[0]); }
   const parts = [], failed = []; let last = null;
   for (const id of ids) {
-    try { const types = await purchaseTypes(client, id); parts.push(tagAcct(await purchaseCtx.run(types, () => fetchEntitiesOne(forAccount(client, id), until)), id)); }
+    try { const types = await purchaseTypes(client, id); parts.push(tagAcct(await inCtx(client, types, () => fetchEntitiesOne(forAccount(client, id), until)), id)); }
     catch (e) { failed.push(id); last = e; log(`${client.id}/meta: creatives for act_${id} skipped (${String(e.message || e).slice(0, 100)})`); }
   }
   if (!parts.length) throw last;

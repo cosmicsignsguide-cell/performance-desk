@@ -1790,7 +1790,7 @@
     },
     "am": "",
     "accounts": {
-      "meta": "",
+      "meta": "573233711824133",
       "google": "",
       "shopify": null,
       "ga4": ""
@@ -1802,6 +1802,33 @@
     },
     "active": true,
     "contact": "",
-    "note": "UAE travel brand (flights, UAE family visa); Meta lead gen with instant forms. Meta account not yet shared with the per4mance-desk system user."
+    "note": "UAE travel (flights, UAE family visa). Meta act 573233711824133 \"Sky Sham Ad Account (Personal)\", AED. Leads = form leads + conversations started.",
+    "metaLead": "conversations"
+  },
+  {
+    "id": "skytours",
+    "name": "SkyTours",
+    "type": "lead",
+    "currency": "AED",
+    "budget": 0,
+    "target": {
+      "cpl": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "1171144215047315",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": "",
+    "metaLead": "conversations",
+    "note": "Sister brand of SkySham (tours: UAE National Day packages, Thailand, Umrah). Meta act 1171144215047315, AED. Leads = form leads + conversations started."
   }
 ]
