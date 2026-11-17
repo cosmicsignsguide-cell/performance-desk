@@ -105,8 +105,11 @@ const budgetMs = () => (patient.getStore() ? 90 * 60 * 1000 : WAIT_BUDGET_MS);
 // Charged in real time, not per request: when several requests to one account wait out the same
 // cooldown side by side, that is one stretch of waiting, not several. (Counting each request's wait
 // separately had a busy account like Berkowits "use up" 20 minutes in about 10.)
-const waited = new Map();   // account -> { since, ms, until }
+const waitedFast = new Map(), waitedPatient = new Map();   // account -> { since, ms, until }
+// The hourly sync and the background creatives run keep separate tallies, so a long creatives
+// wait on one account does not use up the hourly sync's 20 minutes for it.
 function chargeWait(k, ms) {
+  const waited = patient.getStore() ? waitedPatient : waitedFast;
   const now = Date.now(), w = waited.get(k);
   const cur = !w || now - w.since > 60 * 60 * 1000 ? { since: now, ms: 0, until: 0 } : w;
   const end = now + ms, extra = Math.max(0, end - Math.max(now, cur.until || 0));

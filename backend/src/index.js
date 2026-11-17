@@ -106,6 +106,7 @@ async function seedSampleFor(store, client, until, sources) {
 // limit budget again. DESK_ENTITY_MIN_MINUTES=0 turns this off.
 const MIN_HISTORY = 30;
 const ENTITY_MIN_MIN = Number(process.env.DESK_ENTITY_MIN_MINUTES ?? 60);
+const creativesBusy = new Set();   // clients a creatives run is pulling right now
 function entitiesDue(ent, source) {
   if (!ENTITY_MIN_MIN) return true;
   const at = ent?.entitiesAt?.[source];
@@ -522,7 +523,9 @@ async function main() {
           const e = await store.get('entities', c.id).catch(() => null), at = e?.entitiesAt?.meta;
           if (only || !at || Date.now() - new Date(at).getTime() > 30 * 3600 * 1000) stale.push(c);
         }
-        list = stale;
+        // Another creatives run may already be on a client (a one-client run started by hand while
+        // the keeper's run reaches it); pulling the same big account twice at once only doubles the wait.
+        list = stale.filter((c) => !creativesBusy.has(c.id));
       }
       if (only && !list.length) return { mode, clients: 0, error: `no client with id "${only}"` };
 
@@ -536,13 +539,14 @@ async function main() {
         // ?sources=shopify (comma list) limits a run to those sources, e.g. a store-only restate
         // that should not spend any of the Meta rate limit.
         const onlySrc = String(url.searchParams.get('sources') || '').split(',').map((x) => x.trim()).filter(Boolean);
+        if (mode === 'creatives') { if (creativesBusy.has(c.id)) continue; creativesBusy.add(c.id); }
         try { ({ entities } = await syncClient(store, c, { mode, days, sources: mode === 'creatives' ? ['meta'] : onlySrc.length ? onlySrc : null })); }
         catch (e) {
           const msg = String(e.message || e).slice(0, 300);
           log(`${c.id}: run aborted for this client, continuing with the rest (${msg})`);
           failures.push(`${c.id}: ${msg}`);
           continue;
-        }
+        } finally { if (mode === 'creatives') creativesBusy.delete(c.id); }
         await computeSignals(c, entities, { mode });
         // The per source errors are already stored for the dashboard; surfacing them in the
         // response too means a one client run answers "why is this broken" without a log dive.
