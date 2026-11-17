@@ -261,18 +261,31 @@ async function syncClient(store, client, { mode, days, sources: onlySources = nu
   if (skipped.length === 4) log(`${client.id}: nothing to sync (${skipped.join('; ')})`);
   else if (skipped.length) log(`${client.id}: skipped ${skipped.join('; ')}`);
   ent.updatedAt = nowIso();
-  let entKb = Math.round(JSON.stringify(ent).length / 1024);
-  // Firestore refuses a document over 1 MB, and then nothing for this client is saved. A large
-  // account (two ad accounts, hundreds of creatives) gets near it, so the tree is trimmed in
-  // steps that cost the dashboard nothing: zero days first, then the per-day history of ads that
-  // spent nothing in the window, then ads that spent nothing and are not running.
-  if (entKb > 800) {
+  // Firestore refuses a document over 1 MB, and then nothing for this client is saved. Its size
+  // counts every field name and value with some overhead, so a tree whose JSON is 955 KB was
+  // 1.13 MB to Firestore (Firvt), and Firvt's creatives were never saved. The JSON is held to
+  // 760 KB (in bytes, not characters), trimmed in steps that cost the dashboard least first:
+  // zero days, the history of ads that spent nothing, ads that spent nothing and are not running,
+  // then the per-day history of ads and ad sets beyond 62 days (last month still fits), then 35.
+  const size = () => Math.round(Buffer.byteLength(JSON.stringify(ent)) / 1024);
+  const LIMIT = 760;
+  let entKb = size();
+  if (entKb > LIMIT) {
+    const before = entKb;
     const zero = (t) => !t || !t.some((v) => Number(v) > 0);
-    for (const x of [...(ent.ads || []), ...(ent.adsets || []), ...(ent.campaigns || [])]) if (x.days) for (const k of Object.keys(x.days)) if (zero(x.days[k])) delete x.days[k];
-    entKb = Math.round(JSON.stringify(ent).length / 1024);
-    if (entKb > 800) { for (const a of ent.ads || []) if (!(a.spend > 0)) { delete a.days; delete a.last7; delete a.prev7; } entKb = Math.round(JSON.stringify(ent).length / 1024); }
-    if (entKb > 850) { ent.ads = (ent.ads || []).filter((a) => a.spend > 0 || a.status === 'ACTIVE'); entKb = Math.round(JSON.stringify(ent).length / 1024); }
-    log(`${client.id}: entity tree trimmed to ${entKb} KB to stay under Firestore's 1 MB limit`);
+    const cut = (list, keepDays) => { const from = addDays(today, -keepDays); for (const x of list || []) if (x.days) for (const k of Object.keys(x.days)) if (k < from) delete x.days[k]; };
+    const steps = [
+      () => { for (const x of [...(ent.ads || []), ...(ent.adsets || []), ...(ent.campaigns || [])]) if (x.days) for (const k of Object.keys(x.days)) if (zero(x.days[k])) delete x.days[k]; },
+      () => { for (const a of ent.ads || []) if (!(a.spend > 0)) { delete a.days; delete a.last7; delete a.prev7; } },
+      () => { ent.ads = (ent.ads || []).filter((a) => a.spend > 0 || a.status === 'ACTIVE'); },
+      () => cut(ent.ads, 62),
+      () => cut(ent.adsets, 62),
+      () => cut(ent.ads, 35),
+      () => cut(ent.adsets, 35),
+      () => { ent.ads = (ent.ads || []).filter((a) => a.spend > 0); },
+    ];
+    for (const step of steps) { if (entKb <= LIMIT) break; step(); entKb = size(); }
+    log(`${client.id}: entity tree trimmed from ${before} to ${entKb} KB to stay under Firestore's 1 MB limit`);
   }
   await store.set('entities', client.id, ent);
   if (mode === 'hourly') await intradaySnapshot(store, client, today);
