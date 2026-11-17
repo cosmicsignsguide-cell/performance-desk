@@ -165,7 +165,9 @@ async function paged(url) {
 
 // Meta answers a query it considers too heavy with a 500 and this message. Retrying the same query
 // never helps; the range has to get smaller. So we halve the window and ask twice, as deep as needed.
-const TOO_MUCH = /reduce the amount of data|please reduce|too much data|unknown error/i;
+// "Service temporarily unavailable" (400) is also how Meta answers an insights call that is too big
+// for it right now (Mackly Store's per-ad days), so it is split like the others instead of failing.
+const TOO_MUCH = /reduce the amount of data|please reduce|too much data|unknown error|temporarily unavailable/i;
 const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
 
 async function pagedRange(build, since, until, depth = 0) {
