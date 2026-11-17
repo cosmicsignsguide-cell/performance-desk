@@ -44,6 +44,10 @@ jobs:
             [ $(( now + wait )) -ge "$end" ] && break
             sleep "$wait"
             call sync hourly
+            # Creatives (campaigns, ad sets, ads) that are missing or over a day old, in the background
+            # (/run answers 202 at once), so a slow Meta account never holds the hourly sync up.
+            # Skipped around the nightly daily sync, which pulls every tree itself.
+            h=$(date -u +%H); if [ "$h" != "20" ] && [ "$h" != "21" ]; then call run creatives; fi
             # On the 25th, after the 09:35 IST hourly sync, the monthly targets reminder email (sent once per month by the API).
             if [ "$(date -u +%d)" = "25" ] && [ "$(date -u +%H)" = "04" ]; then
               code=$(curl -sS -o out.txt -w "%{http_code}" --max-time 120 -X POST -H "Authorization: Bearer $DESK_SYNC_KEY" "$API/targets/remind"); echo "targets reminder -> HTTP $code $(head -c 200 out.txt)"

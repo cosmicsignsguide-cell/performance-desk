@@ -106,8 +106,6 @@ async function seedSampleFor(store, client, until, sources) {
 // limit budget again. DESK_ENTITY_MIN_MINUTES=0 turns this off.
 const MIN_HISTORY = 30;
 const ENTITY_MIN_MIN = Number(process.env.DESK_ENTITY_MIN_MINUTES ?? 60);
-// One Meta creatives catch-up per hourly run across all clients, so the hourly sync stays short.
-const entityCatchUp = { used: false };
 function entitiesDue(ent, source) {
   if (!ENTITY_MIN_MIN) return true;
   const at = ent?.entitiesAt?.[source];
@@ -163,20 +161,21 @@ async function syncClient(store, client, { mode, days, sources: onlySources = nu
         : mode === 'hourly' ? addDays(today, -1)
         : (await firstRun(store, client, source)) ? addDays(today, -config.historyDays) : restateSince;
       if (source === 'meta') {
+        if (mode !== 'creatives') {
         const rows = withZeroDays(await meta.fetchDaily(client, since, today), client.id, 'meta', since, today);
         await writeDaily(store, rows);
-        if (tracksOrders(client)) {
+        }
+        if (mode !== 'creatives' && tracksOrders(client)) {
           try { const sp = await meta.fetchCampaignSpend(client, since, today); await writeOrderDays(store, client, since, today, sp, (x) => ({ spendMeta: (x || []).flat() })); }
           catch (e) { log(`${client.id}/meta: campaign spend for order sources skipped: ${String(e.message || e).slice(0, 120)}`); }
         }
         // Campaigns, ad sets and ads (the creatives) are pulled in the nightly run. A big account can
         // run out of Meta's hourly insights allowance there (Mackly Store did, night after night, and
-        // its creatives never arrived), so a failure here no longer fails the whole Meta sync, and an
-        // hourly run picks the tree up later, one client per run, while it is missing or over a day old.
-        const metaAt = ent?.entitiesAt?.meta, metaStale = !metaAt || Date.now() - new Date(metaAt).getTime() > 30 * 3600 * 1000;
-        const catchUp = mode === 'hourly' && metaStale && !entityCatchUp.used;
-        if ((mode === 'daily' && entitiesDue(ent, source)) || catchUp) {
-          if (catchUp) { entityCatchUp.used = true; log(`${client.id}/meta: creatives missing or old, pulling them in this hourly run`); }
+        // its creatives never arrived), so a failure here no longer fails the whole Meta sync. A
+        // separate background run (mode=creatives, started by the keeper at :35) pulls the trees that
+        // are missing or over a day old. It used to happen inside the hourly sync, where one slow
+        // account (Firvt) held the hourly run up and the clients after it went hours without data.
+        if ((mode === 'daily' && entitiesDue(ent, source)) || mode === 'creatives') {
           try {
             const e = await meta.fetchEntities(client, untilFull);
             const failed = new Set(e.failed || []);
@@ -500,11 +499,21 @@ async function main() {
       // rate limit, and the other thirty were already fine. The run is not recorded as the day's
       // lastRun either, because one client is not the book.
       const only = String(url.searchParams.get('client') || '').trim().toLowerCase();
-      const list = only ? clients.filter((c) => c.id === only) : clients;
+      let list = only ? clients.filter((c) => c.id === only) : clients;
+      // mode=creatives: only clients on Meta whose creatives are missing or over 30 hours old (or the
+      // one asked for), Meta only, entity tree only. Runs in the background through /run.
+      if (mode === 'creatives') {
+        const stale = [];
+        for (const c of list) {
+          if (!c.accounts?.meta || c.active === false) continue;
+          const e = await store.get('entities', c.id).catch(() => null), at = e?.entitiesAt?.meta;
+          if (only || !at || Date.now() - new Date(at).getTime() > 30 * 3600 * 1000) stale.push(c);
+        }
+        list = stale;
+      }
       if (only && !list.length) return { mode, clients: 0, error: `no client with id "${only}"` };
 
       const failures = [];
-      entityCatchUp.used = false;
       log(`run ${mode}: ${list.length} client${list.length === 1 ? '' : 's'} to sync${only ? ` (only ${only})` : ''}`);
       if (!list.length) log(`run ${mode}: the store returned no clients, so nothing was synced`);
       for (const c of list) {
@@ -514,7 +523,7 @@ async function main() {
         // ?sources=shopify (comma list) limits a run to those sources, e.g. a store-only restate
         // that should not spend any of the Meta rate limit.
         const onlySrc = String(url.searchParams.get('sources') || '').split(',').map((x) => x.trim()).filter(Boolean);
-        try { ({ entities } = await syncClient(store, c, { mode, days, sources: onlySrc.length ? onlySrc : null })); }
+        try { ({ entities } = await syncClient(store, c, { mode, days, sources: mode === 'creatives' ? ['meta'] : onlySrc.length ? onlySrc : null })); }
         catch (e) {
           const msg = String(e.message || e).slice(0, 300);
           log(`${c.id}: run aborted for this client, continuing with the rest (${msg})`);
@@ -880,7 +889,7 @@ async function main() {
       }
 
       const asked = url.searchParams.get('mode');
-      const mode = ['daily', 'hourly', 'sitewatch', 'weekly', 'verify', 'verifymeta', 'creators', 'access', 'purge'].includes(asked) ? asked : 'hourly';
+      const mode = ['daily', 'hourly', 'sitewatch', 'weekly', 'verify', 'verifymeta', 'creators', 'access', 'purge', 'creatives'].includes(asked) ? asked : 'hourly';
       // ?days=N restates N days of history instead of the usual 7. Ignored for hourly and
       // sitewatch, which have nothing to restate.
       const days = mode === 'daily' ? parseInt(url.searchParams.get('days') || '', 10) : NaN;
