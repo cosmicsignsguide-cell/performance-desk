@@ -198,7 +198,7 @@
       "productPath": "",
       "expectText": ""
     },
-    "active": false,
+    "active": true,
     "contact": ""
   },
   {
@@ -213,7 +213,7 @@
     "am": "",
     "accounts": {
       "meta": "1188994755012558",
-      "google": "",
+      "google": "1640464697",
       "shopify": null,
       "ga4": ""
     },
@@ -222,7 +222,7 @@
       "productPath": "",
       "expectText": ""
     },
-    "active": false,
+    "active": true,
     "contact": ""
   },
   {
@@ -1699,8 +1699,8 @@
     },
     "am": "",
     "accounts": {
-      "meta": "526924335044929",
-      "google": "",
+      "meta": "",
+      "google": "8097020041",
       "shopify": null,
       "ga4": ""
     },
@@ -1709,8 +1709,9 @@
       "productPath": "",
       "expectText": ""
     },
-    "active": false,
-    "contact": ""
+    "active": true,
+    "contact": "",
+    "note": "Google 8097020041 Tata Play Fiber. Meta act 526924335044929 not shared with per4mance-desk yet."
   },
   {
     "id": "astrochaitanya",
@@ -1723,8 +1724,8 @@
     },
     "am": "",
     "accounts": {
-      "meta": "2481299142216539",
-      "google": "",
+      "meta": "",
+      "google": "7407348576",
       "shopify": null,
       "ga4": ""
     },
@@ -1733,8 +1734,9 @@
       "productPath": "",
       "expectText": ""
     },
-    "active": false,
-    "contact": ""
+    "active": true,
+    "contact": "",
+    "note": "Google 7407348576. Meta act 2481299142216539 not shared with per4mance-desk yet."
   },
   {
     "id": "berkowits",
@@ -1830,5 +1832,230 @@
     "contact": "",
     "metaLead": "conversations",
     "note": "Sister brand of SkySham (tours: UAE National Day packages, Thailand, Umrah). Meta act 1171144215047315, AED. Leads = form leads + conversations started."
+  },
+  {
+    "id": "krm-indirapuram",
+    "name": "KRM Indirapuram",
+    "type": "lead",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "cpl": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "",
+      "google": "9224319772",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": "",
+    "note": "K.R. Mangalam World School Indirapuram. Meta not shared yet."
+  },
+  {
+    "id": "krm-panipat",
+    "name": "KRM Panipat",
+    "type": "lead",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "cpl": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "",
+      "google": "3934163801",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": "",
+    "note": "Google \"KRM PNP\". Meta not shared yet."
+  },
+  {
+    "id": "krm-bahadurgarh",
+    "name": "KRM Bahadurgarh",
+    "type": "lead",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "cpl": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "",
+      "google": "7436101080",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": "",
+    "note": "Meta not shared yet."
+  },
+  {
+    "id": "krm-lucknow",
+    "name": "KRM Lucknow",
+    "type": "lead",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "cpl": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "1374272159661910",
+      "google": "4782450042",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": "",
+    "note": "Meta act status 3 (payment unsettled) at setup."
+  },
+  {
+    "id": "krm-vaishali",
+    "name": "KRM Vaishali",
+    "type": "lead",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "cpl": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "",
+      "google": "3154257545",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": "",
+    "note": "Meta not shared yet."
+  },
+  {
+    "id": "gdgoenka",
+    "name": "GD Goenka",
+    "type": "lead",
+    "currency": "INR",
+    "budget": 0,
+    "target": {
+      "cpl": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "",
+      "google": "2704643515",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": "",
+    "note": "GD Goenka Global School. Meta not shared yet."
+  },
+  {
+    "id": "mattressfitness",
+    "name": "Mattress Fitness",
+    "type": "ecom",
+    "currency": "USD",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "",
+      "google": "9092341444",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": "",
+    "note": "Mattress Fitness Cypress (US). Meta not shared yet."
+  },
+  {
+    "id": "kbeauty-uae",
+    "name": "K Beauty UAE",
+    "type": "ecom",
+    "currency": "AED",
+    "budget": 0,
+    "target": {
+      "roas": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "",
+      "google": "3617756456",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": "",
+    "note": "Google \"Official K-Beauty\". Currency to confirm against the account."
+  },
+  {
+    "id": "canco",
+    "name": "Canco Petroleum",
+    "type": "app",
+    "currency": "CAD",
+    "budget": 0,
+    "target": {
+      "cpi": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "574504960814809",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": "",
+    "note": "Meta act in grace period (status 9) at setup. Google not shared yet."
   }
 ]
