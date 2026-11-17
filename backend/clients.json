@@ -1778,5 +1778,30 @@
       "cvr",
       "funnel"
     ]
+  },
+  {
+    "id": "skysham",
+    "name": "SkySham",
+    "type": "lead",
+    "currency": "AED",
+    "budget": 0,
+    "target": {
+      "cpl": null
+    },
+    "am": "",
+    "accounts": {
+      "meta": "",
+      "google": "",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": "",
+    "note": "UAE travel brand (flights, UAE family visa); Meta lead gen with instant forms. Meta account not yet shared with the per4mance-desk system user."
   }
 ]
