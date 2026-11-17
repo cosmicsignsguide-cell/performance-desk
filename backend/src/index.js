@@ -177,7 +177,7 @@ async function syncClient(store, client, { mode, days, sources: onlySources = nu
         // account (Firvt) held the hourly run up and the clients after it went hours without data.
         if ((mode === 'daily' && entitiesDue(ent, source)) || mode === 'creatives') {
           try {
-            const e = await meta.fetchEntities(client, untilFull);
+            const e = mode === 'creatives' ? await meta.runPatiently(() => meta.fetchEntities(client, untilFull)) : await meta.fetchEntities(client, untilFull);
             const failed = new Set(e.failed || []);
             const keep = (list) => (failed.size ? (list || []).filter((x) => failed.has(x.acct)) : []);
             ent.campaigns = [...(ent.campaigns || []).filter((c) => c.platform !== 'meta'), ...keep((ent.campaigns || []).filter((c) => c.platform === 'meta')), ...e.campaigns];

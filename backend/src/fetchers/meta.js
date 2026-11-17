@@ -97,6 +97,11 @@ function readUsage(headers, k) {
 // fails for that account only, so one heavily throttled account (Firvt, Whimsy) cannot hold up
 // every client queued behind it in a full sync; it is picked up again on the next run.
 const WAIT_BUDGET_MS = 20 * 60 * 1000;
+// The background creatives run (mode=creatives) holds nothing up, so it may wait out a full
+// Meta cooldown (often 40 to 55 minutes on a big account such as Mackly Store) instead of giving up.
+const patient = new AsyncLocalStorage();
+export const runPatiently = (fn) => patient.run(true, fn);
+const budgetMs = () => (patient.getStore() ? 90 * 60 * 1000 : WAIT_BUDGET_MS);
 // Charged in real time, not per request: when several requests to one account wait out the same
 // cooldown side by side, that is one stretch of waiting, not several. (Counting each request's wait
 // separately had a busy account like Berkowits "use up" 20 minutes in about 10.)
@@ -105,7 +110,7 @@ function chargeWait(k, ms) {
   const now = Date.now(), w = waited.get(k);
   const cur = !w || now - w.since > 60 * 60 * 1000 ? { since: now, ms: 0, until: 0 } : w;
   const end = now + ms, extra = Math.max(0, end - Math.max(now, cur.until || 0));
-  if (cur.ms + extra > WAIT_BUDGET_MS) { waited.set(k, cur); return false; }
+  if (cur.ms + extra > budgetMs()) { waited.set(k, cur); return false; }
   cur.ms += extra; cur.until = Math.max(cur.until || 0, end); waited.set(k, cur); return true;
 }
 
@@ -114,7 +119,7 @@ async function metaGet(url) {
   for (let attempt = 0; ; attempt++) {
     const wait = cdUntil(k) - Date.now();
     if (wait > 0) {
-      if (k !== 'global' && !chargeWait(k, wait)) throw new Error(`meta: act_${k} is throttled by Meta (waited over ${WAIT_BUDGET_MS / 60000} min this hour), skipped for this run`);
+      if (k !== 'global' && !chargeWait(k, wait)) throw new Error(`meta: act_${k} is throttled by Meta (waited over ${budgetMs() / 60000} min this hour), skipped for this run`);
       log(`meta: pacing act_${k}, waiting ${Math.ceil(wait / 1000)}s`); await sleep(wait);
     }
     let r, text;
