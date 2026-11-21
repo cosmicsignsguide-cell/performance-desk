@@ -1740,13 +1740,13 @@
   },
   {
     "id": "berkowits",
-    "name": "Berkowits",
+    "name": "Berkowits Products",
     "type": "ecom",
     "currency": "INR",
     "target": {},
     "am": "",
     "accounts": {
-      "meta": "192533306312498",
+      "meta": "10158465412440641",
       "google": "7500335551",
       "shopify": {
         "shop": "61t1fx-r1.myshopify.com",
@@ -1761,20 +1761,68 @@
     },
     "active": true,
     "contact": "",
-    "metaPurchase": "ConfmPageView",
-    "metaPurchaseId": "1434330091796529",
     "noAdvice": true,
     "segment": {
       "name": "Products",
-      "other": "Lead gen",
+      "other": "Services + Grow",
       "match": {
         "google": "products",
-        "meta": "*"
+        "meta": "products"
       },
       "excludeChannels": [
         "VIDEO"
       ],
       "only": "seg"
+    },
+    "hide": [
+      "cvr",
+      "funnel"
+    ],
+    "metaPurchaseTypes": [
+      "offsite_conversion.fb_pixel_custom"
+    ],
+    "pair": {
+      "id": "berkowits-services",
+      "label": "Services + Grow page"
+    }
+  },
+  {
+    "id": "berkowits-services",
+    "name": "Berkowits Services + Grow",
+    "type": "lead",
+    "currency": "INR",
+    "target": {},
+    "am": "",
+    "accounts": {
+      "meta": "10158465412440641",
+      "google": "7500335551",
+      "shopify": null,
+      "ga4": ""
+    },
+    "site": {
+      "url": "https://berkowits.com",
+      "productPath": "",
+      "expectText": ""
+    },
+    "active": true,
+    "contact": "",
+    "metaLead": "conversations",
+    "noAdvice": true,
+    "segment": {
+      "name": "Products",
+      "other": "Services + Grow",
+      "match": {
+        "google": "products",
+        "meta": "products"
+      },
+      "excludeChannels": [
+        "VIDEO"
+      ],
+      "only": "other"
+    },
+    "pair": {
+      "id": "berkowits",
+      "label": "Products page"
     },
     "hide": [
       "cvr",

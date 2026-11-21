@@ -219,8 +219,27 @@ async function fetchDailyOne(client, since, until) {
   const data = await pagedRange(
     (s, u) => insightsUrl(accountId, { level: 'account', time_increment: '1', time_range: JSON.stringify({ since: s, until: u }) }),
     since, until);
-  return data.map((r) => rowFromInsight(client.id, r));
+  const rows = data.map((r) => rowFromInsight(client.id, r));
+  // A client with a Meta campaign segment (Berkowits: "products" in the name) gets, on every day
+  // row, the share of that day that belongs to the matching campaigns (row.seg), as on Google, so
+  // one page can count only the segment and another only the rest.
+  const rule = segRule(client);
+  if (rule) {
+    const camp = await pagedRange(
+      (s, u) => insightsUrl(accountId, { level: 'campaign', time_increment: '1', fields: DAILY_FIELDS + ',campaign_name', time_range: JSON.stringify({ since: s, until: u }) }),
+      since, until);
+    const seg = {};
+    for (const r of camp) {
+      if (!String(r.campaign_name || '').toLowerCase().includes(rule)) continue;
+      const d = (seg[r.date_start] = seg[r.date_start] || { spend: 0, impressions: 0, clicks: 0, purchases: 0, revenue: 0, leads: 0 });
+      d.spend += num(r.spend); d.impressions += num(r.impressions); d.clicks += num(r.clicks);
+      d.purchases += act(r.actions, PURCHASE_()); d.revenue += act(r.action_values, PURCHASE_()); d.leads += leadsOf(r.actions);
+    }
+    for (const row of rows) { const d = seg[row.date] || {}; row.seg = { spend: round(d.spend || 0), impressions: d.impressions || 0, clicks: d.clicks || 0, purchases: d.purchases || 0, revenue: round(d.revenue || 0), leads: d.leads || 0 }; }
+  }
+  return rows;
 }
+const segRule = (client) => { const m = client.segment?.match?.meta; return m && m !== '*' ? String(m).toLowerCase() : ''; };
 
 // Spend per campaign per day, for the Order sources view: what each campaign cost on the days its
 // orders came in, so a campaign's store ROAS can be read off the same window. Small call (three
@@ -445,6 +464,9 @@ const forAccount = (client, id) => ({ ...client, accounts: { ...client.accounts,
 // A custom conversion is found by its name on each account, once per process.
 const convCache = new Map();
 async function purchaseTypes(client, id) {
+  // Given as action types outright (Berkowits Product Ad: its custom events carry the sale value,
+  // which is what the account's own PG_ROAS column divides by spend).
+  if (Array.isArray(client.metaPurchaseTypes) && client.metaPurchaseTypes.length) return client.metaPurchaseTypes;
   if (!client.metaPurchase && !client.metaPurchaseId) return STD_PURCHASE;
   const key = `${id}|${String(client.metaPurchase).toLowerCase()}|${client.metaPurchaseId || ''}`;
   if (!convCache.has(key) && client.metaPurchaseId) {

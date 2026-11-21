@@ -74,6 +74,11 @@ export function normalizeClient(c) {
     // which campaigns are <name>: text in the campaign name (case-insensitive), or '*' for all.
     // { name: 'Products', other: 'Lead gen', match: { google: 'products', meta: '*' } }
     segment: c.segment && typeof c.segment === 'object' && c.segment.match ? c.segment : null,
+    // Meta action types counted as purchases and their value as revenue, given outright (Berkowits
+    // Product Ad: offsite_conversion.fb_pixel_custom, the value behind the account's PG_ROAS column).
+    metaPurchaseTypes: Array.isArray(c.metaPurchaseTypes) ? c.metaPurchaseTypes.map(String).filter(Boolean) : [],
+    // A sister page for the same brand (Berkowits Products <-> Services + Grow): [id, button label].
+    pair: c.pair && c.pair.id ? { id: String(c.pair.id), label: String(c.pair.label || c.pair.id) } : null,
     metaPurchaseId: c.metaPurchaseId ? String(c.metaPurchaseId).trim() : '',   // the custom conversion's id, when its name cannot be looked up
     contact: c.contact || '',                     // the client's own person, greeted on their report
     accounts: {

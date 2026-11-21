@@ -339,8 +339,11 @@ async function intradaySnapshot(store, client, today) {
   const hour = new Date().toLocaleString('en-US', { timeZone: config.tz, hour: '2-digit', hour12: false }).padStart(2, '0');
   // A client pinned to a campaign segment (segment.only, Berkowits ecomm) counts only that segment's
   // ad numbers: a platform matched with '*' in full, a platform matched by name through row.seg.
-  const segOnly = client.segment?.only === 'seg' ? client.segment.match || {} : null;
-  const val = (r, k) => { const rule = segOnly && segOnly[r.platform]; if (!rule || rule === '*' || !['spend', 'purchases', 'revenue', 'leads'].includes(k)) return r[k] || 0; return (r.seg || {})[k] || 0; };
+  // segment.only 'other' is the reverse (Berkowits services + grow): everything outside the segment.
+  const segOnly = ['seg', 'other'].includes(client.segment?.only) ? client.segment.match || {} : null, segOther = client.segment?.only === 'other';
+  const val = (r, k) => { const rule = segOnly && segOnly[r.platform]; if (!rule || !['spend', 'purchases', 'revenue', 'leads'].includes(k)) return r[k] || 0;
+    if (rule === '*') return segOther ? 0 : r[k] || 0;
+    return segOther ? Math.max(0, (r[k] || 0) - ((r.seg || {})[k] || 0)) : (r.seg || {})[k] || 0; };
   const sum = (k, plats) => rows.filter((r) => !plats || plats.includes(r.platform)).reduce((s, r) => s + val(r, k), 0);
   const snap = { spend: Math.round(sum('spend', ['meta', 'google'])), purchases: sum('purchases', ['meta', 'google']), revenue: Math.round(sum('revenue', ['meta', 'google'])), leads: sum('leads', ['meta', 'google']), orders: sum('orders', ['shopify']), netSales: Math.round(sum('netSales', ['shopify'])), checkoutsStarted: sum('checkoutsStarted', ['shopify']) };
   const id = `${client.id}_${today}`;
