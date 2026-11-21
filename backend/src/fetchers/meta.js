@@ -420,6 +420,15 @@ export async function recentActions(actId) {
   const r = b.data?.[0] || {}; const vals = Object.fromEntries((r.action_values || []).map((x) => [x.action_type, num(x.value)]));
   return (r.actions || []).map((x) => ({ type: x.action_type, n: num(x.value), v: vals[x.action_type] || 0 })).sort((a, b) => b.n - a.n);
 }
+// Custom conversions on one account, and the last 30 days per campaign (spend and every action with
+// its value), for the access check: shows how an account counts sales and how campaigns are named.
+export async function accountDetail(actId) {
+  const q = new URLSearchParams({ access_token: config.meta.token, fields: 'id,name,custom_event_type,is_archived,rule', limit: '200' });
+  const convs = await paged(`${BASE()}/act_${actId}/customconversions?${q}`).catch((e) => [{ name: 'ERR ' + String(e.message || e).slice(0, 100) }]);
+  const q2 = new URLSearchParams({ access_token: config.meta.token, level: 'campaign', fields: 'campaign_id,campaign_name,spend,actions,action_values', date_preset: 'last_30d', limit: '200' });
+  const camps = await paged(`${BASE()}/act_${actId}/insights?${q2}`).catch((e) => [{ campaign_name: 'ERR ' + String(e.message || e).slice(0, 100) }]);
+  return { convs, camps };
+}
 async function testTokenOne(client) {
   const q = new URLSearchParams({ access_token: config.meta.token, fields: 'name,currency,account_status,timezone_name' });
   const body = await metaGet(`${BASE()}/act_${client.accounts.meta}?${q}`);
