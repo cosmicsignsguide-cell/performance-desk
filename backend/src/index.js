@@ -178,7 +178,20 @@ async function syncClient(store, client, { mode, days, sources: onlySources = nu
         // account (Firvt) held the hourly run up and the clients after it went hours without data.
         if ((mode === 'daily' && entitiesDue(ent, source)) || mode === 'creatives') {
           try {
-            const e = mode === 'creatives' ? await meta.runPatiently(() => meta.fetchEntities(client, untilFull)) : await meta.fetchEntities(client, untilFull);
+            // Two pages on one Meta account (Berkowits Products and Services + Grow) share one pull:
+            // the second page reuses the first one's tree from the last six hours instead of asking
+            // Meta again, which kept the account throttled and left both without creatives.
+            const ck = `${client.accounts.meta}|${untilFull}|${(client.metaPurchaseTypes || []).join(',')}|${client.metaPurchase || ''}`;
+            const hit = ENT_CACHE.get(ck);
+            let e = hit && Date.now() - hit.at < 6 * 3600 * 1000 ? structuredClone(hit.e) : null;
+            if (e) log(`${client.id}/meta: creatives reused from the same account's pull ${Math.round((Date.now() - hit.at) / 60000)} min ago`);
+            else {
+              e = mode === 'creatives' ? await meta.runPatiently(() => meta.fetchEntities(client, untilFull)) : await meta.fetchEntities(client, untilFull);
+              if (!(e.failed || []).length) ENT_CACHE.set(ck, { at: Date.now(), e: structuredClone(e) });
+            }
+            // A page pinned to one side of a campaign split keeps only that side's campaigns, ad sets
+            // and ads, so its tree is the size of what it shows (and fits Firestore's 1 MB).
+            e = segFilterEntities(client, e);
             const failed = new Set(e.failed || []);
             const keep = (list) => (failed.size ? (list || []).filter((x) => failed.has(x.acct)) : []);
             ent.campaigns = [...(ent.campaigns || []).filter((c) => c.platform !== 'meta'), ...keep((ent.campaigns || []).filter((c) => c.platform === 'meta')), ...e.campaigns];
@@ -284,6 +297,13 @@ async function syncClient(store, client, { mode, days, sources: onlySources = nu
       () => cut(ent.ads, 35),
       () => cut(ent.adsets, 35),
       () => { ent.ads = (ent.ads || []).filter((a) => a.spend > 0); },
+      // Still too big (Berkowits: hundreds of lead-gen ads): shorter history, then only the biggest.
+      () => { ent.recentOrders = (ent.recentOrders || []).slice(0, 50); ent.products = (ent.products || []).slice(0, 100); },
+      () => cut(ent.campaigns, 62),
+      () => { cut(ent.ads, 14); cut(ent.adsets, 14); },
+      () => { ent.adsets = (ent.adsets || []).filter((a) => a.spend > 0); },
+      () => { ent.ads = (ent.ads || []).sort((a, b) => (b.spend || 0) - (a.spend || 0)).slice(0, 300); },
+      () => { ent.ads = (ent.ads || []).slice(0, 150); for (const a of ent.ads) delete a.days; },
     ];
     for (const step of steps) { if (entKb <= LIMIT) break; step(); entKb = size(); }
     log(`${client.id}: entity tree trimmed from ${before} to ${entKb} KB to stay under Firestore's 1 MB limit`);
@@ -292,6 +312,17 @@ async function syncClient(store, client, { mode, days, sources: onlySources = nu
   if (mode === 'hourly') await intradaySnapshot(store, client, today);
   await writeRollup(store, client, today);
   return { entities: ent };
+}
+
+const ENT_CACHE = new Map();   // account ids + day -> { at, e }: one Meta entity pull serves every page of that account
+function segFilterEntities(client, e) {
+  const only = client.segment?.only, rule = client.segment?.match?.meta;
+  if (!['seg', 'other'].includes(only) || !rule || rule === '*') return e;
+  const r = String(rule).toLowerCase();
+  const keep = (name) => { const hit = String(name || '').toLowerCase().includes(r); return only === 'seg' ? hit : !hit; };
+  const campaigns = (e.campaigns || []).filter((c) => keep(c.name)), ids = new Set(campaigns.map((c) => String(c.id)));
+  const inCamp = (x) => (x.campaignId ? ids.has(String(x.campaignId)) : keep(x.campaignName));
+  return { ...e, campaigns, adsets: (e.adsets || []).filter(inCamp), ads: (e.ads || []).filter(inCamp) };
 }
 
 // One document per client holding the daily rows the dashboard needs, so opening the page costs
