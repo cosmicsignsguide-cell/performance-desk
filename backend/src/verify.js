@@ -85,6 +85,37 @@ export async function verifyMeta(store, clients, { only = '', days = DAYS } = {}
         if (!close(s.leads || 0, T.lead, 0, 0.02)) attr.push(`${d} leads ${s.leads || 0} vs ${T.lead}`);
       }
       { let a = 0, b = 0; for (let d = since; d <= until; d = addDays(d, 1)) { a += (byDate[d] || {}).spend || 0; b += parseFloat((truth[d] || {}).spend) || 0; } log(`verifymeta total ${c.id} ${since}..${until}: spend ${Math.round(a)} stored vs ${Math.round(b)} Meta`); }
+      // Campaign-name split (Berkowits: "products" vs the rest): checked from Meta's own campaign rows.
+      const rule = c.segment?.match?.meta && c.segment.match.meta !== '*' ? String(c.segment.match.meta).toLowerCase() : '';
+      if (rule) {
+        const pt = Array.isArray(c.metaPurchaseTypes) && c.metaPurchaseTypes.length ? c.metaPurchaseTypes : ['omni_purchase', 'purchase', 'offsite_conversion.fb_pixel_purchase'];
+        const M = { seg: { spend: 0, pur: 0, rev: 0, lead: 0, chat: 0 }, other: { spend: 0, pur: 0, rev: 0, lead: 0, chat: 0 } }, perDay = {};
+        for (const id of String(c.accounts.meta).split(/[\s,]+/).map((x) => x.replace(/^act_/, '')).filter(Boolean)) {
+          let next = `https://graph.facebook.com/${config.meta.apiVersion}/act_${id}/insights?${new URLSearchParams({ access_token: config.meta.token, level: 'campaign', time_increment: '1', fields: 'campaign_name,spend,actions,action_values', time_range: JSON.stringify({ since, until }), limit: '500' })}`;
+          while (next) {
+            const body = await (await fetch(next)).json();
+            if (body.error) throw new Error('campaign rows: ' + String(body.error.message).slice(0, 80));
+            for (const x of body.data || []) {
+              const k = String(x.campaign_name || '').toLowerCase().includes(rule) ? 'seg' : 'other', m = M[k];
+              const sp = parseFloat(x.spend) || 0; m.spend += sp; m.pur += pick(x.actions, pt); m.rev += pick(x.action_values, pt);
+              m.lead += pick(x.actions, ['lead', 'onsite_conversion.lead_grouped', 'offsite_conversion.fb_pixel_lead']); m.chat += pick(x.actions, ['onsite_conversion.messaging_conversation_started_7d']);
+              if (k === 'seg') perDay[x.date_start] = (perDay[x.date_start] || 0) + sp;
+            }
+            next = body.paging?.next || '';
+          }
+        }
+        const S = { spend: 0, pur: 0, rev: 0, lead: 0 }, T = { spend: 0, pur: 0, rev: 0, lead: 0 }; const segBad = [];
+        for (let d = since; d <= until; d = addDays(d, 1)) {
+          const r = byDate[d] || {}, g = r.seg || {};
+          S.spend += g.spend || 0; S.pur += g.purchases || 0; S.rev += g.revenue || 0; S.lead += g.leads || 0;
+          T.spend += r.spend || 0; T.pur += r.purchases || 0; T.rev += r.revenue || 0; T.lead += r.leads || 0;
+          if (!close(g.spend || 0, perDay[d] || 0, 1, 0.01)) segBad.push(`${d} ${rule} spend ${Math.round(g.spend || 0)} stored vs ${Math.round(perDay[d] || 0)} Meta`);
+        }
+        const R = Math.round;
+        log(`verifymeta split ${c.id} ${since}..${until}: ${rule} stored spend ${R(S.spend)} purchases ${R(S.pur)} value ${R(S.rev)} leads ${R(S.lead)} | Meta spend ${R(M.seg.spend)} purchases ${R(M.seg.pur)} value ${R(M.seg.rev)} leads ${R(M.seg.lead)} chats ${R(M.seg.chat)}`);
+        log(`verifymeta split ${c.id} ${since}..${until}: rest stored spend ${R(T.spend - S.spend)} purchases ${R(T.pur - S.pur)} value ${R(T.rev - S.rev)} leads ${R(T.lead - S.lead)} | Meta spend ${R(M.other.spend)} purchases ${R(M.other.pur)} value ${R(M.other.rev)} leads ${R(M.other.lead)} chats ${R(M.other.chat)}`);
+        if (segBad.length) { bad.push(...segBad); log(`verifymeta split ${c.id}: ${segBad.slice(0, 6).join('; ')}`); }
+      }
       out.checked++;
       if (bad.length || attr.length) { out.mismatched++; out.problems.push({ client: c.id, spendOrTraffic: bad.slice(0, 6), conversions: attr.slice(0, 6) }); log(`verifymeta MISMATCH ${c.id}: ${[...bad.slice(0, 5), ...attr.slice(0, 3)].join('; ')}`); }
       else { out.clean++; log(`verifymeta ${c.id}: matches Meta for ${since} to ${until}`); }
