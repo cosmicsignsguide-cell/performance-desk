@@ -49,9 +49,9 @@ export async function verifyShopify(store, clients, { only = '' } = {}) {
 // purchases, revenue and leads can differ when the sync's attribution windows differ, so those
 // are reported separately instead of being called wrong.
 const pick = (v, types) => { if (!Array.isArray(v)) return 0; for (const t of types) { const h = v.find((x) => x.action_type === t); if (h) return parseFloat(h.value) || 0; } return 0; };
-export async function verifyMeta(store, clients, { only = '' } = {}) {
+export async function verifyMeta(store, clients, { only = '', days = DAYS } = {}) {
   const { config } = await import('./config.js');
-  const today = todayStr(), since = addDays(today, -DAYS), until = addDays(today, -1);
+  const today = todayStr(), since = addDays(today, -days), until = addDays(today, -1);
   const out = { checked: 0, clean: 0, mismatched: 0, skipped: 0, problems: [], notes: [] };
   for (const c of clients) {
     if (only && c.id !== only) continue;
@@ -84,6 +84,7 @@ export async function verifyMeta(store, clients, { only = '' } = {}) {
         if (!close(s.revenue || 0, T.rev, 1, 0.02)) attr.push(`${d} revenue ${Math.round(s.revenue || 0)} vs ${Math.round(T.rev)}`);
         if (!close(s.leads || 0, T.lead, 0, 0.02)) attr.push(`${d} leads ${s.leads || 0} vs ${T.lead}`);
       }
+      { let a = 0, b = 0; for (let d = since; d <= until; d = addDays(d, 1)) { a += (byDate[d] || {}).spend || 0; b += parseFloat((truth[d] || {}).spend) || 0; } log(`verifymeta total ${c.id} ${since}..${until}: spend ${Math.round(a)} stored vs ${Math.round(b)} Meta`); }
       out.checked++;
       if (bad.length || attr.length) { out.mismatched++; out.problems.push({ client: c.id, spendOrTraffic: bad.slice(0, 6), conversions: attr.slice(0, 6) }); log(`verifymeta MISMATCH ${c.id}: ${[...bad.slice(0, 5), ...attr.slice(0, 3)].join('; ')}`); }
       else { out.clean++; log(`verifymeta ${c.id}: matches Meta for ${since} to ${until}`); }
@@ -96,9 +97,9 @@ export async function verifyMeta(store, clients, { only = '' } = {}) {
 // query the sync uses) against the rows the dashboard stored. Spend and clicks must match; revenue
 // (Conv. value by conv. time) can move for a few days as late conversions land, so it is reported
 // apart from spend.
-export async function verifyGoogle(store, clients, { only = '' } = {}) {
+export async function verifyGoogle(store, clients, { only = '', days = DAYS } = {}) {
   const google = await import('./fetchers/google.js');
-  const today = todayStr(), since = addDays(today, -DAYS), until = addDays(today, -1);
+  const today = todayStr(), since = addDays(today, -days), until = addDays(today, -1);
   const out = { checked: 0, clean: 0, mismatched: 0, skipped: 0, problems: [], notes: [] };
   for (const c of clients) {
     if (only && c.id !== only) continue;
@@ -117,6 +118,7 @@ export async function verifyGoogle(store, clients, { only = '' } = {}) {
         if (!close(s.revenue || 0, t.revenue || 0, 1, 0.02)) conv.push(`${d} revenue ${Math.round(s.revenue || 0)} vs ${Math.round(t.revenue || 0)}`);
         if (!close(s.leads || 0, t.leads || 0, 0, 0.02)) conv.push(`${d} leads ${s.leads || 0} vs ${t.leads || 0}`);
       }
+      { let a = 0, b = 0; for (let d = since; d <= until; d = addDays(d, 1)) { a += (byDate[d] || {}).spend || 0; b += (truth[d] || {}).spend || 0; } log(`verifygoogle total ${c.id} ${since}..${until}: spend ${Math.round(a)} stored vs ${Math.round(b)} Google`); }
       out.checked++;
       if (bad.length || conv.length) { out.mismatched++; out.problems.push({ client: c.id, spendOrTraffic: bad.slice(0, 6), conversions: conv.slice(0, 6) }); log(`verifygoogle MISMATCH ${c.id}: ${[...bad, ...conv].slice(0, 5).join('; ')}`); }
       else { out.clean++; log(`verifygoogle ${c.id}: matches Google for ${since} to ${until}`); }

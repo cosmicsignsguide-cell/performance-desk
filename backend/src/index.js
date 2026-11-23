@@ -490,12 +490,12 @@ async function main() {
         return out;
       }
       if (mode === 'verifymeta') {
-        const r = await verifyMeta(store, clients, { only: String(url.searchParams.get('client') || '').trim().toLowerCase() });
+        const r = await verifyMeta(store, clients, { only: String(url.searchParams.get('client') || '').trim().toLowerCase(), days: Math.min(120, Math.max(1, parseInt(url.searchParams.get('days') || '7', 10) || 7)) });
         await store.merge('meta', 'lastRun', { verifyMeta: nowIso(), verifyMetaSummary: `${r.clean} clean, ${r.mismatched} mismatched, ${r.skipped} skipped`, verifyMetaProblems: r.problems.slice(0, 60) });
         return { mode, ...r };
       }
       if (mode === 'verifygoogle') {
-        const r = await verifyGoogle(store, clients, { only: String(url.searchParams.get('client') || '').trim().toLowerCase() });
+        const r = await verifyGoogle(store, clients, { only: String(url.searchParams.get('client') || '').trim().toLowerCase(), days: Math.min(120, Math.max(1, parseInt(url.searchParams.get('days') || '7', 10) || 7)) });
         await store.merge('meta', 'lastRun', { verifyGoogle: nowIso(), verifyGoogleSummary: `${r.clean} clean, ${r.mismatched} mismatched, ${r.skipped} skipped`, verifyGoogleProblems: r.problems.slice(0, 60) });
         return { mode, ...r };
       }
