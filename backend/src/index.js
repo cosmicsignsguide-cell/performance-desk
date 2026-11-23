@@ -163,7 +163,14 @@ async function syncClient(store, client, { mode, days, sources: onlySources = nu
         : (await firstRun(store, client, source)) ? addDays(today, -config.historyDays) : restateSince;
       if (source === 'meta') {
         if (mode !== 'creatives') {
-        const rows = withZeroDays(await meta.fetchDaily(client, since, today), client.id, 'meta', since, today);
+        // Pages on one Meta account (Berkowits Products and Services + Grow) share one daily pull
+        // for ten minutes, so the hourly sync asks Meta once for the account, not once per page.
+        const dk = `${client.accounts.meta}|${since}|${today}|${(client.metaPurchaseTypes || []).join(',')}|${client.metaPurchase || ''}|${client.metaLead || ''}|${client.segment?.match?.meta || ''}`;
+        const dh = DAILY_CACHE.get(dk);
+        let fetched;
+        if (dh && Date.now() - dh.at < 10 * 60 * 1000) { fetched = dh.rows.map((r) => ({ ...structuredClone(r), clientId: client.id })); log(`${client.id}/meta: daily rows reused from the same account's pull`); }
+        else { fetched = await meta.fetchDaily(client, since, today); DAILY_CACHE.set(dk, { at: Date.now(), rows: structuredClone(fetched) }); }
+        const rows = withZeroDays(fetched, client.id, 'meta', since, today);
         await writeDaily(store, rows);
         }
         if (mode !== 'creatives' && tracksOrders(client)) {
@@ -314,6 +321,7 @@ async function syncClient(store, client, { mode, days, sources: onlySources = nu
   return { entities: ent };
 }
 
+const DAILY_CACHE = new Map(); // same idea for the daily Meta rows, ten minutes
 const ENT_CACHE = new Map();   // account ids + day -> { at, e }: one Meta entity pull serves every page of that account
 function segFilterEntities(client, e) {
   const only = client.segment?.only, rule = client.segment?.match?.meta;
