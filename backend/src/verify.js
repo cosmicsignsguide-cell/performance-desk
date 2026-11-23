@@ -71,7 +71,7 @@ export async function verifyMeta(store, clients, { only = '' } = {}) {
           for (const f of ['actions', 'action_values']) { const m = new Map((t[f] || []).map((y) => [y.action_type, { ...y }])); for (const y of x[f] || []) { const z = m.get(y.action_type); if (z) z.value = String((parseFloat(z.value) || 0) + (parseFloat(y.value) || 0)); else m.set(y.action_type, { ...y }); } t[f] = [...m.values()]; }
         }
       }
-      if (failed) { out.skipped++; out.notes.push(`${c.id}: Meta said ${failed}`); continue; }
+      if (failed) { out.skipped++; out.notes.push(`${c.id}: Meta said ${failed}`); log(`verifymeta ${c.id}: could not check (Meta said ${failed})`); continue; }
       const rows = (await store.list('daily', dailyIdRange(c.id, since, until))).filter((x) => x.platform === 'meta');
       const byDate = Object.fromEntries(rows.map((x) => [x.date, x]));
       const bad = [], attr = [];
@@ -85,9 +85,42 @@ export async function verifyMeta(store, clients, { only = '' } = {}) {
         if (!close(s.leads || 0, T.lead, 0, 0.02)) attr.push(`${d} leads ${s.leads || 0} vs ${T.lead}`);
       }
       out.checked++;
-      if (bad.length || attr.length) { out.mismatched++; out.problems.push({ client: c.id, spendOrTraffic: bad.slice(0, 6), conversions: attr.slice(0, 6) }); log(`verifymeta MISMATCH ${c.id}: ${[...bad, ...attr].slice(0, 4).join('; ')}`); }
+      if (bad.length || attr.length) { out.mismatched++; out.problems.push({ client: c.id, spendOrTraffic: bad.slice(0, 6), conversions: attr.slice(0, 6) }); log(`verifymeta MISMATCH ${c.id}: ${[...bad.slice(0, 5), ...attr.slice(0, 3)].join('; ')}`); }
       else { out.clean++; log(`verifymeta ${c.id}: matches Meta for ${since} to ${until}`); }
-    } catch (e) { out.skipped++; out.notes.push(`${c.id}: ${String(e.message || e).slice(0, 100)}`); }
+    } catch (e) { out.skipped++; out.notes.push(`${c.id}: ${String(e.message || e).slice(0, 100)}`); log(`verifymeta ${c.id}: could not check (${String(e.message || e).slice(0, 100)})`); }
+  }
+  return out;
+}
+
+// Google reconciliation, read only: the last completed days pulled fresh from Google Ads (the same
+// query the sync uses) against the rows the dashboard stored. Spend and clicks must match; revenue
+// (Conv. value by conv. time) can move for a few days as late conversions land, so it is reported
+// apart from spend.
+export async function verifyGoogle(store, clients, { only = '' } = {}) {
+  const google = await import('./fetchers/google.js');
+  const today = todayStr(), since = addDays(today, -DAYS), until = addDays(today, -1);
+  const out = { checked: 0, clean: 0, mismatched: 0, skipped: 0, problems: [], notes: [] };
+  for (const c of clients) {
+    if (only && c.id !== only) continue;
+    if (c.sample || !c.accounts?.google) { out.skipped++; continue; }
+    try {
+      const live = await google.fetchDaily(c, since, until);
+      const truth = Object.fromEntries(live.map((r) => [r.date, r]));
+      const rows = (await store.list('daily', dailyIdRange(c.id, since, until))).filter((x) => x.platform === 'google');
+      const byDate = Object.fromEntries(rows.map((x) => [x.date, x]));
+      const bad = [], conv = [];
+      for (let d = since; d <= until; d = addDays(d, 1)) {
+        const t = truth[d] || {}, s = byDate[d] || {};
+        if (!close(s.spend || 0, t.spend || 0, 1, 0.01)) bad.push(`${d} spend ${Math.round(s.spend || 0)} stored vs ${Math.round(t.spend || 0)} Google`);
+        if (!close(s.clicks || 0, t.clicks || 0, 5, 0.02)) bad.push(`${d} clicks ${s.clicks || 0} vs ${t.clicks || 0}`);
+        if (s.seg || t.seg) { const a = (s.seg || {}).spend || 0, b = (t.seg || {}).spend || 0; if (!close(a, b, 1, 0.01)) bad.push(`${d} segment spend ${Math.round(a)} vs ${Math.round(b)}`); }
+        if (!close(s.revenue || 0, t.revenue || 0, 1, 0.02)) conv.push(`${d} revenue ${Math.round(s.revenue || 0)} vs ${Math.round(t.revenue || 0)}`);
+        if (!close(s.leads || 0, t.leads || 0, 0, 0.02)) conv.push(`${d} leads ${s.leads || 0} vs ${t.leads || 0}`);
+      }
+      out.checked++;
+      if (bad.length || conv.length) { out.mismatched++; out.problems.push({ client: c.id, spendOrTraffic: bad.slice(0, 6), conversions: conv.slice(0, 6) }); log(`verifygoogle MISMATCH ${c.id}: ${[...bad, ...conv].slice(0, 5).join('; ')}`); }
+      else { out.clean++; log(`verifygoogle ${c.id}: matches Google for ${since} to ${until}`); }
+    } catch (e) { out.skipped++; out.notes.push(`${c.id}: ${String(e.message || e).slice(0, 100)}`); log(`verifygoogle ${c.id}: could not check (${String(e.message || e).slice(0, 100)})`); }
   }
   return out;
 }

@@ -23,7 +23,7 @@ import { computeCreatorScores } from './creators.js';
 import { createUpload, listMine, listToday, istToday } from './creatorPortal.js';
 import { raise } from './alerts.js';
 import { handleChat, notesApi } from './chat/index.js';
-import { verifyShopify, verifyMeta } from './verify.js';
+import { verifyShopify, verifyMeta, verifyGoogle } from './verify.js';
 import { buildSourceFeed } from './orderSources.js';
 import { handleShopifyInstall, loadShopTokens } from './shopifyInstall.js';
 import { saveTarget, remind as remindTargets, withMonthTargets } from './targets.js';
@@ -494,6 +494,11 @@ async function main() {
         await store.merge('meta', 'lastRun', { verifyMeta: nowIso(), verifyMetaSummary: `${r.clean} clean, ${r.mismatched} mismatched, ${r.skipped} skipped`, verifyMetaProblems: r.problems.slice(0, 60) });
         return { mode, ...r };
       }
+      if (mode === 'verifygoogle') {
+        const r = await verifyGoogle(store, clients, { only: String(url.searchParams.get('client') || '').trim().toLowerCase() });
+        await store.merge('meta', 'lastRun', { verifyGoogle: nowIso(), verifyGoogleSummary: `${r.clean} clean, ${r.mismatched} mismatched, ${r.skipped} skipped`, verifyGoogleProblems: r.problems.slice(0, 60) });
+        return { mode, ...r };
+      }
       if (mode === 'weekly') {
         // Built from the rows already in the store, not from a fresh pull, so the deck and the
         // dashboard are looking at exactly the same numbers.
@@ -909,7 +914,7 @@ async function main() {
       }
 
       const asked = url.searchParams.get('mode');
-      const mode = ['daily', 'hourly', 'sitewatch', 'weekly', 'verify', 'verifymeta', 'creators', 'access', 'purge', 'creatives'].includes(asked) ? asked : 'hourly';
+      const mode = ['daily', 'hourly', 'sitewatch', 'weekly', 'verify', 'verifymeta', 'verifygoogle', 'creators', 'access', 'purge', 'creatives'].includes(asked) ? asked : 'hourly';
       // ?days=N restates N days of history instead of the usual 7. Ignored for hourly and
       // sitewatch, which have nothing to restate.
       const days = mode === 'daily' ? parseInt(url.searchParams.get('days') || '', 10) : NaN;
