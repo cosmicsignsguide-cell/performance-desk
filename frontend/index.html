@@ -670,6 +670,7 @@ a{color:var(--cyan)}
 .tg-f{display:flex;flex-direction:column;justify-content:flex-end;gap:5px;font-size:12.5px;font-weight:600;color:var(--dim)}.tg-f input{font:inherit;font-size:15px;font-weight:600;color:var(--text);padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
 .tg-actions{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:12px}.tg-actions [data-tsum]{margin-right:auto;font-size:12.5px}
 .tg-chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700;background:#fdecea;color:#c2412d}.tg-chip.ok{background:#e6f4ec;color:#1f8a4c}
+.tg-upd{color:#b4540a;margin-top:2px}
 .tg-table tr.tg-on td{background:rgba(255,90,31,.06)}
 @media (max-width:900px){.tg-grid{grid-template-columns:1fr 1fr}}
 .cat-bars{display:flex;flex-direction:column;gap:8px;margin-top:6px}
@@ -1609,8 +1610,15 @@ let animateNext=true;   // first paint, and every render the user asked for. Nev
 // One form per client per month (Monthly targets page, #targets/<YYYY-MM>). A filled form is the
 // client's budget and ROAS target for that month, here and on the backend (targets.js), and its
 // Meta, Google and sales numbers show in the pacing panel.
-function applyMonthTargets(c,t){ if(!c||!t) return c; const o={...c,target:{...(c.target||{})}}; if(t.totalSpend>0) o.budget=t.totalSpend; if(t.roas>0) o.target.roas=t.roas;
-  o.monthTargets={month:t.month,totalSpend:t.totalSpend||0,metaSpend:t.metaSpend||0,googleSpend:t.googleSpend||0,roas:t.roas||0,sales:t.sales||0,filledBy:t.filledBy||'',filledAt:t.filledAt||''}; return o; }
+// What each kind of client sets as its result target: ecom ROAS + sales, lead gen CPL + leads, app CPI + installs.
+const TKIND=c=>c&&c.type==='lead'?'lead':c&&c.type==='app'?'app':'ecom';
+const TFIELDS={ecom:[['roas','Target ROAS (x)','e.g. 3.5','0.01'],['sales','Target sales','e.g. 5000000']],lead:[['cpl','Target CPL','e.g. 450'],['leads','Target leads','e.g. 2000']],app:[['cpi','Target CPI','e.g. 2.5','0.01'],['installs','Target installs','e.g. 8000']]};
+function applyMonthTargets(c,t){ if(!c||!t) return c; const o={...c,target:{...(c.target||{})}}; if(t.totalSpend>0) o.budget=t.totalSpend; const k=TKIND(c);
+  if(k==='ecom'&&t.roas>0) o.target.roas=t.roas; if(k==='lead'&&t.cpl>0) o.target.cpl=t.cpl; if(k==='app'&&t.cpi>0) o.target.cpi=t.cpi;
+  o.monthTargets={month:t.month,totalSpend:t.totalSpend||0,metaSpend:t.metaSpend||0,googleSpend:t.googleSpend||0,roas:t.roas||0,sales:t.sales||0,cpl:t.cpl||0,leads:t.leads||0,cpi:t.cpi||0,installs:t.installs||0,filledBy:t.filledBy||'',filledAt:t.filledAt||'',updatedBy:t.updatedBy||t.filledBy||'',updatedAt:t.updatedAt||t.filledAt||''}; return o; }
+// "Filled by A, 3 Nov" and, once someone changes it, "Updated by B, 24 Nov 2:52 pm" beside it.
+function tWho(t){ if(!t) return ''; const nm=e=>esc(String(e||'').split('@')[0]); const when=iso=>{ try{ return esc(new Date(iso).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})); }catch(e){ return esc(String(iso).slice(0,10)); } };
+  const up=t.updatedAt&&t.updatedAt!==t.filledAt; return '<div class="faint" style="font-size:12px">Filled by '+nm(t.filledBy)+' · '+when(t.filledAt)+'</div>'+(up?'<div class="tg-upd" style="font-size:12px">Updated by <b>'+nm(t.updatedBy)+'</b> · '+when(t.updatedAt)+'</div>':''); }
 function monthAdd(m,n){ let [y,mm]=m.split('-').map(Number); mm+=n; while(mm>12){mm-=12;y++;} while(mm<1){mm+=12;y--;} return y+'-'+String(mm).padStart(2,'0'); }
 function monthLabel(m){ return MONTHS_FULL[+m.slice(5,7)-1]+' '+m.slice(0,4); }
 function defaultTargetMonth(){ const t=(D&&D.today)||new Date().toISOString().slice(0,10); return parseInt(t.slice(8),10)>=20?monthAdd(t.slice(0,7),1):t.slice(0,7); }
@@ -1636,17 +1644,19 @@ function targetsView(){
     const f=(k,l,hint,step)=>'<label class="tg-f"><span>'+l+'</span><input type="number" min="0" step="'+(step||'1')+'" name="'+k+'" value="'+esc(String(v(k)||''))+'" placeholder="'+hint+'"></label>';
     h+='<form class="glass-panel tg-form" data-tform="'+esc(ed.id)+'"><h2>'+esc(ed.name)+' <span class="sub">targets for '+monthLabel(m)+'</span></h2><div class="tg-grid">'
       +f('totalSpend','Total spend ('+(ed.currency||'INR')+')','e.g. 1500000')+f('metaSpend','Projected Meta spend','e.g. 900000')+f('googleSpend','Projected Google spend','e.g. 600000')
-      +f('roas','Target ROAS (x)','e.g. 3.5','0.01')+f('sales','Target sales ('+(ed.currency||'INR')+')','e.g. 5000000')+'</div>'
+      +TFIELDS[TKIND(ed)].map(([k,l,hint,step])=>f(k,l+(k==='sales'||k==='cpl'||k==='cpi'?' ('+(ed.currency||'INR')+')':''),hint,step)).join('')+'</div>'
+      +(TKIND(ed)!=='ecom'?'<div class="faint" style="font-size:12px;margin:-4px 0 8px">Fill either one: the other is worked out from total spend.</div>':'')
+      +(t.filledBy?tWho(t):'')
       +'<div class="tg-actions"><span class="faint" data-tsum></span><button type="button" class="btn btn-ghost btn-small" data-act="tcancel">Cancel</button><button type="submit" class="btn btn-primary btn-small">Save targets</button></div></form>'; }
-  h+='<div class="glass-panel" style="padding:0;overflow:auto"><table class="dtable tg-table"><thead><tr><th>Client</th><th>Status</th><th class="num">Total spend</th><th class="num">Meta</th><th class="num">Google</th><th class="num">Target ROAS</th><th class="num">Target sales</th><th></th></tr></thead><tbody>'
-    +list.map(c=>{ const t=by[c.id]; return '<tr'+(state.tEdit===c.id?' class="tg-on"':'')+'><td class="row-title">'+esc(c.name)+'<div class="faint" style="font-size:12px">'+esc(c.type||'ecom')+'</div></td><td>'+(t?'<span class="tg-chip ok">Filled</span><div class="faint" style="font-size:12px">'+esc(String(t.filledBy||'').split('@')[0])+' · '+esc(String(t.filledAt||'').slice(0,10))+'</div>':'<span class="tg-chip">Pending</span>')+'</td>'
-      +'<td class="num">'+money(t&&t.totalSpend,c)+'</td><td class="num">'+money(t&&t.metaSpend,c)+'</td><td class="num">'+money(t&&t.googleSpend,c)+'</td><td class="num">'+(t&&t.roas?fmtX(t.roas):'<span class="faint">--</span>')+'</td><td class="num">'+money(t&&t.sales,c)+'</td>'
+  h+='<div class="glass-panel" style="padding:0;overflow:auto"><table class="dtable tg-table"><thead><tr><th>Client</th><th>Status</th><th class="num">Total spend</th><th class="num">Meta</th><th class="num">Google</th><th class="num">Target ROAS / CPL</th><th class="num">Target sales / leads</th><th></th></tr></thead><tbody>'
+    +list.map(c=>{ const t=by[c.id]; return '<tr'+(state.tEdit===c.id?' class="tg-on"':'')+'><td class="row-title">'+esc(c.name)+'<div class="faint" style="font-size:12px">'+esc(c.type||'ecom')+'</div></td><td>'+(t?'<span class="tg-chip ok">'+(t.updatedAt&&t.updatedAt!==t.filledAt?'Updated':'Filled')+'</span>'+tWho(t):'<span class="tg-chip">Pending</span>')+'</td>'
+      +'<td class="num">'+money(t&&t.totalSpend,c)+'</td><td class="num">'+money(t&&t.metaSpend,c)+'</td><td class="num">'+money(t&&t.googleSpend,c)+'</td><td class="num">'+(()=>{ const k=TKIND(c); if(!t) return '<span class="faint">--</span>'; if(k==='ecom') return t.roas?fmtX(t.roas):'<span class="faint">--</span>'; const v=k==='lead'?t.cpl:t.cpi; return v?fmtMoney(v,c)+' <span class="faint">'+(k==='lead'?'CPL':'CPI')+'</span>':'<span class="faint">--</span>'; })()+'</td><td class="num">'+(()=>{ const k=TKIND(c); if(!t) return '<span class="faint">--</span>'; if(k==='ecom') return money(t.sales,c); const v=k==='lead'?t.leads:t.installs; return v?fmtNum(v)+' <span class="faint">'+(k==='lead'?'leads':'installs')+'</span>':'<span class="faint">--</span>'; })()+'</td>'
       +'<td class="num"><button class="btn btn-'+(t?'ghost':'primary')+' btn-small" data-act="tedit" data-client="'+esc(c.id)+'">'+(t?'Edit':'Fill')+'</button></td></tr>'; }).join('')+'</tbody></table></div>';
   return '<div class="tg-wrap">'+h+'</div>';
 }
 async function saveTargets(form){
   const cid=form.dataset.tform, m=state.tMonth||defaultTargetMonth(), body={clientId:cid,month:m};
-  ['totalSpend','metaSpend','googleSpend','roas','sales'].forEach(k=>{ body[k]=form.elements[k].value; });
+  ['totalSpend','metaSpend','googleSpend','roas','sales','cpl','leads','cpi','installs'].forEach(k=>{ if(form.elements[k]) body[k]=form.elements[k].value; });
   if(!body.totalSpend&&!(+body.metaSpend||+body.googleSpend)){ toast('Fill total spend, or Meta and Google spend'); return; }
   try{ const u=fb&&fb.auth&&fb.auth.currentUser; if(!u||!API_BASE) throw new Error('Sign in first'); const tok=await u.getIdToken();
     const r=await fetch(API_BASE+'/targets',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -2834,7 +2844,12 @@ function pacePanel(x){ const base=pacePanelBase(x), t=x.c.monthTargets; const c=
   if(t.googleSpend) extra+=ln('Google budget · spent',fmtMoney(t.googleSpend,c)+' · '+fmtMoney(sp('google'),c));
   if(t.sales) extra+=ln('Sales target',fmtMoney(t.sales,c))+ln('Sales so far · projected',fmtMoney(sales,c)+' · '+fmtMoney(proj(sales),c)+' <span class="rpace-day '+(proj(sales)>=t.sales?'good':'bad')+'">'+fmtPct(t.sales?proj(sales)/t.sales*100:null)+'</span>');
   if(t.roas) extra+=ln('Target ROAS',fmtX(t.roas));
-  extra+='</div><div class="faint" style="font-size:12px;margin-top:6px">From the '+monthLabel(t.month)+' targets form'+(t.filledBy?', filled by '+esc(String(t.filledBy).split('@')[0]):'')+'.</div>';
+  if(t.leads||t.cpl){ const leads=D.daily.filter(r=>mine(r)&&(r.platform==='meta'||r.platform==='google')).reduce((a,r)=>a+(r.leads||0),0);
+    if(t.cpl) extra+=ln('Target CPL',fmtMoney(t.cpl,c));
+    if(t.leads) extra+=ln('Leads target · so far · projected',fmtNum(t.leads)+' · '+fmtNum(leads)+' · '+fmtNum(proj(leads))+' <span class="rpace-day '+(proj(leads)>=t.leads?'good':'bad')+'">'+fmtPct(proj(leads)/t.leads*100)+'</span>'); }
+  if(t.cpi) extra+=ln('Target CPI',fmtMoney(t.cpi,c)); if(t.installs) extra+=ln('Installs target',fmtNum(t.installs));
+  const up=t.updatedAt&&t.updatedAt!==t.filledAt;
+  extra+='</div><div class="faint" style="font-size:12px;margin-top:6px">From the '+monthLabel(t.month)+' targets form'+(t.filledBy?', filled by '+esc(String(t.filledBy).split('@')[0]):'')+(up?', updated by '+esc(String(t.updatedBy).split('@')[0])+' on '+esc(String(t.updatedAt).slice(0,10)):'')+'.</div>';
   return base.replace(/<\/div>$/,extra+setBtn+'</div>');
 }
 function pacePanelBase(x){ const c=x.c; const dom=parseInt(D.today.slice(8),10), dim=new Date(parseInt(D.today.slice(0,4)),parseInt(D.today.slice(5,7)),0).getDate(); const tone=x.paceRatio>1.15?'bad':(x.paceRatio<0.85?'warn':'');
