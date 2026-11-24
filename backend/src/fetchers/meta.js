@@ -16,6 +16,7 @@
 // without another API call. The flat 30 day totals stay on the object for fatigue and ranking logic.
 
 import { AsyncLocalStorage } from 'node:async_hooks';
+import zlib from 'node:zlib';
 import { config } from '../config.js';
 import { emptyDaily, log, num, nowIso, round, addDays } from '../util.js';
 
@@ -293,6 +294,35 @@ async function fetchTodayDaysOne(client, today) {
   return { campaign: daysMap(camp, 'campaign_id'), adset: daysMap(set, 'adset_id'), ad: daysMap(ad, 'ad_id') };
 }
 
+
+// Resumable creatives pulls. A big account (Berkowits) needs 30 to 90 minutes of Meta waits for one
+// pull, and the server's instance gets recycled within that time, which threw the whole pull away
+// again and again. Each finished piece of the pull is now saved (gzipped, split under Firestore's
+// 1 MB) the moment it arrives, so the next try picks up where the last one stopped. Pieces are
+// keyed by account, day and window, and deleted once the whole pull is saved.
+let PART_STORE = null;
+export function setPartStore(store) { PART_STORE = store; }
+async function partGet(key) {
+  if (!PART_STORE) return null;
+  try {
+    const h = await PART_STORE.get('entparts', key); if (!h || !h.n) return null;
+    let b64 = ''; for (let i = 0; i < h.n; i++) { const c = await PART_STORE.get('entparts', `${key}~${i}`); if (!c) return null; b64 += c.d; }
+    return JSON.parse(zlib.gunzipSync(Buffer.from(b64, 'base64')).toString());
+  } catch { return null; }
+}
+async function partSet(key, val) {
+  if (!PART_STORE) return;
+  try {
+    const b64 = zlib.gzipSync(JSON.stringify(val)).toString('base64'), CH = 900000, n = Math.max(1, Math.ceil(b64.length / CH));
+    for (let i = 0; i < n; i++) await PART_STORE.set('entparts', `${key}~${i}`, { d: b64.slice(i * CH, (i + 1) * CH), at: nowIso() });
+    await PART_STORE.set('entparts', key, { n, at: nowIso() });
+  } catch (e) { log(`meta: could not save a pull piece (${String(e.message || e).slice(0, 80)})`); }
+}
+async function partClear(keys) {
+  if (!PART_STORE?.batchDelete) return;
+  try { const ids = []; for (const k of keys) { const h = await PART_STORE.get('entparts', k).catch(() => null); ids.push(k); for (let i = 0; i < (h?.n || 0); i++) ids.push(`${k}~${i}`); } await PART_STORE.batchDelete('entparts', ids); } catch { /* left behind, harmless */ }
+}
+
 // Campaigns, ad sets and ads: 30 day totals, per-day tuples for the last ENTITY_DAYS days, statuses, budgets, issues.
 async function fetchEntitiesOne(client, until) {
   const accountId = client.accounts.meta;
@@ -304,7 +334,10 @@ async function fetchEntitiesOne(client, until) {
   const dSince = addDays(until, -(entN - 1)), dUntil = addDays(until, 1); // includes today
   const q = (fields, extra = {}) => new URLSearchParams({ access_token: config.meta.token, fields, limit: '100', ...extra });
   const ins = (level, fields, extra = {}) => (s, u) => insightsUrl(accountId, { level, time_range: JSON.stringify({ since: s, until: u }), fields, ...extra });
-  const [camps, sets, adsIns, ads7, ads14, campDays, setDays, adDays, adsetObjs, adObjs, campObjs, account] = await pool([
+  const partKey = (i) => `${accountId}_${until}_${campN}_${entN}_${i}`, usedKeys = [];
+  let resumed = 0;
+  const resumable = (tasks) => tasks.map((fn, i) => async () => { const k = partKey(i); usedKeys.push(k); const hit = await partGet(k); if (hit) { resumed++; return hit; } const v = await fn(); await partSet(k, v); return v; });
+  const [camps, sets, adsIns, ads7, ads14, campDays, setDays, adDays, adsetObjs, adObjs, campObjs, account] = await pool(resumable([
     () => pagedRange(ins('campaign', INSIGHT_FIELDS + ',campaign_id,campaign_name'), since, until),
     () => pagedRange(ins('adset', INSIGHT_FIELDS + ',adset_id,adset_name,campaign_id,campaign_name'), since, until),
     () => pagedRange(ins('ad', INSIGHT_FIELDS + ',ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name'), since, until),
@@ -317,7 +350,9 @@ async function fetchEntitiesOne(client, until) {
     () => paged(`${BASE()}/act_${accountId}/ads?${q('id,name,adset_id,effective_status,created_time,issues_info,preview_shareable_link,creative.thumbnail_width(480).thumbnail_height(480){object_type,thumbnail_url,video_id,image_url,instagram_permalink_url,effective_object_story_id}', client.campaignDays || client.entityDays ? { limit: '50', filtering: JSON.stringify([{ field: 'effective_status', operator: 'NOT_IN', value: ['ARCHIVED', 'DELETED'] }]) } : {})}`),
     () => paged(`${BASE()}/act_${accountId}/campaigns?${q('id,name,effective_status,objective,daily_budget,lifetime_budget,bid_strategy')}`),
     () => metaGet(`${BASE()}/act_${accountId}?${q('name,account_status,disable_reason,currency,amount_spent,spend_cap,timezone_name')}`),
-  ], 2);
+  ]), 2);
+  if (resumed) log(`meta: act_${accountId} creatives pull resumed, ${resumed} of 12 pieces were already saved`);
+  await partClear(usedKeys);
   const setInfo = Object.fromEntries(adsetObjs.map((s) => [s.id, s]));
   const adInfo = Object.fromEntries(adObjs.map((a) => [a.id, a]));
   const campInfo = Object.fromEntries(campObjs.map((c) => [c.id, c]));

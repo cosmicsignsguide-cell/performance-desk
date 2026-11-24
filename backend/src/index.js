@@ -397,6 +397,7 @@ async function intradaySnapshot(store, client, today) {
 async function main() {
   const cmd = process.argv[2] || 'status';
   const store = await db();
+  meta.setPartStore(store);
   log(`performance desk: ${cmd} (store: ${store.kind}${store.root ? ' ' + store.root : ''}, tz ${config.tz})`);
 
   if (cmd === 'seed') {
