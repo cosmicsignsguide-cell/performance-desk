@@ -297,7 +297,11 @@ async function fetchTodayDaysOne(client, today) {
 async function fetchEntitiesOne(client, until) {
   const accountId = client.accounts.meta;
   const since = addDays(until, -29);
-  const dSince = addDays(until, -(ENTITY_DAYS - 1)), dUntil = addDays(until, 1); // includes today
+  // A very large account (Berkowits) can set shorter per-day history on the client so the pull fits
+  // Meta's hourly allowance: campaignDays for campaigns (default 95), entityDays for ad sets and ads (35).
+  const campN = Math.min(CAMPAIGN_DAYS, Math.max(14, Number(client.campaignDays) || CAMPAIGN_DAYS));
+  const entN = Math.min(ENTITY_DAYS, Math.max(7, Number(client.entityDays) || ENTITY_DAYS));
+  const dSince = addDays(until, -(entN - 1)), dUntil = addDays(until, 1); // includes today
   const q = (fields, extra = {}) => new URLSearchParams({ access_token: config.meta.token, fields, limit: '100', ...extra });
   const ins = (level, fields, extra = {}) => (s, u) => insightsUrl(accountId, { level, time_range: JSON.stringify({ since: s, until: u }), fields, ...extra });
   const [camps, sets, adsIns, ads7, ads14, campDays, setDays, adDays, adsetObjs, adObjs, campObjs, account] = await pool([
@@ -306,11 +310,11 @@ async function fetchEntitiesOne(client, until) {
     () => pagedRange(ins('ad', INSIGHT_FIELDS + ',ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name'), since, until),
     () => pagedRange(ins('ad', 'spend,impressions,clicks,frequency,ad_id'), addDays(until, -6), until),
     () => pagedRange(ins('ad', 'spend,impressions,clicks,frequency,ad_id'), addDays(until, -13), addDays(until, -7)),
-    () => pagedRange(ins('campaign', DAILY_FIELDS + ',campaign_id', { time_increment: '1' }), addDays(until, -(CAMPAIGN_DAYS - 1)), dUntil),
+    () => pagedRange(ins('campaign', DAILY_FIELDS + ',campaign_id', { time_increment: '1' }), addDays(until, -(campN - 1)), dUntil),
     () => pagedRange(ins('adset', DAILY_FIELDS + ',adset_id', { time_increment: '1' }), dSince, dUntil),
     () => pagedRange(ins('ad', DAILY_FIELDS + ',ad_id', { time_increment: '1' }), dSince, dUntil),
     () => paged(`${BASE()}/act_${accountId}/adsets?${q('id,name,campaign_id,effective_status,learning_stage_info,daily_budget,lifetime_budget,optimization_goal')}`),
-    () => paged(`${BASE()}/act_${accountId}/ads?${q('id,name,adset_id,effective_status,created_time,issues_info,preview_shareable_link,creative.thumbnail_width(480).thumbnail_height(480){object_type,thumbnail_url,video_id,image_url,instagram_permalink_url,effective_object_story_id}')}`),
+    () => paged(`${BASE()}/act_${accountId}/ads?${q('id,name,adset_id,effective_status,created_time,issues_info,preview_shareable_link,creative.thumbnail_width(480).thumbnail_height(480){object_type,thumbnail_url,video_id,image_url,instagram_permalink_url,effective_object_story_id}', client.campaignDays || client.entityDays ? { limit: '50', filtering: JSON.stringify([{ field: 'effective_status', operator: 'NOT_IN', value: ['ARCHIVED', 'DELETED'] }]) } : {})}`),
     () => paged(`${BASE()}/act_${accountId}/campaigns?${q('id,name,effective_status,objective,daily_budget,lifetime_budget,bid_strategy')}`),
     () => metaGet(`${BASE()}/act_${accountId}?${q('name,account_status,disable_reason,currency,amount_spent,spend_cap,timezone_name')}`),
   ], 2);

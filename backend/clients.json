@@ -1784,7 +1784,8 @@
     "pair": {
       "id": "berkowits-services",
       "label": "Services + Grow page"
-    }
+    },
+    "campaignDays": 60
   },
   {
     "id": "berkowits-services",
@@ -1827,7 +1828,8 @@
     "hide": [
       "cvr",
       "funnel"
-    ]
+    ],
+    "campaignDays": 60
   },
   {
     "id": "skysham",
