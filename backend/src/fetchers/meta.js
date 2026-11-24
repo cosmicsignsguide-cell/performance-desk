@@ -325,6 +325,7 @@ async function partClear(keys) {
   try { const ids = []; for (const k of keys) { const h = await PART_STORE.get('entparts', k).catch(() => null); ids.push(k); for (let i = 0; i < (h?.n || 0); i++) ids.push(`${k}~${i}`); } await PART_STORE.batchDelete('entparts', ids); } catch { /* left behind, harmless */ }
 }
 
+const AD_FIELDS = 'id,name,adset_id,effective_status,created_time,issues_info,preview_shareable_link,creative.thumbnail_width(480).thumbnail_height(480){object_type,thumbnail_url,video_id,image_url,instagram_permalink_url,effective_object_story_id}';
 // Campaigns, ad sets and ads: 30 day totals, per-day tuples for the last ENTITY_DAYS days, statuses, budgets, issues.
 async function fetchEntitiesOne(client, until) {
   const accountId = client.accounts.meta;
@@ -339,7 +340,8 @@ async function fetchEntitiesOne(client, until) {
   const partKey = (i) => `${accountId}_${until}_${campN}_${entN}_${i}`, usedKeys = [];
   let resumed = 0;
   const resumable = (tasks) => tasks.map((fn, i) => async () => { const k = partKey(i); usedKeys.push(k); const hit = await partGet(k); if (hit) { resumed++; return hit; } const v = await fn(); await partSet(k, v); return v; });
-  const [camps, sets, adsIns, ads7, ads14, campDays, setDays, adDays, adsetObjs, adObjs, campObjs, account] = await pool(resumable([
+  const heavy = !!(client.campaignDays || client.entityDays);
+  const [camps, sets, adsIns, ads7, ads14, campDays, setDays, adDays, adsetObjs, adObjsList, campObjs, account] = await pool(resumable([
     () => pagedRange(ins('campaign', INSIGHT_FIELDS + ',campaign_id,campaign_name'), since, until),
     () => pagedRange(ins('adset', INSIGHT_FIELDS + ',adset_id,adset_name,campaign_id,campaign_name'), since, until),
     () => pagedRange(ins('ad', INSIGHT_FIELDS + ',ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name'), since, until),
@@ -349,10 +351,24 @@ async function fetchEntitiesOne(client, until) {
     () => pagedRange(ins('adset', DAILY_FIELDS + ',adset_id', { time_increment: '1' }), dSince, dUntil),
     () => pagedRange(ins('ad', DAILY_FIELDS + ',ad_id', { time_increment: '1' }), dSince, dUntil),
     () => paged(`${BASE()}/act_${accountId}/adsets?${q('id,name,campaign_id,effective_status,learning_stage_info,daily_budget,lifetime_budget,optimization_goal')}`),
-    () => paged(`${BASE()}/act_${accountId}/ads?${q('id,name,adset_id,effective_status,created_time,issues_info,preview_shareable_link,creative.thumbnail_width(480).thumbnail_height(480){object_type,thumbnail_url,video_id,image_url,instagram_permalink_url,effective_object_story_id}', client.campaignDays || client.entityDays ? { limit: '50', filtering: JSON.stringify([{ field: 'effective_status', operator: 'NOT_IN', value: ['ARCHIVED', 'DELETED'] }]) } : {})}`),
+    // A very large account (Berkowits) has thousands of old ads: listing them all took over an hour
+    // of Meta waits. There, only the ads that delivered are looked up, by id, after the insights.
+    () => (heavy ? [] : paged(`${BASE()}/act_${accountId}/ads?${q(AD_FIELDS)}`)),
     () => paged(`${BASE()}/act_${accountId}/campaigns?${q('id,name,effective_status,objective,daily_budget,lifetime_budget,bid_strategy')}`),
     () => metaGet(`${BASE()}/act_${accountId}?${q('name,account_status,disable_reason,currency,amount_spent,spend_cap,timezone_name')}`),
   ]), 2);
+  let adObjs = adObjsList;
+  if (heavy) {
+    const k = partKey('ads'); usedKeys.push(k);
+    adObjs = await partGet(k);
+    if (!adObjs) {
+      const ids = [...new Set([...adsIns, ...adDays, ...ads7].map((r) => r.ad_id).filter(Boolean))];
+      adObjs = [];
+      for (let i = 0; i < ids.length; i += 40) { const body = await metaGet(`${BASE()}/?${q(AD_FIELDS, { ids: ids.slice(i, i + 40).join(',') })}`); adObjs.push(...Object.values(body || {}).filter((x) => x && x.id)); }
+      await partSet(k, adObjs);
+      log(`meta: act_${accountId} looked up ${adObjs.length} ads that delivered (of ${ids.length})`);
+    }
+  }
   if (resumed) log(`meta: act_${accountId} creatives pull resumed, ${resumed} of 12 pieces were already saved`);
   await partClear(usedKeys);
   const setInfo = Object.fromEntries(adsetObjs.map((s) => [s.id, s]));
