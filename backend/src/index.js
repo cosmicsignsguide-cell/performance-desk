@@ -147,6 +147,9 @@ async function syncClient(store, client, { mode, days, sources: onlySources = nu
   // run that never happened. Say what was skipped and why, once per client.
   const skipped = [];
   for (const source of ['meta', 'google', 'shopify', 'ga4'].filter((x) => !onlySources || onlySources.includes(x))) {
+    // metaPause: Meta syncs for this client are held (Berkowits, while its creatives pull gets the
+    // account's whole hourly allowance). Only the creatives run still asks Meta.
+    if (source === 'meta' && client.metaPause && mode !== 'creatives') { skipped.push('meta: paused on the client'); continue; }
     const state = sourceState(client, source);
     if (state === 'not-configured') { skipped.push(`${source}: no account id on the client`); continue; }
     if (state === 'no-token') {
