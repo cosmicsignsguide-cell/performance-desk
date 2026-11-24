@@ -316,6 +316,7 @@ async function partSet(key, val) {
     const b64 = zlib.gzipSync(JSON.stringify(val)).toString('base64'), CH = 900000, n = Math.max(1, Math.ceil(b64.length / CH));
     for (let i = 0; i < n; i++) await PART_STORE.set('entparts', `${key}~${i}`, { d: b64.slice(i * CH, (i + 1) * CH), at: nowIso() });
     await PART_STORE.set('entparts', key, { n, at: nowIso() });
+    log(`meta: pull piece ${key.split('_').pop()} of 12 saved for act_${key.split('_')[0]} (${Math.round(b64.length / 1024)} KB)`);
   } catch (e) { log(`meta: could not save a pull piece (${String(e.message || e).slice(0, 80)})`); }
 }
 async function partClear(keys) {
