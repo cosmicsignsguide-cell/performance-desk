@@ -364,7 +364,8 @@ async function fetchEntitiesOne(client, until) {
     if (!adObjs) {
       const ids = [...new Set([...adsIns, ...adDays, ...ads7].map((r) => r.ad_id).filter(Boolean))];
       adObjs = [];
-      for (let i = 0; i < ids.length; i += 40) { const body = await metaGet(`${BASE()}/?${q(AD_FIELDS, { ids: ids.slice(i, i + 40).join(',') })}`); adObjs.push(...Object.values(body || {}).filter((x) => x && x.id)); }
+      // (Graph's ?ids= lookup is gone from v26, so the ads edge is filtered by id instead.)
+      for (let i = 0; i < ids.length; i += 50) adObjs.push(...await paged(`${BASE()}/act_${accountId}/ads?${q(AD_FIELDS, { limit: '50', filtering: JSON.stringify([{ field: 'id', operator: 'IN', value: ids.slice(i, i + 50) }]) })}`));
       await partSet(k, adObjs);
       log(`meta: act_${accountId} looked up ${adObjs.length} ads that delivered (of ${ids.length})`);
     }
