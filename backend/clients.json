@@ -1785,8 +1785,7 @@
       "id": "berkowits-services",
       "label": "Services + Grow page"
     },
-    "campaignDays": 60,
-    "metaPause": true
+    "campaignDays": 60
   },
   {
     "id": "berkowits-services",
@@ -1830,8 +1829,7 @@
       "cvr",
       "funnel"
     ],
-    "campaignDays": 60,
-    "metaPause": true
+    "campaignDays": 60
   },
   {
     "id": "skysham",
