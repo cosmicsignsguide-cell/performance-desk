@@ -6,7 +6,7 @@ import { config } from '../config.js';
 import { fetchJson, emptyDaily, log, num, nowIso, round, addDays } from '../util.js';
 
 let cachedToken = null; // {token, exp}
-export const ENTITY_DAYS = 95; // campaigns only, so Last month and the month before it work
+export const ENTITY_DAYS = 60; // campaigns only: two months of per-day history (was 95)
 
 export async function accessToken() {
   if (cachedToken && cachedToken.exp > Date.now() + 60000) return cachedToken.token;

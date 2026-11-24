@@ -23,7 +23,7 @@ const BASE = () => `https://graph.facebook.com/${config.meta.apiVersion}`;
 export const ENTITY_DAYS = 35;
 // Campaigns keep a longer per-day history (there are few of them, so it is cheap) so the Last
 // month range and its comparison with the month before work in the campaigns table.
-export const CAMPAIGN_DAYS = 95;
+export const CAMPAIGN_DAYS = 60;   // two months of per-day campaign history for every account (was 95)
 
 function act(v, types) {
   if (!Array.isArray(v)) return 0;
