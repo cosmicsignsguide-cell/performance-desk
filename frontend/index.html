@@ -3051,6 +3051,11 @@ function clientView(x){
     lh+='<div id="lg-mount" data-client="'+esc(c.id)+'"></div>';
     // Under the lead gen view: the same Campaigns and Creatives tabs every other brand has.
     if(x.hasData){ const lt=[['campaigns','Campaigns'],['ads','Creatives']];
+      // Only lead gen campaigns here: the name carries one of the lead gen terms (Service, CTWA),
+      // the same rule the lead gen view uses. Grow product campaigns are left out.
+      const L=D.leadgen[c.id], terms=String(L.matchKey||L.match||'Service').split('+').map(t=>t.trim().toLowerCase()).filter(Boolean);
+      const isLg=n=>{ n=String(n||'').toLowerCase(); return terms.some(t=>n.includes(t)); };
+      const E=x.ent||{}; x={...x, ent:{...E, campaigns:(E.campaigns||[]).filter(k=>isLg(k.name)), adsets:(E.adsets||[]).filter(k=>isLg(k.campaignName)), ads:(E.ads||[]).filter(k=>isLg(k.campaignName))}, ads:(x.ads||[]).filter(k=>isLg(k.campaignName))};
       if(!lt.some(t=>t[0]===state.tab)) state.tab='campaigns';
       lh+='<div class="section"><div class="tab-row" style="margin-bottom:12px">'+lt.map(t=>'<button class="tab-btn '+(state.tab===t[0]?'active':'')+'" data-act="tab" data-tab="'+t[0]+'">'+t[1]+'</button>').join('')+'</div>'+(state.tab==='campaigns'?campaignTree(x):entityTable(x))+'</div>'; }
     return lh;
