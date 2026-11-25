@@ -1646,10 +1646,12 @@ function renderOverview(){
   var g3=el('div',{class:'lg-grid g3'});
   OBJ_ORDER.forEach(function(o){var t=sum(byObj(rows,o)),m=dm(t),d=OBJ[o];var c=el('div',{class:'card obj',style:'--c:'+d.color});
     c.appendChild(el('div',{class:'hd'},[el('span',{class:'dot'}),el('b',{},d.label)]));
-    if(o==='CTWA'){c.appendChild(el('div',{class:'bl'},'Cost per conversation'));c.appendChild(el('div',{class:'big'},fInr(m.cpc)));
-      c.appendChild(el('div',{class:'mini'},[mi('Spend',fLakh(t.spend)),mi('Conversations',fNum(t.convos)),mi('2+ msg rate',fPct(m.d2))]))}
-    else{c.appendChild(el('div',{class:'bl'},'Cost per lead'));c.appendChild(el('div',{class:'big'},fInr(m.cpl)));c.appendChild(el('div',{class:'sub2'},['Cost per qualified lead ',el('b',{},fInr(m.cpql))]));
-      c.appendChild(el('div',{class:'mini'},[mi('Spend',fLakh(t.spend)),mi('Leads',fNum(t.leads)),mi('Qualified',t.hasQ?fNum(t.q):NA)]))}
+    if(o==='CTWA'){c.appendChild(el('div',{class:'bl'},'Conversations'));c.appendChild(el('div',{class:'big'},fNum(t.convos)));
+      c.appendChild(el('div',{class:'sub2'},['Cost per conversation ',el('b',{},fInr(m.cpc))]));
+      c.appendChild(el('div',{class:'mini'},[mi('Spend',fLakh(t.spend)),mi('2+ msg rate',fPct(m.d2)),mi('Cost per 2+ msg',fInr(m.cpd2))]))}
+    else{c.appendChild(el('div',{class:'bl'},'Leads'));c.appendChild(el('div',{class:'big'},fNum(t.leads)));
+      c.appendChild(el('div',{class:'sub2'},['Cost per lead ',el('b',{},fInr(m.cpl)),' · Cost per qualified lead ',el('b',{},fInr(m.cpql))]));
+      c.appendChild(el('div',{class:'mini'},[mi('Spend',fLakh(t.spend)),mi('Qualified',t.hasQ?fNum(t.q):NA),mi('Qualified rate',t.hasQ?fPct(m.qrate):NA)]))}
     g3.appendChild(c)});
   w.appendChild(g3);
   w.appendChild(section('By service','One row per service. Cost per qualified lead for lead gen, cost per conversation for WhatsApp.'));
@@ -1667,14 +1669,11 @@ function renderOverview(){
   var dates=[];D.meta_daily.forEach(function(r){if(dates.indexOf(r.date)<0)dates.push(r.date)});dates.sort();
   var series=OBJ_ORDER.map(function(o){return{name:OBJ[o].label,short:OBJ[o].short,color:OBJ[o].color,values:dates.map(function(d){var r=D.meta_daily.filter(function(x){return x.date===d&&x.objective===o})[0];return r?r.spend:0})}});
   var cats=dates.map(function(d){return{label:shortDate(d),full:longDate(d)}});
-  var chartCard=el('div',{class:'card'});var tv=S.tview.daily;
-  chartCard.appendChild(el('div',{class:'tools'},[seg([['c','Chart'],['t','Table']],tv?'t':'c',function(v){S.tview.daily=(v==='t');render()})]));
-  if(!tv){chartCard.appendChild(legend(series.map(function(s){return{c:s.color,t:s.name}})));
-    var zero=[];dates.forEach(function(d,i){if(i<dates.length-1&&series.every(function(s){return !s.values[i]}))zero.push(i)});
-    chartCard.appendChild(lineChart({title:'Meta daily spend by objective',cats:cats,series:series,yfmt:function(v){return v>=1000?'₹'+(v/1000).toFixed(0)+'k':'₹'+v},vfmt:fInr,marks:zero.map(function(i){return{i:i,text:'no delivery'}})}));
-    if(zero.length)chartCard.appendChild(el('div',{class:'cap',style:'margin-top:6px'},'No spend on '+zero.map(function(i){return shortDate(dates[i])}).join(', ')+'.'))}
-  else{var cols=[{k:'d',h:'Date',l:true,f:function(r){return r.d}}].concat(series.map(function(s,i){return{k:'s'+i,h:s.short,f:function(r){return fInr(r['s'+i])},sv:function(r){return r['s'+i]}}}));
-    chartCard.appendChild(table('dailyT',cols,dates.map(function(d,i){var r={d:shortDate(d)};series.forEach(function(s,j){r['s'+j]=s.values[i]});return r})))}
+  var dcols=[{k:'d',h:'Date',l:true,f:function(r){return r.d},sv:function(r){return r.iso}}].concat(series.map(function(s,i){return{k:'s'+i,h:s.short+' spend',f:function(r){return fInr(r['s'+i])},sv:function(r){return r['s'+i]}}})).concat([{k:'t',h:'Total spend',f:function(r){return fInr(r.t)},sv:function(r){return r.t}}]);
+  var drows=dates.map(function(d,i){var r={d:shortDate(d),iso:d,t:0};series.forEach(function(s,j){r['s'+j]=s.values[i];r.t+=s.values[i]});return r});
+  var dtot={d:'Total',t:0};series.forEach(function(s,j){dtot['s'+j]=s.values.reduce(function(x,y){return x+y},0);dtot.t+=dtot['s'+j]});
+  Object.keys(dtot).forEach(function(k){if(k!=='d')dtot[k]=fInr(dtot[k])});
+  var chartCard=table('dailyT',dcols,drows,{total:dtot});
   w.appendChild(chartCard);
   w.appendChild(notesBox());
   return w
