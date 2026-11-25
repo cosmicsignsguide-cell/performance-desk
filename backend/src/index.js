@@ -331,8 +331,8 @@ async function syncClient(store, client, { mode, days, sources: onlySources = nu
   if (client.leadgen && client.accounts?.meta && ['hourly', 'daily', 'creatives'].includes(mode)) {
     try {
       const prev = await store.get('leadgen', client.id).catch(() => null);
-      const age = prev?.meta?.generated ? Date.now() - Date.parse(prev.meta.generated) : Infinity;
-      if (age > 50 * 60 * 1000) await store.set('leadgen', client.id, { clientId: client.id, ...(await buildLeadgen(client)) });
+      const gen = prev?.generated || prev?.meta?.generated; const age = gen ? Date.now() - Date.parse(gen) : Infinity;
+      if (age > 50 * 60 * 1000) await store.set('leadgen', client.id, { clientId: client.id, ...(await buildLeadgen(client, prev)) });
     } catch (e) { log(`${client.id}/leadgen FAILED ${String(e.message || e).slice(0, 160)}`); }
   }
   return { entities: ent };
@@ -549,7 +549,7 @@ async function main() {
       if (mode === 'leadgen') {
         const only = String(url.searchParams.get('client') || '').trim().toLowerCase();
         const list = clients.filter((c) => c.leadgen && c.active !== false && (!only || c.id === only));
-        for (const c of list) { try { await store.set('leadgen', c.id, { clientId: c.id, ...(await buildLeadgen(c)) }); } catch (e) { log(`${c.id}/leadgen FAILED ${String(e.message || e).slice(0, 160)}`); } }
+        for (const c of list) { try { const prev = url.searchParams.get('full') ? null : await store.get('leadgen', c.id).catch(() => null); await store.set('leadgen', c.id, { clientId: c.id, ...(await buildLeadgen(c, prev)) }); } catch (e) { log(`${c.id}/leadgen FAILED ${String(e.message || e).slice(0, 160)}`); } }
         return { mode, clients: list.length };
       }
       if (mode === 'audit') {

@@ -1500,7 +1500,7 @@ var DEFS={objectives:{CAPI:{label:'Conversion API (qualified lead)',short:'CAPI'
  regions:{DEL:{label:'Delhi NCR',short:'Delhi'},MUM:{label:'Mumbai',short:'Mumbai'},HYD:{label:'Hyderabad',short:'Hyd'},BLR:{label:'Bangalore',short:'BLR'},ROI:{label:'Rest of India',short:'ROI'},OTHER:{label:'No region in name',short:'Other'},ALL:{label:'All India (brand)',short:'All'}}};
 function longDate(d){var p=d.split('-');return parseInt(p[2],10)+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(p[1],10)-1]+' '+p[0]}
 function prep(D){D=Object.assign({},D);D.defs=DEFS;var p=D.meta&&D.meta.period||{};var a=p.from||'',b=p.to||'';
-  var lbl=a&&b?(a.slice(0,7)===b.slice(0,7)?parseInt(a.slice(8),10)+' to '+longDate(b):longDate(a)+' to '+longDate(b)):'';
+  var lbl=a&&b?(a===b?longDate(a):a.slice(0,7)===b.slice(0,7)?parseInt(a.slice(8),10)+' to '+longDate(b):longDate(a)+' to '+longDate(b)):'';
   var gen='';try{gen=new Date(D.meta.generated).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}catch(e){gen=''}
   D.meta=Object.assign({},D.meta,{period:Object.assign({},p,{label:lbl}),generatedLabel:gen});
   D.meta_campaigns=D.meta_campaigns||[];D.meta_adsets=D.meta_adsets||[];D.meta_daily=D.meta_daily||[];D.google=D.google||{campaigns:[],dg_daily:[]};D.google.campaigns=D.google.campaigns||[];D.google.dg_daily=D.google.dg_daily||[];
@@ -1634,7 +1634,8 @@ function renderOverview(){
   var A=sum(byObj(rows,'CAPI')),B=sum(byObj(rows,'VOLUME')),C=sum(byObj(rows,'CTWA'));
   var tr={n:'All services',a1:fNum(A.leads),a2:fInr(dm(A).cpql),b1:fNum(B.leads),b2:fInr(dm(B).cpql),c1:fNum(C.convos),c2:fInr(dm(C).cpc)};
   w.appendChild(table('svc',[{k:'n',h:'Service',l:true,nosort:true},{k:'a1',h:'CAPI leads',nosort:true},{k:'a2',h:'CAPI cost / qualified',nosort:true},{k:'b1',h:'Volume leads',nosort:true},{k:'b2',h:'Volume cost / qualified',nosort:true},{k:'c1',h:'WhatsApp convos',nosort:true},{k:'c2',h:'WhatsApp cost / convo',nosort:true}],srows,{total:tr}));
-  w.appendChild(section('Spend by day',D.meta.period.label+' (today is a partial day)'));
+  var isoNow=(function(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')})();
+  w.appendChild(section('Spend by day',D.meta.period.label+(D.meta.period.to===isoNow?' (today is a partial day)':'')));
   var dates=[];D.meta_daily.forEach(function(r){if(dates.indexOf(r.date)<0)dates.push(r.date)});dates.sort();
   var series=OBJ_ORDER.map(function(o){return{name:OBJ[o].label,short:OBJ[o].short,color:OBJ[o].color,values:dates.map(function(d){var r=D.meta_daily.filter(function(x){return x.date===d&&x.objective===o})[0];return r?r.spend:0})}});
   var cats=dates.map(function(d){return{label:shortDate(d),full:longDate(d)}});
@@ -1830,17 +1831,18 @@ async function loadLive(){
   }
   // Big creatives trees are saved gzipped by the server (backend/src/entpack.js): the chunks sit in
   // the doc as z[], or in entchunks/{clientId}_{i} when they pass ~850 KB. Unpacked here, in the browser.
-  const unpackEnt=async(d)=>{ if(!d||!d.packed) return d;
+  const unpackEnt=async(d,chunkCol)=>{ if(!d||!d.packed) return d;
     try{ let parts=Array.isArray(d.z)?d.z:null;
-      if(!parts){ parts=[]; for(let i=0;i<(d.parts||0);i++){ const s=await fb.db.collection(PFX+'entchunks').doc(d.id+'_'+i).get(); parts.push(s.exists?(s.data().z||''):''); } }
+      if(!parts){ parts=[]; for(let i=0;i<(d.parts||0);i++){ const s=await fb.db.collection(PFX+(chunkCol||'entchunks')).doc(d.id+'_'+i).get(); parts.push(s.exists?(s.data().z||''):''); } }
       const bin=atob(parts.join('')), u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
       const txt=await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
       return {id:d.id,...JSON.parse(txt)};
     }catch(e){ console.warn('could not unpack creatives for '+d.id,e); return {id:d.id,clientId:d.clientId||d.id,campaigns:[],adsets:[],ads:[],products:[],issues:[]}; } };
-  const entsU=await Promise.all((ents||[]).map(unpackEnt));
+  const entsU=await Promise.all((ents||[]).map(d=>unpackEnt(d)));
+  const leadgensU=await Promise.all((leadgens||[]).map(d=>unpackEnt(d,'leadgenchunks')));
   const byId=(arr)=>Object.fromEntries(arr.map(x=>[x.clientId||x.id,x]));
   const tokens={}; (reports||[]).forEach(r=>{ if(r.clientId&&r.enabled!==false) tokens[r.clientId]=r.id; });
-  return {today,clients:live,daily,leadgen:byId(leadgens||[]),entities:byId(entsU),signals:byId(sigs),sitewatch:byId(sws),syncs:byId(syncsArr),alerts,intraday:Object.fromEntries(intra.map(x=>[x.id,x])),lastRun:meta,reportTokens:tokens,weekly:weekly||[]};
+  return {today,clients:live,daily,leadgen:byId(leadgensU||[]),entities:byId(entsU),signals:byId(sigs),sitewatch:byId(sws),syncs:byId(syncsArr),alerts,intraday:Object.fromEntries(intra.map(x=>[x.id,x])),lastRun:meta,reportTokens:tokens,weekly:weekly||[]};
 }
 
 /* ============================== RANGES / METRICS ========================= */
@@ -2107,7 +2109,8 @@ function render(){
     // Rendered inside its own shadow root, so the dashboard's styles (a global .tw, *, .seg, .legend...) cannot reach it.
     const sh=lgEl.attachShadow({mode:'open'}); const css=(document.getElementById('lg-style')||{}).textContent||'';
     sh.innerHTML='<style>'+css+':host{display:block}</style><div></div>';
-    const r=window.GarudaLeadGen.mount(sh.lastElementChild,D.leadgen[cid],LGSTATE[cid]||null); LGSTATE[cid]=r.state; }catch(e){ console.warn('lead gen view failed',e); } }
+    const sp=rangeSpec(state.range,D.today), lto=addDays(D.today,-sp.offset), lfrom=addDays(lto,-(sp.days-1));
+    const r=window.GarudaLeadGen.mount(sh.lastElementChild,lgSlice(D.leadgen[cid],lfrom,lto),LGSTATE[cid]||null); LGSTATE[cid]=r.state; }catch(e){ console.warn('lead gen view failed',e); } }
   const sel=root.querySelector('#mobilePick'); if(sel) sel.value=state.clientId||'';
   const q=root.querySelector('#q'); if(q) q.value=state.q;
   if(anim){ countUp(); drawSparks(); }
@@ -2122,6 +2125,25 @@ function render(){
 }
 let FIRST_PAINT=true;
 const LGSTATE={};   // the lead gen view keeps its tab and sort across re-renders
+// The lead gen store keeps day-by-day rows (v2). This adds them up for the range picked in the top bar,
+// into the shape the lead gen view draws: campaigns, ad sets, daily spend by objective, Google campaigns.
+function lgSlice(full,from,to){
+  if(!full||full.v!==2) return full;
+  const M=full.meta||{adsets:[],rows:[]}, G=full.google||{camps:[],rows:[]};
+  const zero=()=>({spend:0,impressions:0,link_clicks:0,leads:0,convos:0,depth2:0,depth3:0,first_reply:0,stages:{}});
+  const add=(t,r)=>{ t.spend+=r[2];t.impressions+=r[3];t.link_clicks+=r[4];t.leads+=r[5];t.convos+=r[6];t.depth2+=r[7];t.depth3+=r[8];t.first_reply+=r[9]; if(r[10]) for(const k in r[10]) t.stages[k]=(t.stages[k]||0)+r[10][k]; };
+  const byA={}, byC={}, byDay={};
+  for(const r of M.rows){ if(r[0]<from||r[0]>to) continue; const a=M.adsets[r[1]]; if(!a) continue;
+    add(byA[a.id]||(byA[a.id]=Object.assign(zero(),{campaign_id:a.campaign_id,campaign:a.campaign,adset_id:a.id,adset:a.name,objective:a.objective,service:a.service,region:a.region})),r);
+    add(byC[a.campaign_id]||(byC[a.campaign_id]=Object.assign(zero(),{campaign_id:a.campaign_id,campaign:a.campaign,objective:a.objective,service:a.service})),r);
+    const k=r[0]+'|'+a.objective, t=byDay[k]||(byDay[k]={date:r[0],objective:a.objective,spend:0,impressions:0,link_clicks:0,leads:0,convos:0}); t.spend+=r[2];t.impressions+=r[3];t.link_clicks+=r[4];t.leads+=r[5];t.convos+=r[6]; }
+  for(let d=from; d<=to; d=addDays(d,1)) ['CAPI','VOLUME','CTWA'].forEach(o=>{ if(!byDay[d+'|'+o]) byDay[d+'|'+o]={date:d,objective:o,spend:0,impressions:0,link_clicks:0,leads:0,convos:0}; });
+  const gc={}; for(const r of G.rows){ if(r[0]<from||r[0]>to) continue; const c=G.camps[r[1]]; if(!c) continue; const t=gc[c.id]||(gc[c.id]=Object.assign({},c,{spend:0,impressions:0,clicks:0,conv:0,wa:0,calls:0,form:0,other:0}));
+    t.spend+=r[2];t.impressions+=r[3];t.clicks+=r[4];t.conv+=r[5];t.wa+=r[6];t.calls+=r[7];t.form+=r[8];t.other+=r[9]; }
+  const dgFrom=addDays(to,-6), dg={}; for(const r of G.rows){ if(r[0]<dgFrom||r[0]>to) continue; const c=G.camps[r[1]]; if(!c||c.channel!=='DEMAND_GEN') continue; const t=dg[r[0]]||(dg[r[0]]={date:r[0],spend:0,clicks:0,conv:0}); t.spend+=r[2];t.clicks+=r[4];t.conv+=r[5]; }
+  return { meta:{period:{from,to},generated:full.generated,match:full.match}, meta_campaigns:Object.values(byC), meta_adsets:Object.values(byA), meta_daily:Object.values(byDay),
+    google:{customer_id:G.customer_id,error:G.error,campaigns:Object.values(gc).filter(c=>c.spend>0||c.conv>0),dg_daily:Object.values(dg).sort((a,b)=>a.date<b.date?-1:1)}, notes:full.notes||[] };
+}
 const reduced=()=>window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 
 // Figures count up from zero on the first paint. The number is re-formatted from the value being
@@ -2967,7 +2989,7 @@ function spark(vals,delta){ const v=vals.map(x=>isFinite(x)?x:null).filter(x=>x!
 function clientView(x){
   const c=x.c, a=x.cur, p=x.prev, isE=c.type==='ecom', spec=x.spec, acct=x.ent.account;
   // A lead gen client (Berkowits Services + Grow) gets only the lead gen view: Overview, Service by
-  // region and Google Ads. The range bar at the top does not apply to it; it covers month to date.
+  // region and Google Ads. The range bar at the top picks the dates (the store keeps day-by-day rows).
   if(D.leadgen&&D.leadgen[c.id]){
     let lh=SHARE?'':'<button class="detail-back" data-act="nav" data-client="">'+ICONS.back+'Command Center</button>';
     lh+='<div class="toolbar">'+pairBtn(c)+'<div class="grow"></div>'+(SHARE?'':'<button class="btn btn-ghost btn-small" data-act="clientlink">'+ICONS.copy+' Copy client dashboard link</button>')+'</div>';

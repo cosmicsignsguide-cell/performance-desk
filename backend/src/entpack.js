@@ -11,7 +11,9 @@ import zlib from 'node:zlib';
 const PACK_OVER_KB = 300;          // small trees stay plain, readable as before
 const CHUNK = 700 * 1024;          // characters per base64 chunk
 const INLINE_MAX = 850 * 1024;     // all chunks inside the doc up to this size
-const KEEP = ['clientId', 'updatedAt', 'entitiesAt', 'since', 'until', 'sample'];
+const KEEP = ['clientId', 'updatedAt', 'entitiesAt', 'since', 'until', 'sample', 'v', 'match', 'generated'];
+const PACKED = new Set(['entities', 'leadgen']);
+const chunkCol = (col) => (col === 'entities' ? 'entchunks' : col + 'chunks');
 
 export function packedKb(ent) {
   return Math.round(zlib.gzipSync(Buffer.from(JSON.stringify(ent)), { level: 9 }).length * 4 / 3 / 1024);
@@ -19,16 +21,16 @@ export function packedKb(ent) {
 
 export function wrapStore(store) {
   const base = { get: store.get.bind(store), set: store.set.bind(store), list: store.list.bind(store) };
-  const unpack = async (id, doc) => {
+  const unpack = async (col, id, doc) => {
     if (!doc || !doc.packed) return doc;
     let parts = Array.isArray(doc.z) ? doc.z : null;
-    if (!parts) { parts = []; for (let i = 0; i < (doc.parts || 0); i++) { const p = await base.get('entchunks', `${id}_${i}`); parts.push(p ? p.z : ''); } }
+    if (!parts) { parts = []; for (let i = 0; i < (doc.parts || 0); i++) { const p = await base.get(chunkCol(col), `${id}_${i}`); parts.push(p ? p.z : ''); } }
     return JSON.parse(zlib.gunzipSync(Buffer.from(parts.join(''), 'base64')).toString('utf8'));
   };
-  store.get = async (col, id) => { const d = await base.get(col, id); return col === 'entities' ? unpack(id, d) : d; };
-  store.list = async (col, filter, opts) => { const rows = await base.list(col, filter, opts); return col === 'entities' ? Promise.all(rows.map(async (r) => ({ id: r.id, ...(await unpack(r.id, r)) }))) : rows; };
+  store.get = async (col, id) => { const d = await base.get(col, id); return PACKED.has(col) ? unpack(col, id, d) : d; };
+  store.list = async (col, filter, opts) => { const rows = await base.list(col, filter, opts); return PACKED.has(col) ? Promise.all(rows.map(async (r) => ({ id: r.id, ...(await unpack(col, r.id, r)) }))) : rows; };
   store.set = async (col, id, data) => {
-    if (col !== 'entities' || !data) return base.set(col, id, data);
+    if (!PACKED.has(col) || !data) return base.set(col, id, data);
     const json = JSON.stringify(data), kb = Math.round(Buffer.byteLength(json) / 1024);
     if (kb <= PACK_OVER_KB) return base.set(col, id, data);
     const b64 = zlib.gzipSync(Buffer.from(json), { level: 9 }).toString('base64');
@@ -36,7 +38,7 @@ export function wrapStore(store) {
     const head = Object.fromEntries(KEEP.filter((k) => data[k] !== undefined).map((k) => [k, data[k]]));
     const meta = { ...head, packed: 1, enc: 'gzip-b64', kb, zkb: Math.round(b64.length / 1024), parts: chunks.length };
     if (b64.length <= INLINE_MAX) return base.set(col, id, { ...meta, z: chunks });
-    for (let i = 0; i < chunks.length; i++) await base.set('entchunks', `${id}_${i}`, { clientId: data.clientId || id, i, z: chunks[i] });
+    for (let i = 0; i < chunks.length; i++) await base.set(chunkCol(col), `${id}_${i}`, { clientId: data.clientId || id, i, z: chunks[i] });
     return base.set(col, id, meta);
   };
   return store;
