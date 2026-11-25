@@ -103,9 +103,14 @@ export async function auditClient(store, c, { days = 60 } = {}) {
         for (const x of mc) { const w = inWin(x.days); cs += w.s; if (w.first && (!cFirst || w.first < cFirst)) cFirst = w.first; }
         for (const x of ads) { const w = inWin(x.days); as += w.s; if (w.s > 0) { adsSpending++; if (x.thumb) adsThumb++; } if (w.first && (!aFirst || w.first < aFirst)) aFirst = w.first; }
         const metaStored = rows.filter((r) => r.platform === 'meta').reduce((a, r) => a + (r.spend || 0), 0);
-        const cc = pctOf(cs, metaStored), ac = pctOf(as, metaStored);
-        res.creatives = !ads.length ? 'none' : (ac != null && ac >= 95 && aFirst && aFirst <= addDays(since, 3)) ? 'ok' : 'partial';
-        log(`${tag} creatives: ${res.creatives} | campaigns ${mc.length} cover ${R(cs)} of ${R(metaStored)} Meta spend (${cc}%) from ${cFirst || '-'} | ads ${ads.length} (${adsSpending} spent, ${adsThumb} with image) cover ${R(as)} (${ac}%) from ${aFirst || '-'} | tree ${e.since || '?'}..${e.until || '?'} updated ${e.updatedAt || '?'}${e.trimmed ? ' trimmed' : ''}`);
+        const cc = pctOf(cs, metaStored);
+        // Ads keep 35 days of history by design, so they are judged on the last 35 days.
+        const w35 = addDays(until, -34);
+        const meta35 = rows.filter((r) => r.platform === 'meta' && r.date >= w35).reduce((a, r) => a + (r.spend || 0), 0);
+        let a35 = 0; for (const x of ads) a35 += inWin(x.days).s && Object.entries(x.days || {}).reduce((t, [d, v]) => t + (d >= w35 && d <= until ? ((v || [])[0] || 0) : 0), 0);
+        const ac = pctOf(a35, meta35);
+        res.creatives = !meta35 ? 'no-spend' : !ads.length ? 'none' : (ac != null && ac >= 95 && cc != null && cc >= 95) ? 'ok' : 'partial';
+        log(`${tag} creatives: ${res.creatives} | campaigns ${mc.length} cover ${R(cs)} of ${R(metaStored)} Meta spend (${cc}%) from ${cFirst || '-'} | ads ${ads.length} (${adsSpending} spent, ${adsThumb} with image) last 35 days ${R(a35)} of ${R(meta35)} (${ac}%) from ${aFirst || '-'} | tree ${e.since || '?'}..${e.until || '?'} updated ${e.updatedAt || '?'}${e.trimmed ? ' trimmed' : ''}`);
       }
     } catch (e2) { res.creatives = 'error'; log(`${tag} creatives: error ${String(e2.message || e2).slice(0, 100)}`); }
   }
