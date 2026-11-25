@@ -91,11 +91,12 @@ async function catsByDay(client, since, until) {
     gaql(client.accounts.google, `SELECT campaign.id, campaign.name, segments.date, metrics.cost_micros FROM campaign WHERE segments.date BETWEEN '${since}' AND '${until}' AND metrics.cost_micros > 0`),
     gaql(client.accounts.google, `SELECT campaign.id, segments.date, segments.product_title, segments.product_type_l1, segments.product_type_l2, metrics.cost_micros FROM shopping_performance_view WHERE segments.date BETWEEN '${since}' AND '${until}' AND metrics.cost_micros > 0`),
   ]);
-  const out = {}, covered = {}, miss = {};
+  const out = {}, covered = {}, miss = {}, campName = {};
+  for (const r of camps) campName[r.campaign.id] = r.campaign.name;
   const add = (d, k, v) => { const o = (out[d] = out[d] || {}); o[k] = (o[k] || 0) + v; };
   for (const r of prods) {
     const d = r.segments.date, v = micros(r.metrics.costMicros), t = r.segments.productTitle;
-    const k = catOf(client, r.segments.productTypeL1, t, r.segments.productTypeL2) || UNTAGGED; add(d, k, v);
+    const k = catOf(client, r.segments.productTypeL1, t, r.segments.productTypeL2) || (!t ? catOf(client, campName[r.campaign.id]) : null) || UNTAGGED; add(d, k, v);
     if (k === UNTAGGED) miss[t || '(no title)'] = (miss[t || '(no title)'] || 0) + v;
     const ck = d + '|' + r.campaign.id; covered[ck] = (covered[ck] || 0) + v;
   }

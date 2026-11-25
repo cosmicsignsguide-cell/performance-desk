@@ -110,13 +110,29 @@
         [
           "sofa mat",
           "sofamat",
-          "sofa cover mat"
+          "sofa cover mat",
+          "seat mat",
+          "sofa seat"
         ]
       ],
       [
         "Sofa throws",
         [
           "throw"
+        ]
+      ],
+      [
+        "Table cloth, runner & dining mats",
+        [
+          "table cloth",
+          "tablecloth",
+          "table runner",
+          "runner",
+          "dining mat",
+          "table mat",
+          "placemat",
+          "place mat",
+          "table cover"
         ]
       ],
       [
@@ -141,20 +157,6 @@
         "Cushion covers",
         [
           "cushion"
-        ]
-      ],
-      [
-        "Table cloth, runner & dining mats",
-        [
-          "table cloth",
-          "tablecloth",
-          "table runner",
-          "runner",
-          "dining mat",
-          "table mat",
-          "placemat",
-          "place mat",
-          "table cover"
         ]
       ],
       [
@@ -212,7 +214,24 @@
           "rack",
           "basket",
           "hanger",
-          "shelf"
+          "shelf",
+          "door mat",
+          "doormat",
+          "welcome mat",
+          "entrance",
+          "outdoor mat",
+          "bath",
+          "rug",
+          "suitcase",
+          "ac cover",
+          "fridge",
+          "washing machine",
+          "cutlery",
+          "headboard",
+          "chatai",
+          "laundry",
+          "washing bag",
+          "mat"
         ]
       ]
     ]
