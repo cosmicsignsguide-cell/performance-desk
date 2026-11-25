@@ -79,7 +79,7 @@ export function normalizeClient(c) {
     // Shorter per-day history for a very large Meta account (see meta.fetchEntitiesOne).
     metaPause: c.metaPause === true,
     // Lead gen view (Berkowits Services): campaigns whose name contains this text, on Meta and Google.
-    leadgen: c.leadgen && typeof c.leadgen === 'object' ? { match: String(c.leadgen.match || 'Service'), since: /^\d{4}-\d{2}-\d{2}$/.test(c.leadgen.since || '') ? c.leadgen.since : '' } : null,
+    leadgen: c.leadgen && typeof c.leadgen === 'object' ? { match: String(c.leadgen.match || 'Service'), also: Array.isArray(c.leadgen.also) ? c.leadgen.also.map(String).filter(Boolean) : [], since: /^\d{4}-\d{2}-\d{2}$/.test(c.leadgen.since || '') ? c.leadgen.since : '' } : null,
     campaignDays: Number(c.campaignDays) || 0, entityDays: Number(c.entityDays) || 0,
     metaPurchaseTypes: Array.isArray(c.metaPurchaseTypes) ? c.metaPurchaseTypes.map(String).filter(Boolean) : [],
     // A sister page for the same brand (Berkowits Products <-> Services + Grow): [id, button label].

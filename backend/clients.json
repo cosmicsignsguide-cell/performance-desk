@@ -1832,6 +1832,9 @@
     "campaignDays": 60,
     "leadgen": {
       "match": "Service",
+      "also": [
+        "CTWA"
+      ],
       "since": "2026-11-01"
     }
   },

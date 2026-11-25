@@ -73,17 +73,22 @@ export async function buildLeadgen(client, prev) {
   // Nothing before the date the naming format started (Berkowits: 1 Nov 2026, the "Service" campaigns).
   if (client.leadgen?.since && client.leadgen.since > since) since = client.leadgen.since;
   const match = client.leadgen?.match || 'Service';
-  const old = prev && prev.v === 2 && prev.since <= since && prev.match === match ? prev : null;
+  // Campaigns whose name contains the main text or any of the extra ones (CTWA campaigns named before "Service" was added).
+  const terms = [match, ...(client.leadgen?.also || [])];
+  const matchKey = terms.join('+');
+  const old = prev && prev.v === 2 && prev.since <= since && (prev.matchKey || prev.match) === matchKey ? prev : null;
   const from = old ? addDays(today, -7) : since;
-  const filtering = JSON.stringify([{ field: 'campaign.name', operator: 'CONTAIN', value: match }]);
   const adsets = old ? old.meta.adsets.map((a) => ({ ...a })) : [], aIdx = new Map(adsets.map((a, i) => [a.id, i]));
   let mrows = old ? old.meta.rows.filter((r) => r[0] >= since && r[0] < from) : [];
   const seen = {};
   for (const acc of String(client.accounts?.meta || '').split(',').filter(Boolean)) {
-    for (let a = from; a <= today; a = addDays(a, 7)) {
+    const got = new Set();
+    for (const term of terms) for (let a = from; a <= today; a = addDays(a, 7)) {
       const b = addDays(a, 6) < today ? addDays(a, 6) : today;
+      const filtering = JSON.stringify([{ field: 'campaign.name', operator: 'CONTAIN', value: term }]);
       const rows = await metaRows(acc, { level: 'adset', time_increment: '1', fields: 'spend,impressions,inline_link_clicks,actions,conversions,adset_id,adset_name,campaign_id,campaign_name', time_range: JSON.stringify({ since: a, until: b }), filtering });
       for (const r of rows) {
+        if (got.has(r.date_start + '|' + r.adset_id)) continue; got.add(r.date_start + '|' + r.adset_id);
         let k = aIdx.get(r.adset_id);
         const info = { id: r.adset_id, name: r.adset_name, campaign_id: r.campaign_id, campaign: r.campaign_name, objective: objectiveOf(r.campaign_name), service: serviceOf(r.campaign_name), region: regionOf(r.adset_name) !== 'OTHER' ? regionOf(r.adset_name) : regionOf(r.campaign_name) };
         if (k === undefined) { k = adsets.length; adsets.push(info); aIdx.set(r.adset_id, k); } else adsets[k] = info;
@@ -122,7 +127,7 @@ export async function buildLeadgen(client, prev) {
   const unk = adsets.filter((a) => a.region === 'OTHER');
   if (unk.length) log(`${client.id}/leadgen ad sets with no region: ${unk.slice(0, 10).map((x) => `"${x.name}"`).join(' | ')}`);
   log(`${client.id}/leadgen: kept ${since}..${today} (pulled ${from}..${today}), meta ${adsets.length} ad sets ${mrows.length} day rows, google ${G.camps.length} campaigns ${G.rows.length} day rows; stages ${Object.entries(seen).filter(([k]) => /PROSPECT$/.test(k)).map(([k, v]) => k + ' ' + Math.round(v)).join(', ') || 'none'}`);
-  return { v: 2, since, until: today, match, generated: new Date().toISOString(), meta: { adsets, rows: mrows }, google: G,
+  return { v: 2, since, until: today, match, matchKey, generated: new Date().toISOString(), meta: { adsets, rows: mrows }, google: G,
     notes: unk.length ? [`${unk.length} Meta ad set${unk.length > 1 ? 's' : ''} carry no region in the name (${unk.slice(0, 3).map((a) => a.name).join(', ')}); they count in totals but not in the region grid.`] : [] };
 }
 

@@ -2146,7 +2146,7 @@ function lgSlice(full,from,to){
   const gc={}; for(const r of G.rows){ if(r[0]<from||r[0]>to) continue; const c=G.camps[r[1]]; if(!c) continue; const t=gc[c.id]||(gc[c.id]=Object.assign({},c,{spend:0,impressions:0,clicks:0,conv:0,wa:0,calls:0,form:0,other:0}));
     t.spend+=r[2];t.impressions+=r[3];t.clicks+=r[4];t.conv+=r[5];t.wa+=r[6];t.calls+=r[7];t.form+=r[8];t.other+=r[9]; }
   const dgFrom=addDays(to,-6), dg={}; for(const r of G.rows){ if(r[0]<dgFrom||r[0]>to) continue; const c=G.camps[r[1]]; if(!c||c.channel!=='DEMAND_GEN') continue; const t=dg[r[0]]||(dg[r[0]]={date:r[0],spend:0,clicks:0,conv:0}); t.spend+=r[2];t.clicks+=r[4];t.conv+=r[5]; }
-  return { meta:{period:from>to?{from:pFrom,to:pTo}:{from,to},generated:full.generated,match:full.match,notice}, meta_campaigns:Object.values(byC), meta_adsets:Object.values(byA), meta_daily:Object.values(byDay),
+  return { meta:{period:from>to?{from:pFrom,to:pTo}:{from,to},generated:full.generated,match:full.matchKey?full.matchKey.split('+').join('" or "'):full.match,notice}, meta_campaigns:Object.values(byC), meta_adsets:Object.values(byA), meta_daily:Object.values(byDay),
     google:{customer_id:G.customer_id,error:G.error,campaigns:Object.values(gc).filter(c=>c.spend>0||c.conv>0),dg_daily:Object.values(dg).sort((a,b)=>a.date<b.date?-1:1)}, notes:full.notes||[] };
 }
 const reduced=()=>window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
