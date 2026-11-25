@@ -37,11 +37,26 @@ async function gql(client, query, variables) {
   const token = shopifyTokenFor(client);
   if (!token) throw new Error('no shopify token');
   const shop = client.accounts.shopify.shop;
-  const body = await fetchJson(`https://${shop}/admin/api/${config.shopify.apiVersion}/graphql.json`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': token }, body: JSON.stringify({ query, variables }),
-  }, { label: 'shopify' });
-  if (body.errors?.length) throw new Error('shopify: ' + body.errors.map((e) => e.message).join('; '));
-  return body.data;
+  // Shopify meters GraphQL by query cost (a leaky bucket per store). A big store's 30-day order pull
+  // with line items empties it, and the answer is a "Throttled" error rather than a slow reply. So:
+  // on Throttled, wait for the bucket to refill enough for this query and try again; and after a
+  // page that leaves the bucket low, pause before the next one instead of running into the wall.
+  for (let attempt = 0; ; attempt++) {
+    const body = await fetchJson(`https://${shop}/admin/api/${config.shopify.apiVersion}/graphql.json`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': token }, body: JSON.stringify({ query, variables }),
+    }, { label: 'shopify' });
+    const cost = body.extensions?.cost, ts = cost?.throttleStatus;
+    const need = num(cost?.requestedQueryCost) || 200, have = num(ts?.currentlyAvailable), rate = num(ts?.restoreRate) || 50;
+    const waitS = Math.min(60, Math.max(2, Math.ceil((need - have) / rate) + 1));
+    if (body.errors?.length && body.errors.some((e) => /throttled/i.test(e.message || '') || e.extensions?.code === 'THROTTLED')) {
+      if (attempt >= 12) throw new Error('shopify: Throttled (gave up after 12 waits)');
+      log(`shopify ${client.id}: throttled, waiting ${waitS}s (bucket ${Math.round(have)}/${num(ts?.maximumAvailable) || '?'}, query ${need})`);
+      await new Promise((r) => setTimeout(r, waitS * 1000)); continue;
+    }
+    if (body.errors?.length) throw new Error('shopify: ' + body.errors.map((e) => e.message).join('; '));
+    if (ts && have < need * 1.2) await new Promise((r) => setTimeout(r, waitS * 1000));
+    return body.data;
+  }
 }
 
 async function allPages(client, query, q, key) {
