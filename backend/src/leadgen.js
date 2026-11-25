@@ -15,21 +15,22 @@ const pick = (arr, types) => { if (!Array.isArray(arr)) return 0; let t = 0; for
 const STAGE_PREFIX = 'offsite_conversion.fb_pixel_custom.';
 
 export const objectiveOf = (n) => /ctwa/i.test(n) ? 'CTWA' : /volume/i.test(n) ? 'VOLUME' : /capi/i.test(n) ? 'CAPI' : 'CAPI';
+const norm = (n) => ' ' + String(n || '').replace(/[_|\-\/.,()]+/g, ' ').replace(/\s+/g, ' ') + ' ';
 export const serviceOf = (n) => {
-  const s = String(n || '');
+  const s = norm(n);
   if (/\bbrand\b/i.test(s)) return 'BRAND';
   if (/\bLHR\b|laser/i.test(s)) return 'LHR';
   if (/\bHT\b|transplant/i.test(s)) return 'HT';
-  if (/\bHP\b|HP-|hair\s*patch/i.test(s)) return 'HP';
+  if (/\bHP\b|hair\s*patch|\bpatch\b/i.test(s)) return 'HP';
   return 'OTHER';
 };
 export const regionOf = (n) => {
-  const s = String(n || '');
-  if (/\bROI\b|rest\s*of\s*india|\|\s*rest\s*\|/i.test(s)) return 'ROI';
-  if (/delhi|\bNCR\b|\bDEL\b/i.test(s)) return 'DEL';
+  const s = norm(n);
+  if (/\bROI\b|rest\s*of\s*india|\brest\b/i.test(s)) return 'ROI';
+  if (/delhi|\bNCR\b|\bDEL\b|gurgaon|gurugram|noida/i.test(s)) return 'DEL';
   if (/mumbai|\bMUM\b|\bBOM\b/i.test(s)) return 'MUM';
   if (/hyderabad|\bHYD\b|\bHYB\b/i.test(s)) return 'HYD';
-  if (/bangalore|bengaluru|\bBLR\b/i.test(s)) return 'BLR';
+  if (/bangalore|bengaluru|\bBLR\b|\bBLO\b/i.test(s)) return 'BLR';
   return 'OTHER';
 };
 
@@ -48,7 +49,7 @@ async function metaRows(accountId, params) {
 function metaMetrics(r) {
   const a = r.actions || [];
   const stages = {};
-  for (const x of a) if (String(x.action_type).startsWith(STAGE_PREFIX)) { const k = String(x.action_type).slice(STAGE_PREFIX.length); if (k && !/^\d+$/.test(k)) stages[k] = (stages[k] || 0) + num(x.value); }
+  for (const x of [...a, ...(r.conversions || [])]) if (String(x.action_type).startsWith(STAGE_PREFIX)) { const k = String(x.action_type).slice(STAGE_PREFIX.length); if (k && !/^\d+$/.test(k)) stages[k] = (stages[k] || 0) + num(x.value); }
   return {
     spend: r2(num(r.spend)), impressions: num(r.impressions), reach: num(r.reach), link_clicks: num(r.inline_link_clicks),
     leads: pick(a, ['lead']) || pick(a, ['onsite_conversion.lead_grouped', 'offsite_conversion.fb_pixel_lead']),
@@ -66,9 +67,11 @@ export async function buildLeadgen(client) {
   const D = { meta: { period: { from: since, to: until }, generated: new Date().toISOString(), match }, meta_campaigns: [], meta_adsets: [], meta_daily: [], google: { customer_id: client.accounts?.google || '', campaigns: [], dg_daily: [] }, notes: [] };
   const filtering = JSON.stringify([{ field: 'campaign.name', operator: 'CONTAIN', value: match }]);
   const range = JSON.stringify({ since, until });
-  const F = 'spend,impressions,reach,frequency,inline_link_clicks,actions,campaign_id,campaign_name';
+  const F = 'spend,impressions,reach,frequency,inline_link_clicks,actions,conversions,campaign_id,campaign_name';
   for (const acc of String(client.accounts?.meta || '').split(',').filter(Boolean)) {
     const camps = await metaRows(acc, { level: 'campaign', fields: F, time_range: range, filtering });
+    { const seen = {}; for (const r of camps) for (const x of [...(r.actions || []), ...(r.conversions || [])]) if (/custom|prospect|qualif/i.test(x.action_type)) seen[x.action_type] = (seen[x.action_type] || 0) + num(x.value);
+      log(`${client.id}/leadgen custom events: ${Object.entries(seen).map(([k, v]) => `${k} ${Math.round(v)}`).join(', ') || 'none'}`); }
     for (const r of camps) D.meta_campaigns.push({ campaign_id: r.campaign_id, campaign: r.campaign_name, objective: objectiveOf(r.campaign_name), service: serviceOf(r.campaign_name), ...metaMetrics(r) });
     const sets = await metaRows(acc, { level: 'adset', fields: F + ',adset_id,adset_name', time_range: range, filtering });
     for (const r of sets) D.meta_adsets.push({ campaign_id: r.campaign_id, campaign: r.campaign_name, adset_id: r.adset_id, adset: r.adset_name, objective: objectiveOf(r.campaign_name), service: serviceOf(r.campaign_name), region: regionOf(r.adset_name) !== 'OTHER' ? regionOf(r.adset_name) : regionOf(r.campaign_name), ...metaMetrics(r) });
@@ -99,6 +102,7 @@ export async function buildLeadgen(client) {
     } catch (e) { D.google.error = String(e.message || e).slice(0, 200); log(`${client.id}/leadgen google failed: ${D.google.error}`); }
   }
   const unk = D.meta_adsets.filter((a) => a.region === 'OTHER');
+  if (unk.length) log(`${client.id}/leadgen ad sets with no region: ${unk.map((x) => `"${x.adset}" (${x.campaign.slice(0, 40)})`).slice(0, 12).join(' | ')}`);
   if (unk.length) D.notes.push(`${unk.length} Meta ad set${unk.length > 1 ? 's' : ''} carry no region in the name (${unk.slice(0, 3).map((a) => a.adset).join(', ')}); they count in totals but not in the region grid.`);
   const sp = D.meta_campaigns.reduce((a, c) => a + c.spend, 0), gs = D.google.campaigns.reduce((a, c) => a + c.spend, 0);
   log(`${client.id}/leadgen: ${since}..${until} meta ${D.meta_campaigns.length} campaigns ${D.meta_adsets.length} ad sets spend ${Math.round(sp)}, google ${D.google.campaigns.length} campaigns spend ${Math.round(gs)}`);
