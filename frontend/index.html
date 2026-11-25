@@ -1503,6 +1503,12 @@ window.addEventListener('unhandledrejection',function(e){ send('promise '+String
 .lg-root .lg-mark{font-family:"Inter",sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;color:var(--accent);margin-bottom:1px}
 .lg-root .hm .c.best{outline-color:var(--accent)}
 .lg-root .g6{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.lg-root .prow{border:1px solid var(--lgline);border-radius:var(--r);padding:12px 14px 14px;margin-bottom:12px;background:var(--panel)}
+.lg-root .prow-h{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:13px}
+.lg-root .prow-h i{width:10px;height:10px;border-radius:3px;background:var(--accent)}.lg-root .prow-h span{color:var(--ink3);font-size:12px}
+.lg-root .prow.meta .prow-h i{background:#1877F2}.lg-root .prow.google .prow-h i{background:#F2A20C}
+.lg-root .prow.meta{background:rgba(24,119,242,.04)}.lg-root .prow.google{background:rgba(242,162,12,.05)}.lg-root .prow.all{border-color:var(--accent-line)}
+.lg-root .prow .kpi{min-height:96px}.lg-root .prow .kpi .v{font-size:24px}
 .lg-root .hm .c.dt{justify-content:flex-start;padding:12px 12px 10px}
 .lg-root .hm .c.dt .n{font-size:17px}
 .lg-root .hm .c .st{display:grid;grid-template-columns:1fr auto;gap:2px 10px;margin-top:8px;padding-top:7px;border-top:1px solid color-mix(in srgb,currentColor 18%,transparent);font-size:11.5px;text-align:left;font-family:"Hanken Grotesk",system-ui,sans-serif}
@@ -1640,8 +1646,29 @@ function legend(items){return el('div',{class:'legend'},items.map(function(i){re
 function renderOverview(){
   var w=el('div'),rows=metaCampaignRows();
   w.appendChild(note('Meta Ads, '+D.meta.period.label+'. '+qLabel()+' (the CRM stage event sent back to Meta).'));
+  // Meta + Google combined, then Meta only, then Google only (the same split the ecom pages use).
+  // Leads = form leads (Meta lead forms; Google form and other conversions). WhatsApp = Meta CTWA
+  // conversations + Google WhatsApp conversions. Calls = Google call conversions. Total = all three.
+  var MA=sum(rows),GA=gsum(googleRows()),gOther=Math.max(0,GA.conv-GA.wa-GA.calls-GA.form);
+  var MW=sum(byObj(rows,'CTWA')),ML=sum(lg(rows));
+  var PM={spend:MA.spend,leads:MA.leads,wa:MA.convos,calls:0,lsub:ML.leads?'CPL '+fInr(ML.spend/ML.leads)+' (lead form spend)':'no leads',wsub:MW.convos?fInr(MW.spend/MW.convos)+' per chat (CTWA spend)':'none'},PG={spend:GA.spend,leads:GA.form+gOther,wa:GA.wa,calls:GA.calls,lsub:'form + other conversions',wsub:'WhatsApp conversions'};
+  var PA={spend:PM.spend+PG.spend,leads:PM.leads+PG.leads,wa:PM.wa+PG.wa,calls:PM.calls+PG.calls,lsub:fNum(PM.leads)+' Meta + '+fNum(PG.leads)+' Google',wsub:fNum(PM.wa)+' Meta + '+fNum(PG.wa)+' Google'};
+  function prow(cls,label,sub,t,noCalls){var tot=t.leads+t.wa+t.calls;
+    var box=el('div',{class:'prow '+cls});box.appendChild(el('div',{class:'prow-h'},[el('i'),el('b',{},label),el('span',{},sub)]));
+    var g=el('div',{class:'lg-grid g6'});
+    g.appendChild(kpi('Total spend',fInr(t.spend),fLakh(t.spend)));
+    g.appendChild(kpi('Total leads',fNum(t.leads),t.lsub));
+    g.appendChild(kpi('WhatsApp',fNum(t.wa),t.wsub));
+    g.appendChild(kpi('Calls',noCalls?NA:fNum(t.calls),noCalls?'Meta has no call ads':(t.calls?'Google call conversions':'none')));
+    var tk=kpi('Overall total',fNum(tot),'leads + WhatsApp + calls');tk.classList.add('hl');g.appendChild(tk);
+    g.appendChild(kpi('Cost per enquiry',tot?fInr(t.spend/tot):NA,'spend ÷ overall total'));
+    box.appendChild(g);return box}
+  w.appendChild(section('All platforms','Meta + Google, '+D.meta.period.label));
+  w.appendChild(prow('all','Meta + Google','combined',PA,false));
+  w.appendChild(prow('meta','Meta','lead forms + CTWA',PM,true));
+  w.appendChild(prow('google','Google','campaigns named "Service"',PG,false));
   var L=sum(lg(rows)),LM=dm(L);
-  w.appendChild(section('Lead gen','Conversion API + Volume lead'));
+  w.appendChild(section('Meta lead gen','Conversion API + Volume lead'));
   var g=el('div',{class:'lg-grid g6'});
   g.appendChild(kpi('Spend',fLakh(L.spend),'CAPI + Volume'));
   var W=sum(byObj(rows,'CTWA'));
