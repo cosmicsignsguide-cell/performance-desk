@@ -6,11 +6,12 @@
 // New-customer order = customerJourneySummary.customerOrderIndex == 1 (Shopify's own first-order flag).
 // Checkouts started = orders + abandoned checkouts created that day (the Shopify signal for a stuck checkout).
 
+import { catOf, UNTAGGED } from '../categories.js';
 import { config, shopifyTokenFor } from '../config.js';
 import { fetchJson, emptyDaily, log, num, round, addDays, tzOffset } from '../util.js';
 import { classifyOrder, isTestOrder, payOf, groupDay } from '../orderSources.js';
 
-const ORDERS_Q = `query DeskOrders($q: String!, $after: String) { orders(first: 100, after: $after, query: $q, sortKey: CREATED_AT) { pageInfo { hasNextPage endCursor } nodes { id name createdAt cancelledAt displayFinancialStatus currentSubtotalPriceSet { shopMoney { amount currencyCode } } currentTotalPriceSet { shopMoney { amount } } currentTotalTaxSet { shopMoney { amount } } totalRefundedSet { shopMoney { amount } } customer { id numberOfOrders } %s discountCodes lineItems(first: 50) { nodes { quantity title product { id title } variant { id } originalUnitPriceSet { shopMoney { amount } } } } } } }`;
+const ORDERS_Q = `query DeskOrders($q: String!, $after: String) { orders(first: 100, after: $after, query: $q, sortKey: CREATED_AT) { pageInfo { hasNextPage endCursor } nodes { id name createdAt cancelledAt displayFinancialStatus currentSubtotalPriceSet { shopMoney { amount currencyCode } } currentTotalPriceSet { shopMoney { amount } } currentTotalTaxSet { shopMoney { amount } } totalRefundedSet { shopMoney { amount } } customer { id numberOfOrders } %s discountCodes lineItems(first: 50) { nodes { quantity title product { id title productType } variant { id } originalUnitPriceSet { shopMoney { amount } } } } } } }`;
 // Same query plus what the Order sources view needs: the last visit with its UTM parameters, landing
 // page and referrer, the note attributes checkout apps write UTMs into, the payment gateway (COD or
 // prepaid) and Shopify's own test flag. Kept as a second query, not an edit of the first, so a store
@@ -123,7 +124,7 @@ export async function fetchDaily(client, since, until) {
   const byDay = {};
   const row = (d) => (byDay[d] = byDay[d] || emptyDaily(client.id, d, 'shopify'));
   for (let d = since; d <= until; d = addDays(d, 1)) row(d);
-  const products = {};
+  const products = {}, untagged = {};
   // Where the store itself says each order came from. This is the only honest answer to "how
   // many orders came from Meta": the platforms each report the orders they believe their ads
   // caused, inside their own attribution window, so their counts overlap and add up to more
@@ -154,6 +155,16 @@ export async function fetchDaily(client, since, until) {
     r.totalSales = (r.totalSales || 0) + Math.max(0, gross - refunded); r.taxes = (r.taxes || 0) + num(o.currentTotalTaxSet?.shopMoney?.amount);
     r[sourceOf(o)] = (r[sourceOf(o)] || 0) + 1;
     if (o.customerJourneySummary?.customerOrderIndex === 1 || (!o.customerJourneySummary && o.customer?.numberOfOrders === 1)) r.newCustomerOrders += 1;
+    // Category sales, product-wise: every line item goes to its category, so an order with two
+    // products in one category counts twice there (the same way Shopify's product report counts).
+    // Net is the line's share of the order's net sales (after discounts and returns, before tax).
+    if (client.categories?.length) {
+      const lis = o.lineItems?.nodes || [], lineGross = lis.reduce((t, li) => t + li.quantity * num(li.originalUnitPriceSet?.shopMoney?.amount), 0);
+      const f = lineGross ? net / lineGross : 0; r.cats = r.cats || {};
+      for (const li of lis) { const t = li.product?.title || li.title; const k = catOf(client, li.product?.productType, t) || UNTAGGED; const g = li.quantity * num(li.originalUnitPriceSet?.shopMoney?.amount);
+        const c = (r.cats[k] = r.cats[k] || [0, 0, 0]); c[0] += 1; c[1] += g; c[2] += g * f;
+        if (k === UNTAGGED) untagged[t] = (untagged[t] || 0) + 1; }
+    }
     for (const li of o.lineItems?.nodes || []) {
       r.units += li.quantity;
       const pid = li.product?.id || li.title;
@@ -171,6 +182,9 @@ export async function fetchDaily(client, since, until) {
   const traffic = await sessionsByDay(client, since, until);
   if (traffic) for (const d in traffic) { if (byDay[d]) Object.assign(byDay[d], traffic[d]); }
 
+  if (Object.keys(untagged).length) log(`shopify ${client.id}: products with no category: ${Object.entries(untagged).sort((x, y) => y[1] - x[1]).slice(0, 15).map(([t, n]) => `${t} (${n})`).join('; ')}`);
+  for (const r of Object.values(byDay)) if (r.cats) for (const k in r.cats) r.cats[k] = [r.cats[k][0], round(r.cats[k][1]), round(r.cats[k][2])];
+  if (client.categories?.length) for (const r of Object.values(byDay)) if (!r.cats) r.cats = {};
   const rows = Object.values(byDay).map((r) => ({ ...r, grossSales: round(r.grossSales), netSales: round(r.netSales), totalSales: round(r.totalSales || 0), taxes: round(r.taxes || 0), discounts: round(r.discounts || 0), refunds: round(r.refunds) }));
   // Recent orders feed: the last two days, newest first, for the dashboard's Orders tab.
   const cutoff = addDays(until, -1);

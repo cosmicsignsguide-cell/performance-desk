@@ -2,6 +2,7 @@
 // Needs: developer token (Basic access), OAuth client id/secret + refresh token for a Google account
 // that is a user on the MCC, the MCC id as login customer id, and the client's customer id in clients.json.
 
+import { catOf, UNTAGGED } from '../categories.js';
 import { config } from '../config.js';
 import { fetchJson, emptyDaily, log, num, nowIso, round, addDays } from '../util.js';
 
@@ -57,6 +58,7 @@ export async function fetchDaily(client, since, until) {
   }
   const isE = client.type !== 'lead';
   const funnel = isE ? await funnelByDay(client, since, until) : {};
+  const cats = client.categories?.length ? await catsByDay(client, since, until).catch((e) => { log(`google ${client.id}: category spend failed: ${String(e.message || e).slice(0, 160)}`); return null; }) : null;
   return rows.map((r) => {
     const row = emptyDaily(client.id, r.segments.date, 'google');
     row.spend = round(micros(r.metrics.costMicros)); row.impressions = num(r.metrics.impressions); row.clicks = num(r.metrics.clicks);
@@ -75,8 +77,36 @@ export async function fetchDaily(client, since, until) {
     }
     // Explicit zeros on days without funnel actions, so a merge never leaves a stale count behind.
     if (isE) Object.assign(row, { gLpv: 0, gAtc: 0, gIc: 0 }, funnel[r.segments.date] || {});
+    if (cats) row.cats = cats[r.segments.date] || {};
     return row;
   });
+}
+
+// Spend by product category per day. Shopping and Performance Max spend is split by the product
+// that was shown (shopping_performance_view: product title, then product type); whatever a campaign
+// spent that the product report does not cover (PMax video and display, Search, Demand Gen) goes by
+// the campaign name, and failing that to "Untagged / mixed". The total always equals campaign spend.
+async function catsByDay(client, since, until) {
+  const [camps, prods] = await Promise.all([
+    gaql(client.accounts.google, `SELECT campaign.id, campaign.name, segments.date, metrics.cost_micros FROM campaign WHERE segments.date BETWEEN '${since}' AND '${until}' AND metrics.cost_micros > 0`),
+    gaql(client.accounts.google, `SELECT campaign.id, segments.date, segments.product_title, segments.product_type_l1, segments.product_type_l2, metrics.cost_micros FROM shopping_performance_view WHERE segments.date BETWEEN '${since}' AND '${until}' AND metrics.cost_micros > 0`),
+  ]);
+  const out = {}, covered = {}, miss = {};
+  const add = (d, k, v) => { const o = (out[d] = out[d] || {}); o[k] = (o[k] || 0) + v; };
+  for (const r of prods) {
+    const d = r.segments.date, v = micros(r.metrics.costMicros), t = r.segments.productTitle;
+    const k = catOf(client, r.segments.productTypeL1, t, r.segments.productTypeL2) || UNTAGGED; add(d, k, v);
+    if (k === UNTAGGED) miss[t || '(no title)'] = (miss[t || '(no title)'] || 0) + v;
+    const ck = d + '|' + r.campaign.id; covered[ck] = (covered[ck] || 0) + v;
+  }
+  for (const r of camps) {
+    const d = r.segments.date, left = micros(r.metrics.costMicros) - (covered[d + '|' + r.campaign.id] || 0);
+    if (left > 0.5) add(d, catOf(client, r.campaign.name) || UNTAGGED, left);
+  }
+  const top = Object.entries(miss).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  if (top.length) log(`google ${client.id}: feed products with no category: ${top.map(([t, v]) => `${t} (${Math.round(v)})`).join('; ')}`);
+  for (const d in out) for (const k in out[d]) out[d][k] = round(out[d][k]);
+  return out;
 }
 
 // The Google side of the funnel. Google Ads has no landing page view metric of its own, so these

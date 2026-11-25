@@ -766,8 +766,8 @@ tr.ob-kid.ob-ctwa>td{background:rgba(14,159,120,.05)} tr.ob-kid.ob-vol>td{backgr
 :root[data-theme="dark"] .client-logo{filter:invert(1) brightness(1.05)}
 @media (max-width:560px){.client-logo{height:26px;margin-bottom:8px}}
 .cat-simple th.grp{text-align:center;border-bottom:1px solid var(--line)}.cat-simple th.grp .srcdot{display:inline-block;vertical-align:0}
-.cat-simple td.g,.cat-simple th.gg{background:rgba(242,162,12,.05)} .cat-simple td.tt,.cat-simple th.gt{background:var(--accent-soft)}
-.cat-simple td.num:nth-child(2),.cat-simple td.num:nth-child(6),.cat-simple td.num:nth-child(10){border-left:1px solid var(--line)}
+.cat-simple td.g{background:rgba(242,162,12,.05)} .cat-simple td.tt{background:var(--accent-soft)} .cat-simple td.sh,.cat-simple th.gs{background:rgba(22,121,79,.05)}
+.cat-simple td.num:nth-child(2),.cat-simple td.num:nth-child(5),.cat-simple td.num:nth-child(9){border-left:1px solid var(--line)}
 /* top bar: bigger mark, single-line range buttons */
 .rail .rail-mark{width:38px;height:38px;border-radius:11px}
 .rail .rail-name{font-size:17px}.rail .rail-name u{font-size:11px;margin-top:3px}
@@ -3565,19 +3565,32 @@ function metaByCategory(x,S){
   (S.ledger||[]).forEach(r=>{ if(!inW(r[0])||!/\(paid\)/.test(r[2]||'')) return; const acc=r[1]==='Meta'?M:r[1]==='Google'?G:null; if(!acc) return; const m=S.camps&&S.camps[r[12]];
     const k=catOf(look(r[7]))||catOf(look(r[6]))||catOf(m&&m.name)||catOf(look(r[5]))||UNT;
     acc[k].o+=r[9]||0; acc[k].v+=r[10]||0; });
-  const money=v=>(c.currency==='INR'||!c.currency?'\u20B9':'')+Math.round(v||0).toLocaleString('en-IN'), ro=(v,sp)=>sp?fmtX(v/sp):'--';
-  const T=n=>({o:M[n].o+G[n].o,v:M[n].v+G[n].v,s:M[n].s+G[n].s});
-  const rows=names.filter(n=>M[n].o||M[n].s||G[n].o||G[n].s).sort((a,b)=>(a===UNT)-(b===UNT)||(T(b).v-T(a).v));
+  // Google spend and store sales by category, written by the nightly and hourly syncs on each day's
+  // Google and Shopify rows (cats). Google: Shopping/PMax spend by product type and title, the rest by
+  // campaign name. Shopify: every line item by product type and title. Older days without them fall
+  // back to Google campaign names, and store sales show as not available.
+  const dRows=D.daily.filter(r=>r.clientId===c.id&&inW(r.date));
+  const gRows=dRows.filter(r=>r.platform==='google'), shRows=dRows.filter(r=>r.platform==='shopify');
+  const gHas=gRows.some(r=>r.cats), shHas=shRows.some(r=>r.cats);
+  if(gHas){ names.forEach(n=>G[n].s=0); gRows.forEach(r=>{ for(const k in r.cats||{}){ const n=G[k]?k:UNT; G[n].s+=r.cats[k]||0; } }); }
+  const SH={}; names.forEach(n=>SH[n]={o:0,g:0,v:0});
+  shRows.forEach(r=>{ for(const k in r.cats||{}){ const n=SH[k]?k:UNT, t=r.cats[k]||[]; SH[n].o+=t[0]||0; SH[n].g+=t[1]||0; SH[n].v+=t[2]||0; } });
+  const money=v=>(c.currency==='INR'||!c.currency?'₹':'')+Math.round(v||0).toLocaleString('en-IN');
+  const rows=names.filter(n=>M[n].s||G[n].s||SH[n].o||M[n].o||G[n].o).sort((a,b)=>(a===UNT)-(b===UNT)||((M[b].s+G[b].s)-(M[a].s+G[a].s)));
   if(!rows.length) return '';
-  const sumOf=acc=>rows.reduce((t,n)=>({o:t.o+acc[n].o,v:t.v+acc[n].v,s:t.s+acc[n].s}),{o:0,v:0,s:0});
-  const MT=sumOf(M), GT=sumOf(G), AT={o:MT.o+GT.o,v:MT.v+GT.v,s:MT.s+GT.s};
-  const cells=(t,cls)=>'<td class="num'+cls+'">'+fmtNum(t.o)+'</td><td class="num'+cls+'">'+money(t.v)+'</td><td class="num'+cls+'">'+(t.s?money(t.s):'--')+'</td><td class="num'+cls+'"><b>'+ro(t.v,t.s)+'</b></td>';
-  const tr=n=>'<tr'+(n===UNT?' class="cat-unt"':'')+'><td class="row-title">'+esc(n)+'</td>'+cells(M[n],'')+cells(G[n],' g')+cells(T(n),' tt')+'</tr>';
-  const sub='<th class="num">Orders</th><th class="num">Sales</th><th class="num">Spend</th><th class="num">ROAS</th>';
-  return '<section class="srcpanel catpanel"><div class="srcph"><div><h3>Sales and spend by category</h3><p>Paid Meta and Google, '+esc(spec.label)+'. Orders and sales are Shopify orders whose last UTM was a paid Meta or Google ad. Change the period with the date bar at the top.</p></div></div>'
-    +'<div class="data-table-wrap" style="overflow:auto"><table class="dtable cat-t cat-simple"><thead><tr><th rowspan="2">Category</th><th class="grp gm" colspan="4"><i class="srcdot" style="background:'+SRC_COL.Meta+'"></i> Meta</th><th class="grp gg" colspan="4"><i class="srcdot" style="background:'+SRC_COL.Google+'"></i> Google</th><th class="grp gt" colspan="4">Total</th></tr><tr>'+sub+sub+sub+'</tr></thead><tbody>'
-    +rows.map(tr).join('')+'<tr class="cat-tot"><td class="row-title">Total</td>'+cells(MT,'')+cells(GT,' g')+cells(AT,' tt')+'</tr></tbody></table></div>'
-    +'<div class="note" style="margin-top:8px">Untagged / mixed is spend and orders whose names carry no category, such as catalog, sale and brand campaigns.</div></section>';
+  const na='<span class="faint">n/a</span>';
+  const line=(n,t)=>{ const sp=t.ms+t.gs; return '<tr'+(n===UNT?' class="cat-unt"':'')+(n==='Total'?' class="cat-tot"':'')+'><td class="row-title">'+esc(n)+'</td>'
+    +'<td class="num">'+(t.ms?money(t.ms):'--')+'</td><td class="num g">'+(t.gs?money(t.gs):'--')+'</td><td class="num tt"><b>'+money(sp)+'</b></td>'
+    +'<td class="num sh">'+(shHas?fmtNum(t.so):na)+'</td><td class="num sh">'+(shHas?money(t.sg):na)+'</td><td class="num sh">'+(shHas?money(t.sv):na)+'</td><td class="num sh"><b>'+(shHas&&sp?fmtX(t.sv/sp):'--')+'</b></td>'
+    +'<td class="num">'+fmtNum(t.mo)+'</td><td class="num g">'+fmtNum(t.go)+'</td></tr>'; };
+  const T=n=>({ms:M[n].s,gs:G[n].s,so:SH[n].o,sg:SH[n].g,sv:SH[n].v,mo:M[n].o,go:G[n].o});
+  const tot=rows.reduce((a,n)=>{ const t=T(n); for(const k in t) a[k]+=t[k]; return a; },{ms:0,gs:0,so:0,sg:0,sv:0,mo:0,go:0});
+  const shTot=shRows.reduce((a,r)=>a+(r.orders||0),0);
+  return '<section class="srcpanel catpanel"><div class="srcph"><div><h3>Spend and sales by category</h3><p>'+esc(spec.label)+'. Spend from Meta and Google, store sales from Shopify, by product category. Change the period with the date bar at the top.</p></div></div>'
+    +'<div class="data-table-wrap" style="overflow:auto"><table class="dtable cat-t cat-simple"><thead><tr><th rowspan="2">Category</th><th class="grp" colspan="3">Ad spend</th><th class="grp gs" colspan="4">Shopify store</th><th class="grp" colspan="2">Orders from ads (UTM)</th></tr><tr>'
+    +'<th class="num">Meta</th><th class="num">Google</th><th class="num">Total</th><th class="num">Orders</th><th class="num">Gross sales</th><th class="num">Net sales</th><th class="num">Net ÷ spend</th><th class="num">Meta</th><th class="num">Google</th></tr></thead><tbody>'
+    +rows.map(n=>line(n,T(n))).join('')+line('Total',tot)+'</tbody></table></div>'
+    +'<div class="note" style="margin-top:8px">Store orders are product-wise: an order with two products in one category counts twice there, so category orders add up to more than the '+(shHas?fmtNum(shTot)+' ':'')+'store orders. Net sales are after discounts and returns, before tax and shipping. Untagged / mixed is spend and products whose names carry no category (catalog, sale and brand campaigns).'+(shHas?'':' Store sales by category fill in from the next sync.')+'</div></section>';
 }
 function srcScale(S,c,w,spec){
   const pw=window_(D.today,spec.prev), PLS=['Meta','Google'];

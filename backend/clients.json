@@ -100,79 +100,119 @@
     "contact": "",
     "categories": [
       [
-        "Quilted Sofa Cover",
-        [
-          "quilted"
-        ]
-      ],
-      [
-        "Recliner",
+        "Recliner covers & mats",
         [
           "recliner"
         ]
       ],
       [
-        "Sofa Mat",
+        "Sofa mats",
         [
           "sofa mat",
-          "sofamat"
+          "sofamat",
+          "sofa cover mat"
         ]
       ],
       [
-        "Sofa Throw",
+        "Sofa throws",
         [
           "throw"
         ]
       ],
       [
-        "Sofa Cover",
+        "Chair covers",
+        [
+          "chair",
+          "bench"
+        ]
+      ],
+      [
+        "Sofa covers",
         [
           "sofa cover",
           "sofacover",
+          "sofa protector",
           "stretchable",
-          "stretch",
-          "plain sofa",
+          "quilted",
           "sofa"
         ]
       ],
       [
-        "Cushion Cover",
+        "Cushion covers",
         [
           "cushion"
         ]
       ],
       [
-        "Blanket / AC Blanket",
-        [
-          "blanket"
-        ]
-      ],
-      [
-        "Table Cloth + Runner",
+        "Table cloth, runner & dining mats",
         [
           "table cloth",
           "tablecloth",
           "table runner",
           "runner",
-          "table"
+          "dining mat",
+          "table mat",
+          "placemat",
+          "place mat",
+          "table cover"
         ]
       ],
       [
-        "Bedsheet",
+        "AC blankets",
+        [
+          "blanket",
+          "dohar",
+          "comforter"
+        ]
+      ],
+      [
+        "Bedsheets",
         [
           "bedsheet",
-          "bed sheet"
+          "bed sheet",
+          "fitted sheet"
         ]
       ],
       [
-        "Other Home",
+        "Curtains",
+        [
+          "curtain"
+        ]
+      ],
+      [
+        "Sensor dustbin",
+        [
+          "dustbin",
+          "trash can",
+          "sensor"
+        ]
+      ],
+      [
+        "Serving trays",
+        [
+          "tray"
+        ]
+      ],
+      [
+        "Peg boards",
+        [
+          "peg board",
+          "pegboard"
+        ]
+      ],
+      [
+        "Other home & storage",
         [
           "storage",
+          "organiser",
+          "organizer",
+          "box",
           "wooden",
           "floor mat",
-          "box",
-          "organiser",
-          "organizer"
+          "rack",
+          "basket",
+          "hanger",
+          "shelf"
         ]
       ]
     ]
