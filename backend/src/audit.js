@@ -119,10 +119,14 @@ export async function auditClient(store, c, { days = 60 } = {}) {
       const mine = (name) => { const hit = String(name || '').toLowerCase().includes(rule); return side === 'seg' ? hit : !hit; };
       const perDay = {}, perCamp = {};
       for (const id of String(c.accounts.meta).split(/[\s,]+/).map((x) => x.replace(/^act_/, '')).filter(Boolean)) {
-        let next = `https://graph.facebook.com/${config.meta.apiVersion}/act_${id}/insights?${new URLSearchParams({ access_token: config.meta.token, level: 'campaign', time_increment: '1', fields: 'campaign_id,campaign_name,spend,actions,action_values', time_range: JSON.stringify({ since, until: today }), limit: '500' })}`;
+        for (let a = since; a <= today; a = addDays(a, 7)) {
+        const b = addDays(a, 6) < today ? addDays(a, 6) : today;
+        let next = `https://graph.facebook.com/${config.meta.apiVersion}/act_${id}/insights?${new URLSearchParams({ access_token: config.meta.token, level: 'campaign', time_increment: '1', fields: 'campaign_id,campaign_name,spend,actions,action_values', time_range: JSON.stringify({ since: a, until: b }), limit: '200' })}`;
+        let tries = 0;
         while (next) {
           const body = await (await fetch(next)).json();
-          if (body.error) throw new Error('campaign rows: ' + String(body.error.message).slice(0, 80));
+          if (body.error && tries < 4) { tries++; await new Promise((r) => setTimeout(r, 15000 * tries)); continue; }
+          if (body.error) throw new Error(`campaign rows ${a}: ` + String(body.error.message).slice(0, 80));
           for (const x of body.data || []) {
             if (!mine(x.campaign_name)) continue;
             const d = perDay[x.date_start] || (perDay[x.date_start] = { sp: 0, pu: 0, rv: 0, ld: 0, ch: 0 });
@@ -131,6 +135,7 @@ export async function auditClient(store, c, { days = 60 } = {}) {
             if (x.date_start <= until) { const k = String(x.campaign_id); perCamp[k] = perCamp[k] || { name: x.campaign_name, sp: 0 }; perCamp[k].sp += sp; }
           }
           next = body.paging?.next || '';
+        }
         }
       }
       const todayRows = (await store.list('daily', dailyIdRange(c.id, today, today))).filter((r) => r.clientId === c.id && r.platform === 'meta');
