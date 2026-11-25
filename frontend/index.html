@@ -3537,8 +3537,8 @@ function metaByCategory(x,S){
   const c=x.c, ent=x.ent||{}, CATS=c.categories||[], UNT='Untagged / mixed';
   const norm=t=>' '+String(t||'').toLowerCase().replace(/[_|\-\/.:+,#()\[\]]+/g,' ').replace(/\s+/g,' ')+' ';
   const catOf=t=>{ if(!t) return null; const n=norm(t); for(const [name,kws] of CATS) if(kws.some(k=>n.includes(String(k).toLowerCase()))) return name; return null; };
-  const W=[['3d',3],['7d',7],['14d',14],['30d',30]].map(([k,n])=>{ const end=addDays(D.today,-1); return {k,n,start:addDays(end,-(n-1)),end}; });
-  const ci=Math.max(0,W.findIndex(w=>w.k===(state.catWin||'7d'))), w=W[ci];
+  // Same period as the date bar at the top of the page.
+  const spec=x.spec||rangeSpec(state.range,D.today), w=window_(D.today,spec);
   const names=[...CATS.map(z=>z[0]),UNT];
   const z=()=>{ const o={}; names.forEach(n=>o[n]={o:0,v:0,s:0}); return o; };
   const M=z(), G=z();
@@ -3560,10 +3560,12 @@ function metaByCategory(x,S){
   // Orders and sales from the order ledger.
   const idName={}; [...metaCamps,...gCamps,...sets,...ads].forEach(e=>{ if(e.id) idName[String(e.id)]=e.name; });
   const look=v=>{ const t=String(v||'').trim(); return /^\d{6,}$/.test(t)&&idName[t]?idName[t]:t; };
-  (S.ledger||[]).forEach(r=>{ if(!inW(r[0])) return; const acc=r[1]==='Meta'?M:r[1]==='Google'?G:null; if(!acc) return; const m=S.camps&&S.camps[r[12]];
+  // Paid orders only: Meta Ads (paid) and Google Ads (paid). Organic Google, free Shopping listings
+  // and Meta organic have no ad spend behind them, so counting them would inflate ROAS.
+  (S.ledger||[]).forEach(r=>{ if(!inW(r[0])||!/\(paid\)/.test(r[2]||'')) return; const acc=r[1]==='Meta'?M:r[1]==='Google'?G:null; if(!acc) return; const m=S.camps&&S.camps[r[12]];
     const k=catOf(look(r[7]))||catOf(look(r[6]))||catOf(m&&m.name)||catOf(look(r[5]))||UNT;
     acc[k].o+=r[9]||0; acc[k].v+=r[10]||0; });
-  const money=v=>fmtMoney(v,c), ro=(v,sp)=>sp?fmtX(v/sp):'--';
+  const money=v=>(c.currency==='INR'||!c.currency?'\u20B9':'')+Math.round(v||0).toLocaleString('en-IN'), ro=(v,sp)=>sp?fmtX(v/sp):'--';
   const T=n=>({o:M[n].o+G[n].o,v:M[n].v+G[n].v,s:M[n].s+G[n].s});
   const rows=names.filter(n=>M[n].o||M[n].s||G[n].o||G[n].s).sort((a,b)=>(a===UNT)-(b===UNT)||(T(b).v-T(a).v));
   if(!rows.length) return '';
@@ -3571,9 +3573,8 @@ function metaByCategory(x,S){
   const MT=sumOf(M), GT=sumOf(G), AT={o:MT.o+GT.o,v:MT.v+GT.v,s:MT.s+GT.s};
   const cells=(t,cls)=>'<td class="num'+cls+'">'+fmtNum(t.o)+'</td><td class="num'+cls+'">'+money(t.v)+'</td><td class="num'+cls+'">'+(t.s?money(t.s):'--')+'</td><td class="num'+cls+'"><b>'+ro(t.v,t.s)+'</b></td>';
   const tr=n=>'<tr'+(n===UNT?' class="cat-unt"':'')+'><td class="row-title">'+esc(n)+'</td>'+cells(M[n],'')+cells(G[n],' g')+cells(T(n),' tt')+'</tr>';
-  const seg='<div class="crchips">'+W.map(x2=>'<button class="crchip'+(w.k===x2.k?' on':'')+'" data-act="catwin" data-v="'+x2.k+'">Last '+x2.k+'</button>').join('')+'</div>';
   const sub='<th class="num">Orders</th><th class="num">Sales</th><th class="num">Spend</th><th class="num">ROAS</th>';
-  return '<section class="srcpanel catpanel"><div class="srcph"><div><h3>Sales and spend by category</h3><p>Meta, Google and both together, last '+w.k+' (ending yesterday). Orders and sales are Shopify orders by their last UTM.</p></div><div class="srcphr">'+seg+'</div></div>'
+  return '<section class="srcpanel catpanel"><div class="srcph"><div><h3>Sales and spend by category</h3><p>Paid Meta and Google, '+esc(spec.label)+'. Orders and sales are Shopify orders whose last UTM was a paid Meta or Google ad. Change the period with the date bar at the top.</p></div></div>'
     +'<div class="data-table-wrap" style="overflow:auto"><table class="dtable cat-t cat-simple"><thead><tr><th rowspan="2">Category</th><th class="grp gm" colspan="4"><i class="srcdot" style="background:'+SRC_COL.Meta+'"></i> Meta</th><th class="grp gg" colspan="4"><i class="srcdot" style="background:'+SRC_COL.Google+'"></i> Google</th><th class="grp gt" colspan="4">Total</th></tr><tr>'+sub+sub+sub+'</tr></thead><tbody>'
     +rows.map(tr).join('')+'<tr class="cat-tot"><td class="row-title">Total</td>'+cells(MT,'')+cells(GT,' g')+cells(AT,' tt')+'</tr></tbody></table></div>'
     +'<div class="note" style="margin-top:8px">Untagged / mixed is spend and orders whose names carry no category, such as catalog, sale and brand campaigns.</div></section>';
