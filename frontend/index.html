@@ -1452,9 +1452,19 @@ async function loadLive(){
     if(covered.size) console.warn('rollup covers '+covered.size+' of '+live.length+' clients, reading daily directly');
     daily=await col('daily',r=>r.where('date','>=',since));
   }
+  // Big creatives trees are saved gzipped by the server (backend/src/entpack.js): the chunks sit in
+  // the doc as z[], or in entchunks/{clientId}_{i} when they pass ~850 KB. Unpacked here, in the browser.
+  const unpackEnt=async(d)=>{ if(!d||!d.packed) return d;
+    try{ let parts=Array.isArray(d.z)?d.z:null;
+      if(!parts){ parts=[]; for(let i=0;i<(d.parts||0);i++){ const s=await fb.db.collection(PFX+'entchunks').doc(d.id+'_'+i).get(); parts.push(s.exists?(s.data().z||''):''); } }
+      const bin=atob(parts.join('')), u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+      const txt=await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+      return {id:d.id,...JSON.parse(txt)};
+    }catch(e){ console.warn('could not unpack creatives for '+d.id,e); return {id:d.id,clientId:d.clientId||d.id,campaigns:[],adsets:[],ads:[],products:[],issues:[]}; } };
+  const entsU=await Promise.all((ents||[]).map(unpackEnt));
   const byId=(arr)=>Object.fromEntries(arr.map(x=>[x.clientId||x.id,x]));
   const tokens={}; (reports||[]).forEach(r=>{ if(r.clientId&&r.enabled!==false) tokens[r.clientId]=r.id; });
-  return {today,clients:live,daily,entities:byId(ents),signals:byId(sigs),sitewatch:byId(sws),syncs:byId(syncsArr),alerts,intraday:Object.fromEntries(intra.map(x=>[x.id,x])),lastRun:meta,reportTokens:tokens,weekly:weekly||[]};
+  return {today,clients:live,daily,entities:byId(entsU),signals:byId(sigs),sitewatch:byId(sws),syncs:byId(syncsArr),alerts,intraday:Object.fromEntries(intra.map(x=>[x.id,x])),lastRun:meta,reportTokens:tokens,weekly:weekly||[]};
 }
 
 /* ============================== RANGES / METRICS ========================= */

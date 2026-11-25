@@ -25,6 +25,7 @@ import { raise } from './alerts.js';
 import { handleChat, notesApi } from './chat/index.js';
 import { verifyShopify, verifyMeta, verifyGoogle } from './verify.js';
 import { auditClient } from './audit.js';
+import { packedKb } from './entpack.js';
 import { buildSourceFeed } from './orderSources.js';
 import { handleShopifyInstall, loadShopTokens } from './shopifyInstall.js';
 import { saveTarget, remind as remindTargets, withMonthTargets } from './targets.js';
@@ -292,8 +293,10 @@ async function syncClient(store, client, { mode, days, sources: onlySources = nu
   // 760 KB (in bytes, not characters), trimmed in steps that cost the dashboard least first:
   // zero days, the history of ads that spent nothing, ads that spent nothing and are not running,
   // then the per-day history of ads and ad sets beyond 62 days (last month still fits), then 35.
-  const size = () => Math.round(Buffer.byteLength(JSON.stringify(ent)) / 1024);
-  const LIMIT = 760;
+  // The tree is now saved gzipped (entpack.js), split into pieces when needed, so the trim below
+  // only runs if even the packed tree would pass ~3 MB. Measured on the packed size.
+  const size = () => packedKb(ent);
+  const LIMIT = 3000;
   let entKb = size();
   if (entKb > LIMIT) {
     const before = entKb;
@@ -317,9 +320,10 @@ async function syncClient(store, client, { mode, days, sources: onlySources = nu
       () => { ent.ads = (ent.ads || []).slice(0, 150); for (const a of ent.ads) delete a.days; },
     ];
     for (const step of steps) { if (entKb <= LIMIT) break; step(); entKb = size(); }
-    log(`${client.id}: entity tree trimmed from ${before} to ${entKb} KB to stay under Firestore's 1 MB limit`);
+    log(`${client.id}: entity tree trimmed from ${before} to ${entKb} KB packed`);
   }
   await store.set('entities', client.id, ent);
+  log(`${client.id}: creatives tree saved, ${Math.round(Buffer.byteLength(JSON.stringify(ent)) / 1024)} KB, packed ${entKb} KB, ads ${(ent.ads || []).length}`);
   if (mode === 'hourly') await intradaySnapshot(store, client, today);
   await writeRollup(store, client, today);
   return { entities: ent };

@@ -96,7 +96,8 @@ function fileImpl() {
 
 export async function db() {
   if (impl) return impl;
-  impl = has('firebase') ? await firestoreImpl() : fileImpl();
+  const { wrapStore } = await import('./entpack.js');
+  impl = wrapStore(has('firebase') ? await firestoreImpl() : fileImpl());
   return impl;
 }
 
