@@ -78,6 +78,8 @@ export function normalizeClient(c) {
     // Product Ad: offsite_conversion.fb_pixel_custom, the value behind the account's PG_ROAS column).
     // Shorter per-day history for a very large Meta account (see meta.fetchEntitiesOne).
     metaPause: c.metaPause === true,
+    // Lead gen view (Berkowits Services): campaigns whose name contains this text, on Meta and Google.
+    leadgen: c.leadgen && typeof c.leadgen === 'object' ? { match: String(c.leadgen.match || 'Service') } : null,
     campaignDays: Number(c.campaignDays) || 0, entityDays: Number(c.entityDays) || 0,
     metaPurchaseTypes: Array.isArray(c.metaPurchaseTypes) ? c.metaPurchaseTypes.map(String).filter(Boolean) : [],
     // A sister page for the same brand (Berkowits Products <-> Services + Grow): [id, button label].

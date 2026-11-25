@@ -26,6 +26,7 @@ import { handleChat, notesApi } from './chat/index.js';
 import { verifyShopify, verifyMeta, verifyGoogle } from './verify.js';
 import { auditClient } from './audit.js';
 import { packedKb } from './entpack.js';
+import { buildLeadgen } from './leadgen.js';
 import { buildSourceFeed } from './orderSources.js';
 import { handleShopifyInstall, loadShopTokens } from './shopifyInstall.js';
 import { saveTarget, remind as remindTargets, withMonthTargets } from './targets.js';
@@ -326,6 +327,14 @@ async function syncClient(store, client, { mode, days, sources: onlySources = nu
   log(`${client.id}: creatives tree saved, ${Math.round(Buffer.byteLength(JSON.stringify(ent)) / 1024)} KB, packed ${entKb} KB, ads ${(ent.ads || []).length}`);
   if (mode === 'hourly') await intradaySnapshot(store, client, today);
   await writeRollup(store, client, today);
+  // Lead gen view (Berkowits Services): rebuilt at most every 50 minutes, never fatal to the sync.
+  if (client.leadgen && client.accounts?.meta && ['hourly', 'daily', 'creatives'].includes(mode)) {
+    try {
+      const prev = await store.get('leadgen', client.id).catch(() => null);
+      const age = prev?.meta?.generated ? Date.now() - Date.parse(prev.meta.generated) : Infinity;
+      if (age > 50 * 60 * 1000) await store.set('leadgen', client.id, { clientId: client.id, ...(await buildLeadgen(client)) });
+    } catch (e) { log(`${client.id}/leadgen FAILED ${String(e.message || e).slice(0, 160)}`); }
+  }
   return { entities: ent };
 }
 
@@ -537,6 +546,12 @@ async function main() {
         if (q) { const e = await store.get('entities', q).catch(() => null); if (e) log(`access entities ${q}: campaigns ${(e.campaigns || []).length} (meta ${(e.campaigns || []).filter((c) => c.platform === 'meta').length}), adsets ${(e.adsets || []).length}, ads ${(e.ads || []).length}, products ${(e.products || []).length}, size ${Math.round(JSON.stringify(e).length / 1024)} KB, entitiesAt ${JSON.stringify(e.entitiesAt || {})}, updatedAt ${e.updatedAt}`); }
         return out;
       }
+      if (mode === 'leadgen') {
+        const only = String(url.searchParams.get('client') || '').trim().toLowerCase();
+        const list = clients.filter((c) => c.leadgen && c.active !== false && (!only || c.id === only));
+        for (const c of list) { try { await store.set('leadgen', c.id, { clientId: c.id, ...(await buildLeadgen(c)) }); } catch (e) { log(`${c.id}/leadgen FAILED ${String(e.message || e).slice(0, 160)}`); } }
+        return { mode, clients: list.length };
+      }
       if (mode === 'audit') {
         // Read-only 60 day check of one client (or every active client): stored vs platform, plus
         // creatives coverage. Details in the server log; the answer carries statuses only.
@@ -733,10 +748,11 @@ async function main() {
           ]);
           const { am, accounts, ...rest } = c;
           const client = { ...rest, id: clientId, accounts: { meta: accounts?.meta || '', google: accounts?.google || '', ga4: accounts?.ga4 ? 'yes' : '', shopify: accounts?.shopify?.shop ? { shop: accounts.shopify.shop } : null } };
+          const leadgen = await store.get('leadgen', clientId).catch(() => null);
           const odDocs = od.filter((x) => x.clientId === clientId);
           const sources = odDocs.some((x) => Array.isArray(x.g)) ? { client: { id: clientId, name: c.name, currency: c.currency || 'INR' }, since, until, ...buildSourceFeed(odDocs, { internal: true, entities: ent }) } : null;
           res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ today: until, client, daily, entities: { ...entOut, clientId }, signals: sig || { clientId, items: [] }, syncs: sy || {}, intraday: intra.filter((x) => x.clientId === clientId), lastRun: lastRun ? { hourly: lastRun.hourly || '', daily: lastRun.daily || '' } : {}, sources }));
+          res.end(JSON.stringify({ today: until, client, daily, entities: { ...entOut, clientId }, signals: sig || { clientId, items: [] }, syncs: sy || {}, intraday: intra.filter((x) => x.clientId === clientId), leadgen: leadgen || null, lastRun: lastRun ? { hourly: lastRun.hourly || '', daily: lastRun.daily || '' } : {}, sources }));
           return;
         }
         if (kind) { res.writeHead(404); res.end('not found'); return; }
@@ -972,7 +988,7 @@ async function main() {
       }
 
       const asked = url.searchParams.get('mode');
-      const mode = ['daily', 'hourly', 'sitewatch', 'weekly', 'verify', 'verifymeta', 'verifygoogle', 'creators', 'access', 'purge', 'creatives', 'audit'].includes(asked) ? asked : 'hourly';
+      const mode = ['daily', 'hourly', 'sitewatch', 'weekly', 'verify', 'verifymeta', 'verifygoogle', 'creators', 'access', 'purge', 'creatives', 'audit', 'leadgen'].includes(asked) ? asked : 'hourly';
       // ?days=N restates N days of history instead of the usual 7. Ignored for hourly and
       // sitewatch, which have nothing to restate.
       const days = mode === 'daily' ? parseInt(url.searchParams.get('days') || '', 10) : NaN;

@@ -1366,6 +1366,380 @@ window.addEventListener('unhandledrejection',function(e){ send('promise '+String
 <div id="root"></div>
 <div class="toast-stack" id="toasts"></div>
 <div class="cmdk-overlay" id="cmdk"><div class="cmdk-box"><input class="cmdk-input" id="cmdkInput" placeholder="Jump to a client, or type an action…" autocomplete="off"><div class="cmdk-results" id="cmdkResults"></div></div></div>
+<style id="lg-style">
+/* Lead gen view (Berkowits Services): the "Berkowits | Lead Gen" page, scoped under .lg-root */
+
+.lg-root{--bg:#f6f7f9;--surface:#fff;--ink:#14161a;--ink2:#4a505b;--ink3:#7b828e;--line:#e4e7ec;--line2:#eef0f3;--capi:#257de0;--volume:#f47230;--ctwa:#00b894;--good:#0f7b4f;--bad:#b42318;--warn:#a15c00;--r:12px;
+ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);font-size:14px;line-height:1.45;min-height:100vh;position:relative}
+.lg-root *{box-sizing:border-box}
+.lg-root .lg-wrap{max-width:1320px;margin:0 auto;padding:20px 24px 48px}
+.lg-root header.lg-head{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;margin-bottom:14px}
+.lg-root .lg-brand{display:flex;align-items:center;gap:12px}
+.lg-root .lg-logo{width:36px;height:36px;border-radius:10px;background:#111;display:grid;place-items:center;color:#fff;font-weight:700;font-size:15px;position:relative}
+.lg-root .lg-logo:after{content:"";position:absolute;right:5px;top:5px;width:7px;height:7px;border-radius:50%;background:#ff7a1a}
+.lg-root h1{font-size:20px;margin:0;font-weight:700;letter-spacing:-.01em}
+.lg-root .lg-sub{color:var(--ink3);font-size:12.5px;margin-top:1px}
+.lg-root .lg-filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.lg-root .lg-f{display:flex;flex-direction:column;gap:3px}
+.lg-root .lg-f label{font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em}
+.lg-root select,.lg-root textarea,.lg-root button{font:inherit;color:inherit}
+.lg-root select{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 28px 7px 10px;min-height:34px}
+.lg-root button.lg-btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px;min-height:34px;cursor:pointer}
+.lg-root button.lg-btn:hover{background:#f1f3f6}
+.lg-root button.lg-btn.pri{background:#14161a;color:#fff;border-color:#14161a}
+.lg-root nav.lg-tabs{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:18px}
+.lg-root nav.lg-tabs button{background:none;border:0;padding:10px 14px;cursor:pointer;color:var(--ink2);font-weight:600;border-bottom:2px solid transparent;white-space:nowrap}
+.lg-root nav.lg-tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--ink)}
+.lg-root nav.lg-tabs button:hover{color:var(--ink)}
+.lg-root .lg-note{font-size:12px;color:var(--ink3);margin:0 0 14px}
+.lg-root .lg-grid{display:grid;gap:14px}
+.lg-root .g6{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.lg-root .g3{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.lg-root .g2{grid-template-columns:repeat(auto-fit,minmax(420px,1fr))}
+.lg-root .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.lg-root .card h3{margin:0 0 2px;font-size:14px}
+.lg-root .card .cap{font-size:12px;color:var(--ink3);margin-bottom:10px}
+.lg-root .sec{margin:22px 0 10px;display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.lg-root .sec h2{font-size:15px;margin:0}
+.lg-root .sec .cap{font-size:12px;color:var(--ink3)}
+.lg-root .kpi .l{font-size:11.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em}
+.lg-root .kpi .v{font-size:24px;font-weight:700;letter-spacing:-.02em;margin-top:2px}
+.lg-root .kpi .s{font-size:12px;color:var(--ink3);margin-top:2px}
+.lg-root .kpi.slot .v{color:var(--ink3);font-size:15px;font-weight:600;margin-top:8px}
+.lg-root .obj{border-top:4px solid var(--c,#999)}
+.lg-root .obj .hd{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.lg-root .dot{width:10px;height:10px;border-radius:3px;background:var(--c);flex:none}
+.lg-root .obj .big{font-size:26px;font-weight:700;letter-spacing:-.02em}
+.lg-root .obj .bl{font-size:11.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em}
+.lg-root .mini{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line2)}
+.lg-root .mini .l{font-size:11px;color:var(--ink3)}
+.lg-root .mini .v{font-weight:600}
+.lg-root .tw{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:#fff}
+.lg-root table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+.lg-root th,.lg-root td{padding:8px 10px;border-bottom:1px solid var(--line2);text-align:right;white-space:nowrap}
+.lg-root th{font-size:11.5px;color:var(--ink3);font-weight:600;background:#fafbfc;position:sticky;top:0;cursor:pointer;user-select:none}
+.lg-root th.nosort{cursor:default}
+.lg-root th:hover{color:var(--ink)}
+.lg-root th.l,.lg-root td.l{text-align:left}
+.lg-root tr:last-child td{border-bottom:0}
+.lg-root tr.tot td{font-weight:700;background:#fafbfc}
+.lg-root tr.grp td{background:#f3f5f8;font-weight:700;text-align:left;font-size:12px}
+.lg-root td.mut{color:var(--ink3)}
+.lg-root td.slot{color:var(--ink3);font-style:italic}
+.lg-root .chip{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--ink2);background:#fff}
+.lg-root .chip.warn{color:var(--warn);border-color:#f1d9a8;background:#fff8e6}
+.lg-root .chip.o{color:#fff;border-color:transparent;background:var(--c)}
+.lg-root .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
+.lg-root .seg button{border:0;background:#fff;padding:6px 11px;cursor:pointer;min-height:32px}
+.lg-root .seg button+button{border-left:1px solid var(--line)}
+.lg-root .seg button[aria-pressed=true]{background:#14161a;color:#fff}
+.lg-root .tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.lg-root .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin-bottom:6px}
+.lg-root .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.lg-root svg text{font-family:inherit;fill:var(--ink2);font-size:11px}
+.lg-root .callout{border:1px solid #f1d9a8;background:#fff8e6;border-radius:var(--r);padding:12px 14px;font-size:13px;color:#5b3a00}
+.lg-root .callout b{color:#3d2700}
+.lg-root .hm{display:grid;gap:6px;align-items:stretch}
+.lg-root .hm .c{border-radius:8px;padding:10px 8px;text-align:center;min-height:58px;display:flex;flex-direction:column;justify-content:center;font-variant-numeric:tabular-nums}
+.lg-root .hm .c .n{font-weight:700;font-size:15px}
+.lg-root .hm .c .t{font-size:10.5px;opacity:.85}
+.lg-root .hm .h{font-size:12px;font-weight:600;color:var(--ink2);display:flex;align-items:center;justify-content:center;text-align:center}
+.lg-root .hm .h.rl{justify-content:flex-start}
+.lg-root .hm .c.best{outline:2px solid var(--ink);outline-offset:1px}
+.lg-root .hm .c.na{background:repeating-linear-gradient(45deg,#f3f5f8,#f3f5f8 6px,#eceff3 6px,#eceff3 12px);color:var(--ink3)}
+.lg-root .hm .c.tt{background:#fff;border:1px solid var(--line)}
+.lg-root .ramp{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--ink3);margin-top:10px}
+.lg-root .ramp .bar{display:flex}.lg-root .ramp .bar i{width:26px;height:10px}
+.lg-root pre{background:#0f1319;color:#e6edf6;border-radius:10px;padding:12px 14px;overflow:auto;font-size:12px;line-height:1.5;margin:8px 0}
+.lg-root code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px}
+.lg-root p.t{margin:6px 0;color:var(--ink2);max-width:900px}
+.lg-root ul.t{margin:6px 0 6px 18px;padding:0;color:var(--ink2);max-width:900px}
+.lg-root ul.t li{margin:3px 0}
+.lg-root textarea{width:100%;min-height:150px;border:1px solid var(--line);border-radius:8px;padding:10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+.lg-root .err{color:var(--bad);font-size:12.5px;margin-top:6px}
+.lg-root .ok{color:var(--good);font-size:12.5px;margin-top:6px}
+.lg-root .barrow{display:grid;grid-template-columns:150px 1fr 90px;gap:10px;align-items:center;margin:5px 0;font-size:12.5px}
+.lg-root .barrow .tr{background:#f1f3f6;border-radius:4px;height:12px;position:relative}
+.lg-root .barrow .fl{height:12px;border-radius:0 4px 4px 0;background:var(--capi)}
+.lg-root .barrow .vv{text-align:right;font-variant-numeric:tabular-nums}
+.lg-root .lg-tip{position:fixed;z-index:50;pointer-events:none;background:#14161a;color:#fff;border-radius:8px;padding:8px 10px;font-size:12px;max-width:300px;display:none;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+.lg-root .lg-tip .tt{font-weight:700;margin-bottom:4px}
+.lg-root .lg-tip .tr{display:flex;justify-content:space-between;gap:14px}
+.lg-root .lg-tip .tr i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
+.lg-root .foot{margin-top:28px;font-size:12px;color:var(--ink3)}
+.lg-root details{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;margin-top:14px}
+.lg-root details summary{cursor:pointer;font-weight:600}
+@media (max-width:640px){.lg-root .g2{grid-template-columns:1fr}.lg-root .barrow{grid-template-columns:110px 1fr 76px}}
+.lg-root{min-height:0;border-radius:16px;margin:6px 0 22px}
+.lg-root .lg-wrap{padding:18px 20px 22px}
+</style>
+<script>
+/* Lead gen component: window.GarudaLeadGen.mount(node, data, keepState) */
+(function(){
+'use strict';
+var NS='http://www.w3.org/2000/svg';
+function el(tag,attrs,kids){var e=document.createElement(tag);attrs=attrs||{};for(var k in attrs){if(k==='class')e.className=attrs[k];else if(k==='style')e.style.cssText=attrs[k];else if(k.slice(0,2)==='on')e.addEventListener(k.slice(2),attrs[k]);else if(attrs[k]!==false&&attrs[k]!=null)e.setAttribute(k,attrs[k]);}add(e,kids);return e}
+function add(e,kids){if(kids==null)return;if(!Array.isArray(kids))kids=[kids];kids.forEach(function(c){if(c==null||c===false)return;if(Array.isArray(c))add(e,c);else e.appendChild(typeof c==='object'?c:document.createTextNode(String(c)))})}
+function sv(tag,attrs,kids){var e=document.createElementNS(NS,tag);attrs=attrs||{};for(var k in attrs){if(attrs[k]!=null)e.setAttribute(k,attrs[k])}add(e,kids);return e}
+var nf=new Intl.NumberFormat('en-IN',{maximumFractionDigits:0});
+var NA='n/a';
+function ok(n){return n!=null&&isFinite(n)}
+function fInr(n){return ok(n)?'₹'+nf.format(Math.round(n)):NA}
+function fLakh(n){if(!ok(n))return NA;if(n>=1e7)return '₹'+(n/1e7).toFixed(2)+' Cr';if(n>=1e5)return '₹'+(n/1e5).toFixed(2)+'L';return fInr(n)}
+function fNum(n){return ok(n)?nf.format(Math.round(n)):NA}
+function fDec(n,d){d=d==null?1:d;return ok(n)?n.toLocaleString('en-IN',{minimumFractionDigits:d,maximumFractionDigits:d}):NA}
+function fPct(n,d){return ok(n)?(n*100).toFixed(d==null?1:d)+'%':NA}
+function div(a,b){return b>0?a/b:null}
+function prettyStage(s){var t=s.replace(/_/g,' ').toLowerCase().replace(/\brnr\b/g,'RNR');return t.charAt(0).toUpperCase()+t.slice(1)}
+function shortDate(d){var p=d.split('-');return parseInt(p[2],10)+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(p[1],10)-1]}
+
+var DEFS={objectives:{CAPI:{label:'Conversion API (qualified lead)',short:'CAPI',color:'#257de0'},VOLUME:{label:'Volume lead (high value)',short:'Volume',color:'#f47230'},CTWA:{label:'WhatsApp (click to WhatsApp)',short:'WhatsApp',color:'#00b894'}},
+ services:{LHR:{label:'Laser Hair Reduction',short:'LHR'},HT:{label:'Hair Transplant',short:'HT'},HP:{label:'Hair Patch',short:'HP'},BRAND:{label:'Brand search',short:'Brand'},OTHER:{label:'Other',short:'Other'}},
+ regions:{DEL:{label:'Delhi NCR',short:'Delhi'},MUM:{label:'Mumbai',short:'Mumbai'},HYD:{label:'Hyderabad',short:'Hyd'},BLR:{label:'Bangalore',short:'BLR'},ROI:{label:'Rest of India',short:'ROI'},OTHER:{label:'No region in name',short:'Other'},ALL:{label:'All India (brand)',short:'All'}}};
+function longDate(d){var p=d.split('-');return parseInt(p[2],10)+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(p[1],10)-1]+' '+p[0]}
+function prep(D){D=Object.assign({},D);D.defs=DEFS;var p=D.meta&&D.meta.period||{};var a=p.from||'',b=p.to||'';
+  var lbl=a&&b?(a.slice(0,7)===b.slice(0,7)?parseInt(a.slice(8),10)+' to '+longDate(b):longDate(a)+' to '+longDate(b)):'';
+  var gen='';try{gen=new Date(D.meta.generated).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}catch(e){gen=''}
+  D.meta=Object.assign({},D.meta,{period:Object.assign({},p,{label:lbl}),generatedLabel:gen});
+  D.meta_campaigns=D.meta_campaigns||[];D.meta_adsets=D.meta_adsets||[];D.meta_daily=D.meta_daily||[];D.google=D.google||{campaigns:[],dg_daily:[]};D.google.campaigns=D.google.campaigns||[];D.google.dg_daily=D.google.dg_daily||[];
+  D.notes=['Only campaigns whose name contains "'+(D.meta.match||'Service')+'" are counted, on Meta and on Google. Objective, service and region come from the campaign and ad set names.','Qualified lead = the Conversion API stage event "Prospect" that the CRM sends back to Meta. WhatsApp campaigns have no stage events, so they are judged on cost per conversation.','Totals use campaign level; the Service by region grid uses ad set level, so the two can differ by a few rupees.','Data refreshes about once an hour. Today is a partial day on both platforms.'].concat(D.notes||[]);
+  return D}
+var STAGE_ORDER=['UNCONTACTED_NEW','UNCONTACTED_RECHURNED','PROSPECTING','RNR','PROSPECT','APPOINTMENT_SCHEDULED','APPOINTMENT_RESCHEDULED','APPOINTMENT_CONFIRMED','WILL_VISIT_PERSONALLY','VISITED_&_ACTIVE','OPPORTUNITY_WON','OPPORTUNITY_LOST','NO_SHOW/CANCELLED_-_RNR','CLOSED_NEGATIVE_OUTCOME'];
+var RAMP=['#eaf3fd','#c4dcf8','#94bef0','#5c9ae6','#2b78d6','#1b58a8'];
+
+function mount(root,D,keep){
+D=prep(D);
+root.innerHTML='';root.className='lg-root';
+var S=keep||{tab:'overview',service:'ALL',region:'ALL',stage:'PROSPECT',sort:{},mx:{obj:'LG',metric:'cpql'},ob:'ALL',tview:{}};S.crm=null;
+var OBJ=D.defs.objectives,SVC=D.defs.services,REG=D.defs.regions;
+var OBJ_ORDER=['CAPI','VOLUME','CTWA'];
+var stages=[];(function(){var seen={};D.meta_campaigns.forEach(function(c){for(var k in (c.stages||{}))seen[k]=1});STAGE_ORDER.forEach(function(s){if(seen[s]){stages.push(s);delete seen[s]}});Object.keys(seen).forEach(function(s){stages.push(s)})})();
+
+var tip=el('div',{class:'lg-tip'});
+function showTip(e,title,lines){tip.textContent='';tip.appendChild(el('div',{class:'tt'},title));lines.forEach(function(l){var r=el('div',{class:'tr'});var a=el('span');if(l.c)a.appendChild(el('i',{style:'background:'+l.c}));a.appendChild(document.createTextNode(l.k));r.appendChild(a);r.appendChild(el('b',{},l.v));tip.appendChild(r)});tip.style.display='block';moveTip(e)}
+function moveTip(e){var x=e.clientX+14,y=e.clientY+14,w=tip.offsetWidth,h=tip.offsetHeight;if(x+w>window.innerWidth-8)x=e.clientX-w-14;if(y+h>window.innerHeight-8)y=e.clientY-h-14;tip.style.left=Math.max(4,x)+'px';tip.style.top=Math.max(4,y)+'px'}
+function hideTip(){tip.style.display='none'}
+
+/* ---------- data helpers ---------- */
+var NUM=['spend','impressions','link_clicks','leads','convos','depth2','depth3','first_reply'];
+function crmQ(level,id){var c=S.crm;if(!c)return null;var m=level==='adset'?c.meta_adsets:c.meta_campaigns;if(m&&m[id]&&m[id].qualified!=null)return m[id].qualified;return null}
+function qFor(r,level){var id=level==='adset'?r.adset_id:r.campaign_id;var c=crmQ(level,id);if(c!=null)return c;if(r.objective==='CTWA')return null;return r.stages?(r.stages[S.stage]||0):null}
+function decorate(r,level){r=Object.assign({},r);r.q=qFor(r,level);r.level=level;return r}
+function svcOK(r){return S.service==='ALL'||r.service===S.service}
+function adsets(extra){return D.meta_adsets.filter(function(a){return (!extra||extra(a))}).map(function(a){return decorate(a,'adset')})}
+function metaCampaignRows(){
+  if(S.region==='ALL')return D.meta_campaigns.filter(svcOK).map(function(c){return decorate(c,'campaign')});
+  var by={};
+  adsets(function(a){return svcOK(a)&&a.region===S.region}).forEach(function(a){
+    var t=by[a.campaign_id];if(!t){t=by[a.campaign_id]={campaign_id:a.campaign_id,campaign:a.campaign,objective:a.objective,service:a.service,q:null,stages:{},level:'campaign'};NUM.forEach(function(k){t[k]=0})}
+    NUM.forEach(function(k){t[k]+=a[k]||0});if(a.q!=null)t.q=(t.q||0)+a.q;for(var s in a.stages||{})t.stages[s]=(t.stages[s]||0)+a.stages[s];
+  });
+  return Object.keys(by).map(function(k){return by[k]});
+}
+function sum(rows){var t={n:rows.length,q:0,hasQ:false};NUM.forEach(function(k){t[k]=0});rows.forEach(function(r){NUM.forEach(function(k){t[k]+=r[k]||0});if(r.q!=null){t.q+=r.q;t.hasQ=true}});return t}
+function dm(t){return{ctr:div(t.link_clicks,t.impressions),cpl:div(t.spend,t.leads),cpql:t.hasQ?div(t.spend,t.q):null,qrate:t.hasQ?div(t.q,t.leads):null,cpc:div(t.spend,t.convos),d2:div(t.depth2,t.convos),d3:div(t.depth3,t.convos),cpd2:div(t.spend,t.depth2),fr:div(t.first_reply,t.convos),cpm:div(t.spend*1000,t.impressions)}}
+function byObj(rows,o){return rows.filter(function(r){return r.objective===o})}
+function lg(rows){return rows.filter(function(r){return r.objective!=='CTWA'})}
+function sname(r){return (SVC[r.service]?SVC[r.service].short:r.service)+' · '+(OBJ[r.objective]?OBJ[r.objective].short:r.objective)}
+function qLabel(){return 'Qualified = reached "'+prettyStage(S.stage)+'"'}
+function googleRows(){return D.google.campaigns.filter(function(c){if(S.service!=='ALL'&&c.service!==S.service)return false;if(S.region!=='ALL'&&c.region!==S.region)return false;return true})}
+
+/* ---------- ui primitives ---------- */
+function kpi(l,v,s,slot){return el('div',{class:'card kpi'+(slot?' slot':'')},[el('div',{class:'l'},l),el('div',{class:'v'},v),s?el('div',{class:'s'},s):null])}
+function section(t,cap){return el('div',{class:'sec'},[el('h2',{},t),cap?el('span',{class:'cap'},cap):null])}
+function note(t){return el('p',{class:'lg-note'},t)}
+function seg(opts,cur,cb){var w=el('div',{class:'seg',role:'group'});opts.forEach(function(o){w.appendChild(el('button',{type:'button','aria-pressed':String(cur===o[0]),onclick:function(){cb(o[0])}},o[1]))});return w}
+function table(id,cols,rows,opt){
+  opt=opt||{};var st=S.sort[id];var data=rows.slice();
+  if(st){var c=cols.filter(function(x){return x.k===st.k})[0];if(c){data.sort(function(a,b){var x=c.sv?c.sv(a):a[c.k],y=c.sv?c.sv(b):b[c.k];if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;if(typeof x==='string')return st.d*x.localeCompare(y);return st.d*(x-y)})}}
+  var tr=el('tr');cols.forEach(function(c){var arrow=(st&&st.k===c.k)?(st.d>0?' ▲':' ▼'):'';tr.appendChild(el('th',{class:(c.l?'l':'')+(c.nosort?' nosort':''),title:c.tip||false,onclick:c.nosort?null:function(){var cur=S.sort[id];S.sort[id]={k:c.k,d:(cur&&cur.k===c.k)?-cur.d:(c.l?1:1)};render()}},c.h+arrow))});
+  var tb=el('tbody');var lastG=null;
+  data.forEach(function(r){
+    if(opt.group){var g=opt.group(r);if(g!==lastG){lastG=g;tb.appendChild(el('tr',{class:'grp'},[el('td',{colspan:cols.length},opt.groupLabel?opt.groupLabel(r):g)]))}}
+    var row=el('tr');cols.forEach(function(c){var v=c.f?c.f(r):r[c.k];var cls=(c.l?'l':'');var node=v;var mut=false;if(c.slot){var sv_=c.slot(r);if(sv_==null){cls+=' slot';v='slot';node='CRM'}else{node=c.sf?c.sf(sv_):fNum(sv_)}}
+      if(v===NA||v==null)cls+=' mut';row.appendChild(el('td',{class:cls},node==null?NA:node))});
+    tb.appendChild(row)});
+  if(opt.total){var trw=el('tr',{class:'tot'});cols.forEach(function(c){var v=opt.total[c.k];trw.appendChild(el('td',{class:c.l?'l':''},v==null?'':v))});tb.appendChild(trw)}
+  return el('div',{class:'tw'},el('table',{},[el('thead',{},tr),tb]))
+}
+function objChip(o){var d=OBJ[o];return el('span',{class:'chip o',style:'--c:'+d.color},d.short)}
+
+/* ---------- charts ---------- */
+function niceMax(v){if(v<=0)return 1;var p=Math.pow(10,Math.floor(Math.log10(v)));var n=v/p;var m=n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10;return m*p}
+function lineChart(opts){
+  var W=760,H=270,m={l:54,r:96,t:12,b:30},iw=W-m.l-m.r,ih=H-m.t-m.b;var cats=opts.cats,series=opts.series;
+  var rawMax=Math.max.apply(null,[0].concat.apply([],series.map(function(s){return s.values})));var step=niceMax(rawMax/5);if(step*5<rawMax)step=niceMax(rawMax/4);var nt=Math.max(1,Math.ceil(rawMax/step));var mx=step*nt;
+  var X=function(i){return m.l+(cats.length===1?iw/2:iw*i/(cats.length-1))},Y=function(v){return m.t+ih-ih*v/mx};
+  var svg=sv('svg',{viewBox:'0 0 '+W+' '+H,width:'100%',role:'img','aria-label':opts.title,style:'display:block;max-width:100%'});
+  for(var g=0;g<=nt;g++){var gv=mx*g/nt,y=Y(gv);svg.appendChild(sv('line',{x1:m.l,x2:W-m.r,y1:y,y2:y,stroke:'#e9ecf0','stroke-width':1}));svg.appendChild(sv('text',{x:m.l-8,y:y+4,'text-anchor':'end'},opts.yfmt(gv)))}
+  cats.forEach(function(c,i){svg.appendChild(sv('text',{x:X(i),y:H-9,'text-anchor':'middle'},c.label))});
+  (opts.marks||[]).forEach(function(mk){var x=X(mk.i);svg.appendChild(sv('line',{x1:x,x2:x,y1:m.t,y2:m.t+ih,stroke:'#b42318','stroke-dasharray':'3 3','stroke-width':1}));svg.appendChild(sv('text',{x:x+4,y:m.t+10,style:'fill:#b42318;font-size:10.5px'},mk.text))});
+  var ends=[];
+  series.forEach(function(s){var d=s.values.map(function(v,i){return (i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)}).join(' ');svg.appendChild(sv('path',{d:d,fill:'none',stroke:s.color,'stroke-width':2,'stroke-linejoin':'round','stroke-linecap':'round'}));
+    s.values.forEach(function(v,i){svg.appendChild(sv('circle',{cx:X(i),cy:Y(v),r:4,fill:s.color,stroke:'#fff','stroke-width':2}))});ends.push({y:Y(s.values[s.values.length-1]),s:s})});
+  ends.sort(function(a,b){return a.y-b.y});for(var i=1;i<ends.length;i++){if(ends[i].y-ends[i-1].y<13)ends[i].y=ends[i-1].y+13}
+  ends.forEach(function(e){svg.appendChild(sv('text',{x:W-m.r+8,y:e.y+4,style:'fill:#14161a;font-weight:600'},e.s.short||e.s.name))});
+  var cross=sv('line',{y1:m.t,y2:m.t+ih,stroke:'#14161a','stroke-width':1,opacity:0});svg.appendChild(cross);
+  var slot=iw/Math.max(cats.length-1,1);
+  cats.forEach(function(c,i){var r=sv('rect',{x:X(i)-slot/2,y:m.t,width:slot,height:ih,fill:'transparent'});
+    r.addEventListener('mousemove',function(e){cross.setAttribute('x1',X(i));cross.setAttribute('x2',X(i));cross.setAttribute('opacity',.4);showTip(e,c.full,series.map(function(s){return{k:s.name,v:opts.vfmt(s.values[i]),c:s.color}}).concat(opts.extra?opts.extra(i):[]))});
+    r.addEventListener('mouseleave',function(){cross.setAttribute('opacity',0);hideTip()});svg.appendChild(r)});
+  return svg
+}
+function barPath(x,y,w,h,r){r=Math.min(r,w,h/2);return 'M'+x+' '+y+'H'+(x+w-r)+'Q'+(x+w)+' '+y+' '+(x+w)+' '+(y+r)+'V'+(y+h-r)+'Q'+(x+w)+' '+(y+h)+' '+(x+w-r)+' '+(y+h)+'H'+x+'Z'}
+function hbar(opts){
+  var rows=opts.rows,W=760,rh=26,m={l:150,r:70,t:6,b:6},H=m.t+m.b+rows.length*rh,iw=W-m.l-m.r;var mx=Math.max.apply(null,rows.map(function(r){return r.v||0}).concat([1]));
+  var svg=sv('svg',{viewBox:'0 0 '+W+' '+H,width:'100%',role:'img','aria-label':opts.title,style:'display:block;max-width:100%'});
+  svg.appendChild(sv('line',{x1:m.l,x2:m.l,y1:m.t,y2:H-m.b,stroke:'#cfd5dd'}));
+  rows.forEach(function(r,i){var y=m.t+i*rh+5,h=16;var w=Math.max(2,iw*(r.v||0)/mx);
+    svg.appendChild(sv('text',{x:m.l-8,y:y+12,'text-anchor':'end'},r.label));
+    var p=sv('path',{d:barPath(m.l,y,w,h,4),fill:r.color});svg.appendChild(p);
+    svg.appendChild(sv('text',{x:m.l+w+6,y:y+12,style:'fill:#14161a;font-weight:600'},opts.vfmt(r.v)));
+    var hit=sv('rect',{x:0,y:y-4,width:W,height:rh,fill:'transparent'});hit.addEventListener('mousemove',function(e){showTip(e,r.full||r.label,r.tip||[{k:opts.name||'Value',v:opts.vfmt(r.v)}])});hit.addEventListener('mouseleave',hideTip);svg.appendChild(hit)});
+  return svg
+}
+function legend(items){return el('div',{class:'legend'},items.map(function(i){return el('span',{},[el('i',{style:'background:'+i.c}),i.t])}))}
+
+/* ---------- OVERVIEW ---------- */
+function renderOverview(){
+  var w=el('div'),rows=metaCampaignRows();
+  w.appendChild(note('Meta Ads, '+D.meta.period.label+'. '+qLabel()+' (the CRM stage event sent back to Meta).'));
+  var L=sum(lg(rows)),LM=dm(L);
+  w.appendChild(section('Lead gen','Conversion API + Volume lead'));
+  var g=el('div',{class:'lg-grid g6'});
+  g.appendChild(kpi('Spend',fLakh(L.spend),fInr(L.spend)));
+  g.appendChild(kpi('Total leads',fNum(L.leads),'CPL '+fInr(LM.cpl)));
+  g.appendChild(kpi('Qualified leads',L.hasQ?fNum(L.q):NA,L.hasQ?fPct(LM.qrate)+' of leads':'CRM slot'));
+  g.appendChild(kpi('Cost per qualified lead',fInr(LM.cpql),'lower is better'));
+  w.appendChild(g);
+  w.appendChild(section('By objective'));
+  var g3=el('div',{class:'lg-grid g3'});
+  OBJ_ORDER.forEach(function(o){var t=sum(byObj(rows,o)),m=dm(t),d=OBJ[o];var c=el('div',{class:'card obj',style:'--c:'+d.color});
+    c.appendChild(el('div',{class:'hd'},[el('span',{class:'dot'}),el('b',{},d.label)]));
+    if(o==='CTWA'){c.appendChild(el('div',{class:'bl'},'Cost per conversation'));c.appendChild(el('div',{class:'big'},fInr(m.cpc)));
+      c.appendChild(el('div',{class:'mini'},[mi('Spend',fLakh(t.spend)),mi('Conversations',fNum(t.convos)),mi('2+ msg rate',fPct(m.d2))]))}
+    else{c.appendChild(el('div',{class:'bl'},'Cost per qualified lead'));c.appendChild(el('div',{class:'big'},fInr(m.cpql)));
+      c.appendChild(el('div',{class:'mini'},[mi('Spend',fLakh(t.spend)),mi('Leads',fNum(t.leads)),mi('Qualified',t.hasQ?fNum(t.q):NA)]))}
+    g3.appendChild(c)});
+  w.appendChild(g3);
+  w.appendChild(section('By service','One row per service. Cost per qualified lead for lead gen, cost per conversation for WhatsApp.'));
+  var tot={},srows=[];
+  ['LHR','HT','HP','OTHER'].forEach(function(s){
+    var a=sum(rows.filter(function(r){return r.service===s&&r.objective==='CAPI'})),b=sum(rows.filter(function(r){return r.service===s&&r.objective==='VOLUME'})),c=sum(rows.filter(function(r){return r.service===s&&r.objective==='CTWA'}));
+    if(!(a.spend||b.spend||c.spend))return;
+    var am=dm(a),bm=dm(b),cm_=dm(c);
+    srows.push({n:SVC[s].label,a1:fNum(a.leads),a2:fInr(am.cpql),b1:fNum(b.leads),b2:fInr(bm.cpql),c1:fNum(c.convos),c2:fInr(cm_.cpc)})});
+  var A=sum(byObj(rows,'CAPI')),B=sum(byObj(rows,'VOLUME')),C=sum(byObj(rows,'CTWA'));
+  var tr={n:'All services',a1:fNum(A.leads),a2:fInr(dm(A).cpql),b1:fNum(B.leads),b2:fInr(dm(B).cpql),c1:fNum(C.convos),c2:fInr(dm(C).cpc)};
+  w.appendChild(table('svc',[{k:'n',h:'Service',l:true,nosort:true},{k:'a1',h:'CAPI leads',nosort:true},{k:'a2',h:'CAPI cost / qualified',nosort:true},{k:'b1',h:'Volume leads',nosort:true},{k:'b2',h:'Volume cost / qualified',nosort:true},{k:'c1',h:'WhatsApp convos',nosort:true},{k:'c2',h:'WhatsApp cost / convo',nosort:true}],srows,{total:tr}));
+  w.appendChild(section('Spend by day',D.meta.period.label+' (today is a partial day)'));
+  var dates=[];D.meta_daily.forEach(function(r){if(dates.indexOf(r.date)<0)dates.push(r.date)});dates.sort();
+  var series=OBJ_ORDER.map(function(o){return{name:OBJ[o].label,short:OBJ[o].short,color:OBJ[o].color,values:dates.map(function(d){var r=D.meta_daily.filter(function(x){return x.date===d&&x.objective===o})[0];return r?r.spend:0})}});
+  var cats=dates.map(function(d){return{label:shortDate(d),full:longDate(d)}});
+  var chartCard=el('div',{class:'card'});var tv=S.tview.daily;
+  chartCard.appendChild(el('div',{class:'tools'},[seg([['c','Chart'],['t','Table']],tv?'t':'c',function(v){S.tview.daily=(v==='t');render()})]));
+  if(!tv){chartCard.appendChild(legend(series.map(function(s){return{c:s.color,t:s.name}})));
+    var zero=[];dates.forEach(function(d,i){if(i<dates.length-1&&series.every(function(s){return !s.values[i]}))zero.push(i)});
+    chartCard.appendChild(lineChart({title:'Meta daily spend by objective',cats:cats,series:series,yfmt:function(v){return v>=1000?'₹'+(v/1000).toFixed(0)+'k':'₹'+v},vfmt:fInr,marks:zero.map(function(i){return{i:i,text:'no delivery'}})}));
+    if(zero.length)chartCard.appendChild(el('div',{class:'cap',style:'margin-top:6px'},'No spend on '+zero.map(function(i){return shortDate(dates[i])}).join(', ')+'.'))}
+  else{var cols=[{k:'d',h:'Date',l:true,f:function(r){return r.d}}].concat(series.map(function(s,i){return{k:'s'+i,h:s.short,f:function(r){return fInr(r['s'+i])},sv:function(r){return r['s'+i]}}}));
+    chartCard.appendChild(table('dailyT',cols,dates.map(function(d,i){var r={d:shortDate(d)};series.forEach(function(s,j){r['s'+j]=s.values[i]});return r})))}
+  w.appendChild(chartCard);
+  w.appendChild(notesBox());
+  return w
+}
+function mi(l,v){return el('div',{},[el('div',{class:'l'},l),el('div',{class:'v'},v)])}
+function notesBox(){var d=el('details',{});d.appendChild(el('summary',{},'Data notes and assumptions'));var u=el('ul',{class:'t'});D.notes.forEach(function(n){u.appendChild(el('li',{},n))});d.appendChild(u);return d}
+
+/* ---------- SERVICE x REGION ---------- */
+var MX_LG=[['cpql','Cost per qualified lead'],['cpl','Cost per lead'],['leads','Total leads'],['q','Qualified leads'],['qrate','Qualified rate'],['spend','Spend']];
+var MX_WA=[['cpc','Cost per conversation'],['convos','Conversations'],['d2','2+ message rate'],['spend','Spend']];
+function mxVal(t,m,k){switch(k){case'cpql':return m.cpql;case'cpl':return m.cpl;case'leads':return t.leads;case'q':return t.hasQ?t.q:null;case'qrate':return m.qrate;case'spend':return t.spend;case'cpc':return m.cpc;case'convos':return t.convos;case'd2':return m.d2}}
+function mxFmt(k,v){if(!ok(v))return NA;if(k==='cpql'||k==='cpl'||k==='cpc'||k==='spend')return fInr(v);if(k==='qrate'||k==='d2')return fPct(v);return fNum(v)}
+function renderMatrix(){
+  var w=el('div');w.appendChild(note('Each row is one service, each column one region, built from ad sets. '+qLabel()+'.'));
+  var isWA=S.mx.obj==='CTWA';var metrics=isWA?MX_WA:MX_LG;if(!metrics.some(function(m){return m[0]===S.mx.metric}))S.mx.metric=metrics[0][0];
+  var tools=el('div',{class:'tools'},[seg([['LG','All lead gen'],['CAPI','Conversion API'],['VOLUME','Volume lead'],['CTWA','WhatsApp']],S.mx.obj,function(v){S.mx.obj=v;render()}),
+   (function(){var s=el('select',{'aria-label':'Metric',onchange:function(e){S.mx.metric=e.target.value;render()}});metrics.forEach(function(m){s.appendChild(el('option',{value:m[0],selected:m[0]===S.mx.metric?'selected':false},m[1]))});return s})()]);
+  w.appendChild(tools);
+  var pool=adsets(function(a){return S.mx.obj==='LG'?a.objective!=='CTWA':a.objective===S.mx.obj});
+  var svcs=['LHR','HT','HP'],regs=['DEL','MUM','HYD','BLR','ROI'],k=S.mx.metric;
+  var cells={},vals=[];
+  svcs.concat(['ALL']).forEach(function(s){regs.concat(['ALL']).forEach(function(r){var rs=pool.filter(function(a){return (s==='ALL'||a.service===s)&&(r==='ALL'||a.region===r)});var t=sum(rs),m=dm(t);var v=rs.length?mxVal(t,m,k):null;cells[s+'|'+r]={t:t,m:m,n:rs.length,v:v};if(s!=='ALL'&&r!=='ALL'&&ok(v)&&(isWA?t.convos>=100:t.leads>=20))vals.push({key:s+'|'+r,v:v})})});
+  var lower=(k==='cpql'||k==='cpl'||k==='cpc');
+  var all=vals.map(function(x){return x.v}),lo=Math.min.apply(null,all.concat([Infinity])),hi=Math.max.apply(null,all.concat([-Infinity]));
+  var best=null;vals.forEach(function(x){if(best==null||(lower?x.v<cells[best].v:x.v>cells[best].v))best=x.key});
+  var hm=el('div',{class:'hm',style:'grid-template-columns:130px repeat(6,minmax(96px,1fr))'});
+  hm.appendChild(el('div'));regs.forEach(function(r){hm.appendChild(el('div',{class:'h'},REG[r].label))});hm.appendChild(el('div',{class:'h'},'All regions'));
+  svcs.concat(['ALL']).forEach(function(s){hm.appendChild(el('div',{class:'h rl'},s==='ALL'?'All services':SVC[s].label));
+    regs.concat(['ALL']).forEach(function(r){var c=cells[s+'|'+r];var tot=(s==='ALL'||r==='ALL');var cls='c'+(c.n?'':' na')+(tot&&c.n?' tt':'');var style='';
+      if(!tot&&c.n&&ok(c.v)){var p=hi>lo?(c.v-lo)/(hi-lo):0.5;p=Math.max(0,Math.min(1,p));var idx=Math.round(p*(RAMP.length-1));style='background:'+RAMP[idx]+';color:'+(idx>=4?'#fff':'#14161a');if(key===best)cls+=' best'}
+      var key=s+'|'+r;if(key===best&&!tot)cls+=' best';
+      var cell=el('div',{class:cls,style:style},c.n?[el('div',{class:'n'},mxFmt(k,c.v)),el('div',{class:'t'},(isWA?fNum(c.t.convos)+' convos':fNum(c.t.leads)+' leads')+(!tot&&(isWA?c.t.convos<100:c.t.leads<20)?' · low n':''))]:'no ad set');
+      if(c.n){cell.addEventListener('mousemove',function(e){var lines=[{k:'Ad sets',v:String(c.n)},{k:'Spend',v:fInr(c.t.spend)}];if(isWA)lines.push({k:'Conversations',v:fNum(c.t.convos)},{k:'Cost / convo',v:fInr(c.m.cpc)},{k:'2+ msg rate',v:fPct(c.m.d2)});else lines.push({k:'Leads',v:fNum(c.t.leads)},{k:'CPL',v:fInr(c.m.cpl)},{k:'Qualified',v:c.t.hasQ?fNum(c.t.q):NA},{k:'CPQL',v:fInr(c.m.cpql)});showTip(e,(s==='ALL'?'All services':SVC[s].label)+' · '+(r==='ALL'?'All regions':REG[r].label),lines)});cell.addEventListener('mouseleave',hideTip)}
+      hm.appendChild(cell)})});
+  var card=el('div',{class:'card'});card.appendChild(hm);
+  card.appendChild(el('div',{class:'ramp'},[el('span',{},lower?'Lower cost':'Lower'),el('span',{class:'bar'},RAMP.map(function(c){return el('i',{style:'background:'+c})})),el('span',{},lower?'Higher cost':'Higher'),el('span',{style:'margin-left:12px'},'Outlined cell = best ('+(isWA?'100+ conversations':'20+ leads')+'). "low n" cells are shown but not ranked.')]));
+  w.appendChild(card);
+  if(best){var bc=cells[best];var parts=best.split('|');var worst=null;vals.forEach(function(x){if(worst==null||(lower?x.v>cells[worst].v:x.v<cells[worst].v))worst=x.key});var wp=worst.split('|');
+    w.appendChild(el('p',{class:'t',style:'margin-top:12px'},'Best: '+SVC[parts[0]].label+' in '+REG[parts[1]].label+' at '+mxFmt(k,bc.v)+'. Weakest ranked cell: '+SVC[wp[0]].label+' in '+REG[wp[1]].label+' at '+mxFmt(k,cells[worst].v)+'.'))}
+  w.appendChild(el('p',{class:'lg-note'},'Multiple ad sets can sit in the same region (for example Hair Patch has two audiences in some regions), so cells combine all matching ad sets.'));
+  return w
+}
+
+/* ---------- GOOGLE ---------- */
+function gsum(rows){var t={spend:0,impr:0,clicks:0,conv:0,wa:0,calls:0,form:0};rows.forEach(function(c){t.spend+=c.spend;t.impr+=c.impressions;t.clicks+=c.clicks;t.conv+=c.conv;t.wa+=c.wa;t.calls+=c.calls;t.form+=c.form});return t}
+function renderGoogle(){
+  var w=el('div'),rows=googleRows();
+  w.appendChild(note('Google Ads, '+D.meta.period.label+'. Campaigns whose name contains "'+(D.meta.match||'Service')+'" only (Performance Max, Shopping and Grow campaigns are left out).'));
+  if(D.google.error)w.appendChild(el('div',{class:'callout',style:'margin-bottom:12px'},'Google could not be read on the last refresh: '+D.google.error));
+  var T=gsum(rows);var g=el('div',{class:'lg-grid g6'});
+  g.appendChild(kpi('Spend',fLakh(T.spend),fInr(T.spend)));g.appendChild(kpi('Conversions',fNum(T.conv),'WhatsApp + calls + forms'));
+  g.appendChild(kpi('Cost per conversion',fInr(div(T.spend,T.conv)),'lower is better'));g.appendChild(kpi('Clicks',fNum(T.clicks),'CTR '+fPct(div(T.clicks,T.impr),2)));
+  w.appendChild(g);
+  var cols=function(first){return [{k:'n',h:first,l:true,nosort:true,f:function(r){return r.n}},{k:'sp',h:'Spend',nosort:true,f:function(r){return fInr(r.t.spend)}},{k:'cv',h:'Conversions',nosort:true,f:function(r){return fDec(r.t.conv,0)}},{k:'cp',h:'Cost / conversion',nosort:true,f:function(r){return fInr(div(r.t.spend,r.t.conv))}},{k:'wa',h:'WhatsApp',nosort:true,f:function(r){return fDec(r.t.wa,0)}},{k:'ca',h:'Calls',nosort:true,f:function(r){return fDec(r.t.calls,0)}},{k:'fo',h:'Forms',nosort:true,f:function(r){return fDec(r.t.form,0)}}]};
+  w.appendChild(section('By service'));
+  var rs=[['BRAND','Brand search'],['LHR','Laser Hair Reduction'],['HT','Hair Transplant'],['HP','Hair Patch'],['OTHER','Other']].map(function(s){return{n:s[1],t:gsum(rows.filter(function(c){return c.service===s[0]}))}}).filter(function(x){return x.t.spend>0});
+  w.appendChild(table('gsvc',cols('Service'),rs,{total:{n:'Total',sp:fInr(T.spend),cv:fDec(T.conv,0),cp:fInr(div(T.spend,T.conv)),wa:fDec(T.wa,0),ca:fDec(T.calls,0),fo:fDec(T.form,0)}}));
+  w.appendChild(section('By region'));
+  var rg=[['ALL','All India (brand)'],['DEL','Delhi NCR'],['MUM','Mumbai'],['BLR','Bangalore'],['HYD','Hyderabad'],['ROI','Rest of India'],['OTHER','No region in name']].map(function(s){return{n:s[1],t:gsum(rows.filter(function(c){return c.region===s[0]}))}}).filter(function(x){return x.t.spend>0});
+  w.appendChild(table('greg',cols('Region'),rg));
+  var miss=['DEL','MUM','BLR','HYD','ROI'].filter(function(r){return !rows.some(function(c){return c.region===r})}).map(function(r){return REG[r].label});
+  if(miss.length)w.appendChild(el('p',{class:'lg-note',style:'margin-top:8px'},'No Google campaign for: '+miss.join(', ')+'.'));
+  var dd=D.google.dg_daily||[];
+  if(dd.length){
+  w.appendChild(section('Needs a quality check','Demand Gen campaigns: conversions per day, last 7 days'));
+  var card=el('div',{class:'card'});
+  var n=dd.length,last2=dd.slice(-2),prev=dd.slice(0,Math.max(0,n-2));var avg=function(a,f){return a.length?a.reduce(function(t,x){return t+x[f]},0)/a.length:0};
+  var pc=avg(prev,'conv'),lc=avg(last2,'conv'),ps=avg(prev,'spend'),ls=avg(last2,'spend');
+  if(prev.length&&lc>=Math.max(5,pc*3)&&ls<=ps*1.5)card.appendChild(el('div',{class:'callout'},[el('b',{},'Conversions jumped in the last two days. '),'Spend stayed about '+fInr(ls)+' a day while conversions went from about '+fNum(pc)+' to '+fNum(lc)+' a day. Check lead quality in the CRM before scaling.']));
+  else card.appendChild(el('div',{class:'cap'},'No unusual jump in Demand Gen conversions against spend.'));
+  card.appendChild(el('div',{style:'height:10px'}));
+  card.appendChild(hbar({title:'Demand Gen conversions per day',name:'Conversions',vfmt:function(v){return fNum(v)},rows:dd.map(function(d){return{label:shortDate(d.date),full:longDate(d.date),color:'#257de0',v:d.conv,tip:[{k:'Conversions',v:fNum(d.conv)},{k:'Clicks',v:fNum(d.clicks)},{k:'Spend',v:fInr(d.spend)}]}})}));
+  w.appendChild(card);}
+  return w
+}
+
+/* ---------- shell ---------- */
+var TABS=[['overview','Overview',renderOverview],['matrix','Service by region',renderMatrix],['google','Google Ads',renderGoogle]];if(!TABS.some(function(t){return t[0]===S.tab}))S.tab='overview';
+var wrap=el('div',{class:'lg-wrap'});var content=el('div');
+function filt(label,opts,cur,cb){var s=el('select',{'aria-label':label,onchange:function(e){cb(e.target.value)}});opts.forEach(function(o){s.appendChild(el('option',{value:o[0],selected:o[0]===cur?'selected':false},o[1]))});return el('div',{class:'lg-f'},[el('label',{},label),s])}
+function shell(){
+  wrap.textContent='';
+  var head=el('header',{class:'lg-head'});
+  head.appendChild(el('div',{class:'lg-brand'},[el('div',{class:'lg-logo'},'G'),el('div',{},[el('h1',{},'Berkowits | Lead Gen'),el('div',{class:'lg-sub'},'Meta and Google Ads, '+D.meta.period.label+(D.meta.generatedLabel?' · updated '+D.meta.generatedLabel:''))])]));
+  wrap.appendChild(head);
+  var nav=el('nav',{class:'lg-tabs',role:'tablist'});TABS.forEach(function(t){nav.appendChild(el('button',{type:'button',role:'tab','aria-selected':String(S.tab===t[0]),onclick:function(){S.tab=t[0];render()}},t[1]))});
+  wrap.appendChild(nav);wrap.appendChild(content);
+  wrap.appendChild(el('div',{class:'foot'},'Live from Meta and Google Ads, read only. Refreshed about once an hour.'));
+}
+function render(){var y=window.scrollY;hideTip();shell();content.textContent='';var t=TABS.filter(function(x){return x[0]===S.tab})[0];content.appendChild(t[2]());window.scrollTo(0,y)}
+root.appendChild(wrap);root.appendChild(tip);render();
+return{state:S,render:render}
+}
+window.GarudaLeadGen={mount:mount};
+})();
+</script>
 <script src="sample.js"></script>
 <script src="config.js" onerror="void 0"></script>
 <script>
@@ -1422,7 +1796,7 @@ async function loadShare(){
   if(!r.ok) throw new Error('HTTP '+r.status);
   const j=await r.json(); const id=j.client.id;
   if(j.sources) SRC[id]={data:j.sources};
-  return {today:j.today||isoToday(),clients:[j.client],daily:j.daily||[],entities:{[id]:j.entities||{}},signals:{[id]:j.signals||{items:[]}},sitewatch:{},syncs:{[id]:j.syncs||{}},alerts:[],intraday:Object.fromEntries((j.intraday||[]).map(x=>[x.id||(id+'_'+x.date),x])),lastRun:j.lastRun||{},reportTokens:{[id]:SHARE},weekly:[]};
+  return {today:j.today||isoToday(),leadgen:j.leadgen?{[id]:j.leadgen}:{},clients:[j.client],daily:j.daily||[],entities:{[id]:j.entities||{}},signals:{[id]:j.signals||{items:[]}},sitewatch:{},syncs:{[id]:j.syncs||{}},alerts:[],intraday:Object.fromEntries((j.intraday||[]).map(x=>[x.id||(id+'_'+x.date),x])),lastRun:j.lastRun||{},reportTokens:{[id]:SHARE},weekly:[]};
 }
 async function loadLive(){
   const today=isoToday(); const since=addDays(today,-RANGE_DAYS);
@@ -1440,7 +1814,7 @@ async function loadLive(){
   // numbers, not a summary of them. If it is missing, or covers fewer clients than we have, the
   // page falls back to reading daily directly and is merely slower. Correct and slow beats fast
   // and wrong, and this way a deploy that lands before the first sync still works.
-  const [clients,rollups,ents,sigs,sws,syncsArr,alerts,intra,meta,reports,weekly,monthT]=await Promise.all([col('clients'),col('rollup').catch(()=>[]),col('entities'),col('signals'),col('sitewatch'),col('syncs'),col('alerts',r=>r.where('at','>=',new Date(Date.now()-48*3600000).toISOString())),col('intraday',r=>r.where('date','>=',addDays(today,-8))),fb.db.collection(PFX+'meta').doc('lastRun').get().then(d=>d.exists?d.data():{}),col('reports').catch(()=>[]),col('weekly').catch(()=>[]),col('targets',r=>r.where('month','==',today.slice(0,7))).catch(()=>[])]);
+  const [clients,rollups,ents,sigs,sws,syncsArr,alerts,intra,meta,reports,weekly,monthT,leadgens]=await Promise.all([col('clients'),col('rollup').catch(()=>[]),col('entities'),col('signals'),col('sitewatch'),col('syncs'),col('alerts',r=>r.where('at','>=',new Date(Date.now()-48*3600000).toISOString())),col('intraday',r=>r.where('date','>=',addDays(today,-8))),fb.db.collection(PFX+'meta').doc('lastRun').get().then(d=>d.exists?d.data():{}),col('reports').catch(()=>[]),col('weekly').catch(()=>[]),col('targets',r=>r.where('month','==',today.slice(0,7))).catch(()=>[]),col('leadgen').catch(()=>[])]);
   // This month's targets form replaces each client's budget and ROAS target (see Monthly targets).
   const tBy=Object.fromEntries((monthT||[]).map(t=>[t.clientId,t]));
   const live=clients.filter(c=>c.active!==false).map(c=>applyMonthTargets(c,tBy[c.id]));
@@ -1464,7 +1838,7 @@ async function loadLive(){
   const entsU=await Promise.all((ents||[]).map(unpackEnt));
   const byId=(arr)=>Object.fromEntries(arr.map(x=>[x.clientId||x.id,x]));
   const tokens={}; (reports||[]).forEach(r=>{ if(r.clientId&&r.enabled!==false) tokens[r.clientId]=r.id; });
-  return {today,clients:live,daily,entities:byId(entsU),signals:byId(sigs),sitewatch:byId(sws),syncs:byId(syncsArr),alerts,intraday:Object.fromEntries(intra.map(x=>[x.id,x])),lastRun:meta,reportTokens:tokens,weekly:weekly||[]};
+  return {today,clients:live,daily,leadgen:byId(leadgens||[]),entities:byId(entsU),signals:byId(sigs),sitewatch:byId(sws),syncs:byId(syncsArr),alerts,intraday:Object.fromEntries(intra.map(x=>[x.id,x])),lastRun:meta,reportTokens:tokens,weekly:weekly||[]};
 }
 
 /* ============================== RANGES / METRICS ========================= */
@@ -1727,6 +2101,7 @@ function render(){
   computeAll();
   const anim=animateNext; animateNext=true; METRICS={}; METRIC_N=0;
   root.innerHTML='<div class="app-shell'+(anim?' intro':'')+'">'+topRail()+'<main class="main'+(state.view==='client'?' main-client':' main-wall')+'">'+(state.view==='client'?clientView(S[state.clientId]):state.view==='targets'?targetsView():overviewView())+'</main></div>'; if(window.__plRefresh) window.__plRefresh();
+  const lgEl=root.querySelector('#lg-mount'); if(lgEl&&window.GarudaLeadGen){ const cid=lgEl.dataset.client; try{ const r=window.GarudaLeadGen.mount(lgEl,D.leadgen[cid],LGSTATE[cid]||null); LGSTATE[cid]=r.state; }catch(e){ console.warn('lead gen view failed',e); } }
   const sel=root.querySelector('#mobilePick'); if(sel) sel.value=state.clientId||'';
   const q=root.querySelector('#q'); if(q) q.value=state.q;
   if(anim){ countUp(); drawSparks(); }
@@ -1740,6 +2115,7 @@ function render(){
   }
 }
 let FIRST_PAINT=true;
+const LGSTATE={};   // the lead gen view keeps its tab and sort across re-renders
 const reduced=()=>window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 
 // Figures count up from zero on the first paint. The number is re-formatted from the value being
@@ -2588,6 +2964,7 @@ function clientView(x){
   h+='<div class="page-head"><div><h1 class="disp">'+esc(c.name)+'</h1><p class="subtitle">'+typeLabel(c)+' · '+esc(pfLabel(c))+(c.budget?' · '+fmtMoney(c.budget,c)+' per month':'')+(kpiTarget(c)?' · target '+kpiFmt(c,kpiTarget(c))+' '+kpiLabel(c):' · <span class="faint">no target set</span>')+(c.am?' · AM '+esc(c.am):'')+(acct&&acct.statusCode&&acct.statusCode!==1?' <span class="chip bad">Meta account: '+esc(acct.status)+'</span>':'')+'</p></div><div class="meta">'+niceDate(D.today)+'<br>'+syncChips(x)+'</div></div>';
   h+='<div class="toolbar">'+rangeBar()+'<select class="mobile-pick" id="mobilePick"><option value="">All clients</option>'+D.clients.map(k=>'<option value="'+k.id+'">'+esc(k.name)+'</option>').join('')+'</select>'+pairBtn(c)+'<div class="grow"></div>'+(LIVE&&CFG.syncUrl?'<button class="btn btn-ghost btn-small" data-act="syncnow">'+ICONS.refresh+' Sync now</button>':'')+'<button class="btn btn-ghost btn-small" data-act="clientlink">'+ICONS.copy+' Copy client dashboard link</button><button class="btn btn-primary btn-small" data-act="update">'+ICONS.copy+' Copy client update</button></div>';
   h+=segBar(c);
+  if(D.leadgen&&D.leadgen[c.id]) h+='<div id="lg-mount" data-client="'+esc(c.id)+'"></div>';
   if(!x.hasData) return h+noDataPanel(x);
   const V=(cur,prev,inv)=>vs(cur,prev,inv)+' vs '+spec.prevLabel;
   // Where each card's number comes from: which ad platforms actually spent in this range, and whether Shopify is connected.

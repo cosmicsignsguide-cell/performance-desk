@@ -18,7 +18,7 @@ export async function accessToken() {
   return cachedToken.token;
 }
 
-async function gaql(customerId, query) {
+export async function gaql(customerId, query) {
   const token = await accessToken();
   const url = `https://googleads.googleapis.com/${config.google.apiVersion}/customers/${customerId}/googleAds:searchStream`;
   const headers = { Authorization: `Bearer ${token}`, 'developer-token': config.google.developerToken, 'Content-Type': 'application/json' };
