@@ -768,6 +768,11 @@ tr.ob-kid.ob-ctwa>td{background:rgba(14,159,120,.05)} tr.ob-kid.ob-vol>td{backgr
 .cat-simple th.grp{text-align:center;border-bottom:1px solid var(--line)}.cat-simple th.grp .srcdot{display:inline-block;vertical-align:0}
 .cat-simple td.g,.cat-simple th.gg{background:rgba(242,162,12,.05)} .cat-simple td.tt,.cat-simple th.gt{background:var(--accent-soft)}
 .cat-simple td.num:nth-child(2),.cat-simple td.num:nth-child(6),.cat-simple td.num:nth-child(10){border-left:1px solid var(--line)}
+/* top bar: bigger mark, single-line range buttons */
+.rail .rail-mark{width:38px;height:38px;border-radius:11px}
+.rail .rail-name{font-size:17px}.rail .rail-name u{font-size:11px;margin-top:3px}
+.rail .rail-mid .seg button{white-space:nowrap;font-size:14.5px;padding:8px 15px}
+@media (max-width:700px){.rail .rail-mid{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch;scrollbar-width:none}.rail .rail-mid::-webkit-scrollbar{display:none}.rail .rail-mid .seg{flex-wrap:nowrap;width:max-content}.rail .rail-mid .seg button{font-size:13.5px;padding:7px 12px}}
 .crtags{position:absolute;left:8px;top:8px;z-index:2;display:flex;gap:5px;flex-wrap:wrap}
 .crnew{display:inline-flex;align-items:center;padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:700;background:var(--accent);color:#fff;box-shadow:0 4px 12px -4px rgba(0,0,0,.5)}.crnew.inl{box-shadow:none;font-size:10.5px;padding:1px 6px;vertical-align:1px;margin-right:2px}
 .crwa{display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 6px;border-radius:99px;font-size:11.5px;font-weight:700;background:#25D366;color:#fff;box-shadow:0 4px 12px -4px rgba(0,0,0,.5)}.crwa svg{width:14px;height:14px}.crwa.inl{position:static;box-shadow:none;font-size:10.5px;padding:1px 6px 1px 4px;vertical-align:1px;margin-right:4px}.crwa.inl svg{width:11px;height:11px}
@@ -2294,15 +2299,11 @@ function topRail(){
   const email=LIVE?(fb.auth.currentUser?.email||''):'demo@per4mance.guru';
   const name=LIVE?(fb.auth.currentUser?.displayName||email.split('@')[0]):'Demo viewer';
   return '<header class="rail">'
-    +'<button class="rail-brand" data-act="nav" data-client="" title="Command Center"><span class="rail-mark disp"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:19px;height:19px"><path fill="#fff" d="M2.6 21.4l2.2-8.2.4-4.6C7 4.6 12 3.2 15.2 5.4c.8.6 1.1 1.4 1.2 2.2 2.2.2 4.6 1.4 5.6 3.6.2 1.4-.6 2.6-1.6 3-.4-1-1.4-1.6-2.8-1.8l-1.4 1.8c-.4 1.2-.4 2.4 0 3.6l1.3 3.7-5.5-2.5-4 3-.8-3.5z"/><path fill="var(--accent)" d="M11.6 7.6l3.9.5-.6 1.6-3.1-.3z"/></svg></span><span class="rail-name">GARUDA<u>PER4MANCE GURU</u></span></button>'
-    +'<div class="rail-live '+(LIVE?'on':'demo')+'"><span class="dot"></span>'
-      +(LIVE?'<span>LIVE</span><span class="sep">/</span><span data-ago="'+esc(lastAt)+'">'+ago(lastAt)+'</span><span class="sep">/</span><span data-next-short>next sync '+untilTxt(nextSync().at)+'</span>':'<span>DEMO</span><span class="sep">/</span><span>sample data</span>')
-      +(bad&&!SHARE?'<span class="sep">/</span><span class="rail-bad">'+bad+' critical</span>':'')+'</div>'
+    +'<button class="rail-brand" data-act="nav" data-client="" title="Command Center"><span class="rail-mark disp"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:25px;height:25px"><path fill="#fff" d="M2.6 21.4l2.2-8.2.4-4.6C7 4.6 12 3.2 15.2 5.4c.8.6 1.1 1.4 1.2 2.2 2.2.2 4.6 1.4 5.6 3.6.2 1.4-.6 2.6-1.6 3-.4-1-1.4-1.6-2.8-1.8l-1.4 1.8c-.4 1.2-.4 2.4 0 3.6l1.3 3.7-5.5-2.5-4 3-.8-3.5z"/><path fill="var(--accent)" d="M11.6 7.6l3.9.5-.6 1.6-3.1-.3z"/></svg></span><span class="rail-name">GARUDA<u>PER4MANCE GURU</u></span></button>'
     +'<div class="rail-mid">'+rangeBar()+'</div>'
     +'<button class="rail-search" data-act="cmdk"><span>'+ICONS.search+'Jump to client</span><kbd>Ctrl K</kbd></button>'
     +'<button class="btn btn-ghost btn-small" data-act="targets" title="Fill each client\'s monthly targets">Monthly targets</button>'
     +'<button class="btn btn-ghost btn-small" data-act="alllinks" title="Secret report link for each client">Client dashboards</button>'
-    +(LIVE&&CFG.syncUrl?'<button class="icon-btn" data-act="syncnow" title="Sync now">'+ICONS.refresh+'</button><button class="icon-btn" data-act="syncall" title="Full refresh of all clients, last 30 days. Slow, use sparingly." style="font-size:12px;font-weight:700">30d</button>':'')
     +'<button class="icon-btn" data-act="theme" title="Switch theme" aria-label="Switch theme">'+(currentTheme()==='dark'?ICONS.sun:ICONS.moon)+'</button>'
     +'<div class="rail-user" title="'+esc(email)+'"><span class="user-avatar sm">'+esc((name||'?')[0].toUpperCase())+'</span>'
       +(LIVE?'<button class="icon-btn" data-act="signout" title="Sign out">'+ICONS.out+'</button>':'')+'</div>'
