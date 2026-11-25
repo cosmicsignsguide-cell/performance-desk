@@ -123,3 +123,12 @@ export async function buildLeadgen(client, prev) {
   return { v: 2, since, until: today, match, generated: new Date().toISOString(), meta: { adsets, rows: mrows }, google: G,
     notes: unk.length ? [`${unk.length} Meta ad set${unk.length > 1 ? 's' : ''} carry no region in the name (${unk.slice(0, 3).map((a) => a.name).join(', ')}); they count in totals but not in the region grid.`] : [] };
 }
+
+export async function diagCampaigns(client, since, until) {
+  for (const acc of String(client.accounts?.meta || '').split(',').filter(Boolean)) {
+    const rows = await metaRows(acc, { level: 'campaign', fields: 'spend,actions,campaign_name', time_range: JSON.stringify({ since, until }) });
+    rows.sort((a, b) => num(b.spend) - num(a.spend));
+    const match = client.leadgen?.match || 'Service';
+    for (const r of rows.slice(0, 30)) log(`${client.id}/diag ${since.slice(0, 7)} ${String(r.campaign_name).includes(match) ? 'IN ' : 'OUT'} ${serviceOf(r.campaign_name).padEnd(5)} spend ${Math.round(num(r.spend))} leads ${Math.round(pick(r.actions, ['lead']))} | ${r.campaign_name}`);
+  }
+}

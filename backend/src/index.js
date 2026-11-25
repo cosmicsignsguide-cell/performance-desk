@@ -546,6 +546,15 @@ async function main() {
         if (q) { const e = await store.get('entities', q).catch(() => null); if (e) log(`access entities ${q}: campaigns ${(e.campaigns || []).length} (meta ${(e.campaigns || []).filter((c) => c.platform === 'meta').length}), adsets ${(e.adsets || []).length}, ads ${(e.ads || []).length}, products ${(e.products || []).length}, size ${Math.round(JSON.stringify(e).length / 1024)} KB, entitiesAt ${JSON.stringify(e.entitiesAt || {})}, updatedAt ${e.updatedAt}`); }
         return out;
       }
+      if (mode === 'leadgen' && url.searchParams.get('diag')) {
+        // Read-only: every campaign in the account for a month, with spend and leads, to see how it was named.
+        const c = clients.find((k) => k.id === String(url.searchParams.get('client') || '').toLowerCase());
+        const m = String(url.searchParams.get('month') || '').slice(0, 7);
+        if (!c || !/^\d{4}-\d{2}$/.test(m)) return { mode, error: 'client and month=YYYY-MM needed' };
+        const { diagCampaigns } = await import('./leadgen.js');
+        await diagCampaigns(c, m + '-01', addDays(addDays(m + '-28', 4).slice(0, 8) + '01', -1));
+        return { mode, diag: true };
+      }
       if (mode === 'leadgen') {
         const only = String(url.searchParams.get('client') || '').trim().toLowerCase();
         const list = clients.filter((c) => c.leadgen && c.active !== false && (!only || c.id === only));
