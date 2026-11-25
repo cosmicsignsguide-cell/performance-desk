@@ -1732,6 +1732,7 @@ function shell(){
   var head=el('header',{class:'lg-head'});
   head.appendChild(el('div',{class:'lg-brand'},[el('div',{class:'lg-logo'},'G'),el('div',{},[el('h1',{},'Berkowits | Lead Gen'),el('div',{class:'lg-sub'},'Meta and Google Ads, '+D.meta.period.label+(D.meta.generatedLabel?' · updated '+D.meta.generatedLabel:''))])]));
   wrap.appendChild(head);
+  if(D.meta.notice) wrap.appendChild(el('div',{class:'callout',style:'margin:4px 0 12px'},D.meta.notice));
   var nav=el('nav',{class:'lg-tabs',role:'tablist'});TABS.forEach(function(t){nav.appendChild(el('button',{type:'button',role:'tab','aria-selected':String(S.tab===t[0]),onclick:function(){S.tab=t[0];render()}},t[1]))});
   wrap.appendChild(nav);wrap.appendChild(content);
   wrap.appendChild(el('div',{class:'foot'},'Live from Meta and Google Ads, read only. Refreshed about once an hour.'));
@@ -2129,6 +2130,10 @@ const LGSTATE={};   // the lead gen view keeps its tab and sort across re-render
 // into the shape the lead gen view draws: campaigns, ad sets, daily spend by objective, Google campaigns.
 function lgSlice(full,from,to){
   if(!full||full.v!==2) return full;
+  // Data starts where the naming format starts (full.since); a range reaching further back is cut there.
+  let notice=''; const pFrom=from, pTo=to;
+  if(full.since&&to<full.since){ notice='No data before '+fmtDay(full.since)+': this view starts when the "'+(full.match||'Service')+'" naming format began. Pick 7d, 14d, MTD or a later range.'; from=full.since; to=addDays(full.since,-1); }
+  else if(full.since&&from<full.since){ notice='Shown from '+fmtDay(full.since)+', when the "'+(full.match||'Service')+'" naming format began. Earlier campaigns used another naming and are left out.'; from=full.since; }
   const M=full.meta||{adsets:[],rows:[]}, G=full.google||{camps:[],rows:[]};
   const zero=()=>({spend:0,impressions:0,link_clicks:0,leads:0,convos:0,depth2:0,depth3:0,first_reply:0,stages:{}});
   const add=(t,r)=>{ t.spend+=r[2];t.impressions+=r[3];t.link_clicks+=r[4];t.leads+=r[5];t.convos+=r[6];t.depth2+=r[7];t.depth3+=r[8];t.first_reply+=r[9]; if(r[10]) for(const k in r[10]) t.stages[k]=(t.stages[k]||0)+r[10][k]; };
@@ -2141,7 +2146,7 @@ function lgSlice(full,from,to){
   const gc={}; for(const r of G.rows){ if(r[0]<from||r[0]>to) continue; const c=G.camps[r[1]]; if(!c) continue; const t=gc[c.id]||(gc[c.id]=Object.assign({},c,{spend:0,impressions:0,clicks:0,conv:0,wa:0,calls:0,form:0,other:0}));
     t.spend+=r[2];t.impressions+=r[3];t.clicks+=r[4];t.conv+=r[5];t.wa+=r[6];t.calls+=r[7];t.form+=r[8];t.other+=r[9]; }
   const dgFrom=addDays(to,-6), dg={}; for(const r of G.rows){ if(r[0]<dgFrom||r[0]>to) continue; const c=G.camps[r[1]]; if(!c||c.channel!=='DEMAND_GEN') continue; const t=dg[r[0]]||(dg[r[0]]={date:r[0],spend:0,clicks:0,conv:0}); t.spend+=r[2];t.clicks+=r[4];t.conv+=r[5]; }
-  return { meta:{period:{from,to},generated:full.generated,match:full.match}, meta_campaigns:Object.values(byC), meta_adsets:Object.values(byA), meta_daily:Object.values(byDay),
+  return { meta:{period:from>to?{from:pFrom,to:pTo}:{from,to},generated:full.generated,match:full.match,notice}, meta_campaigns:Object.values(byC), meta_adsets:Object.values(byA), meta_daily:Object.values(byDay),
     google:{customer_id:G.customer_id,error:G.error,campaigns:Object.values(gc).filter(c=>c.spend>0||c.conv>0),dg_daily:Object.values(dg).sort((a,b)=>a.date<b.date?-1:1)}, notes:full.notes||[] };
 }
 const reduced=()=>window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;

@@ -1831,7 +1831,8 @@
     ],
     "campaignDays": 60,
     "leadgen": {
-      "match": "Service"
+      "match": "Service",
+      "since": "2026-11-01"
     }
   },
   {

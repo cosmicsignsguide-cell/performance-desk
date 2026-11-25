@@ -69,7 +69,9 @@ function metaMetrics(r) {
 export async function buildLeadgen(client, prev) {
   const today = todayStr();
   const lmStart = addDays(today.slice(0, 8) + '01', -1).slice(0, 8) + '01';
-  const since = addDays(today, -31) < lmStart ? addDays(today, -31) : lmStart;
+  let since = addDays(today, -31) < lmStart ? addDays(today, -31) : lmStart;
+  // Nothing before the date the naming format started (Berkowits: 1 Nov 2026, the "Service" campaigns).
+  if (client.leadgen?.since && client.leadgen.since > since) since = client.leadgen.since;
   const match = client.leadgen?.match || 'Service';
   const old = prev && prev.v === 2 && prev.since <= since && prev.match === match ? prev : null;
   const from = old ? addDays(today, -7) : since;
