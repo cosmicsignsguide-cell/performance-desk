@@ -1756,17 +1756,6 @@ function renderGoogle(){
   w.appendChild(table('greg',cols('Region'),rg));
   var miss=['DEL','MUM','BLR','HYD','ROI'].filter(function(r){return !rows.some(function(c){return c.region===r})}).map(function(r){return REG[r].label});
   if(miss.length)w.appendChild(el('p',{class:'lg-note',style:'margin-top:8px'},'No Google campaign for: '+miss.join(', ')+'.'));
-  var dd=D.google.dg_daily||[];
-  if(dd.length){
-  w.appendChild(section('Needs a quality check','Demand Gen campaigns: conversions per day, last 7 days'));
-  var card=el('div',{class:'card'});
-  var n=dd.length,last2=dd.slice(-2),prev=dd.slice(0,Math.max(0,n-2));var avg=function(a,f){return a.length?a.reduce(function(t,x){return t+x[f]},0)/a.length:0};
-  var pc=avg(prev,'conv'),lc=avg(last2,'conv'),ps=avg(prev,'spend'),ls=avg(last2,'spend');
-  if(prev.length&&lc>=Math.max(5,pc*3)&&ls<=ps*1.5)card.appendChild(el('div',{class:'callout'},[el('b',{},'Conversions jumped in the last two days. '),'Spend stayed about '+fInr(ls)+' a day while conversions went from about '+fNum(pc)+' to '+fNum(lc)+' a day. Check lead quality in the CRM before scaling.']));
-  else card.appendChild(el('div',{class:'cap'},'No unusual jump in Demand Gen conversions against spend.'));
-  card.appendChild(el('div',{style:'height:10px'}));
-  card.appendChild(hbar({title:'Demand Gen conversions per day',name:'Conversions',vfmt:function(v){return fNum(v)},rows:dd.map(function(d){return{label:shortDate(d.date),full:longDate(d.date),color:'#3D6FE0',v:d.conv,tip:[{k:'Conversions',v:fNum(d.conv)},{k:'Clicks',v:fNum(d.clicks)},{k:'Spend',v:fInr(d.spend)}]}})}));
-  w.appendChild(card);}
   return w
 }
 
