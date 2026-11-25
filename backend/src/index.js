@@ -24,6 +24,7 @@ import { createUpload, listMine, listToday, istToday } from './creatorPortal.js'
 import { raise } from './alerts.js';
 import { handleChat, notesApi } from './chat/index.js';
 import { verifyShopify, verifyMeta, verifyGoogle } from './verify.js';
+import { auditClient } from './audit.js';
 import { buildSourceFeed } from './orderSources.js';
 import { handleShopifyInstall, loadShopTokens } from './shopifyInstall.js';
 import { saveTarget, remind as remindTargets, withMonthTargets } from './targets.js';
@@ -532,6 +533,16 @@ async function main() {
         if (q) { const e = await store.get('entities', q).catch(() => null); if (e) log(`access entities ${q}: campaigns ${(e.campaigns || []).length} (meta ${(e.campaigns || []).filter((c) => c.platform === 'meta').length}), adsets ${(e.adsets || []).length}, ads ${(e.ads || []).length}, products ${(e.products || []).length}, size ${Math.round(JSON.stringify(e).length / 1024)} KB, entitiesAt ${JSON.stringify(e.entitiesAt || {})}, updatedAt ${e.updatedAt}`); }
         return out;
       }
+      if (mode === 'audit') {
+        // Read-only 60 day check of one client (or every active client): stored vs platform, plus
+        // creatives coverage. Details in the server log; the answer carries statuses only.
+        const only = String(url.searchParams.get('client') || '').trim().toLowerCase();
+        const n = Math.min(120, Math.max(1, parseInt(url.searchParams.get('days') || '60', 10) || 60));
+        const list = clients.filter((c) => c.active !== false && !c.sample && (!only || c.id === only));
+        const results = [];
+        for (const c of list) results.push(await auditClient(store, c, { days: n }));
+        return { mode, days: n, clients: list.length, results: results.map((r) => [r.client, r.meta, r.google, r.shopify, r.creatives].join(' ')) };
+      }
       if (mode === 'verifymeta') {
         const r = await verifyMeta(store, clients, { only: String(url.searchParams.get('client') || '').trim().toLowerCase(), days: Math.min(120, Math.max(1, parseInt(url.searchParams.get('days') || '7', 10) || 7)) });
         await store.merge('meta', 'lastRun', { verifyMeta: nowIso(), verifyMetaSummary: `${r.clean} clean, ${r.mismatched} mismatched, ${r.skipped} skipped`, verifyMetaProblems: r.problems.slice(0, 60) });
@@ -957,7 +968,7 @@ async function main() {
       }
 
       const asked = url.searchParams.get('mode');
-      const mode = ['daily', 'hourly', 'sitewatch', 'weekly', 'verify', 'verifymeta', 'verifygoogle', 'creators', 'access', 'purge', 'creatives'].includes(asked) ? asked : 'hourly';
+      const mode = ['daily', 'hourly', 'sitewatch', 'weekly', 'verify', 'verifymeta', 'verifygoogle', 'creators', 'access', 'purge', 'creatives', 'audit'].includes(asked) ? asked : 'hourly';
       // ?days=N restates N days of history instead of the usual 7. Ignored for hourly and
       // sitewatch, which have nothing to restate.
       const days = mode === 'daily' ? parseInt(url.searchParams.get('days') || '', 10) : NaN;
