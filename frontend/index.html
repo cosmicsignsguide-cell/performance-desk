@@ -3041,7 +3041,12 @@ function clientView(x){
   if(D.leadgen&&D.leadgen[c.id]){
     let lh=SHARE?'':'<button class="detail-back" data-act="nav" data-client="">'+ICONS.back+'Command Center</button>';
     lh+='<div class="toolbar">'+pairBtn(c)+'<div class="grow"></div>'+(SHARE?'':'<button class="btn btn-ghost btn-small" data-act="clientlink">'+ICONS.copy+' Copy client dashboard link</button>')+'</div>';
-    return lh+'<div id="lg-mount" data-client="'+esc(c.id)+'"></div>';
+    lh+='<div id="lg-mount" data-client="'+esc(c.id)+'"></div>';
+    // Under the lead gen view: the same Campaigns and Creatives tabs every other brand has.
+    if(x.hasData){ const lt=[['campaigns','Campaigns'],['ads','Creatives']];
+      if(!lt.some(t=>t[0]===state.tab)) state.tab='campaigns';
+      lh+='<div class="section"><div class="tab-row" style="margin-bottom:12px">'+lt.map(t=>'<button class="tab-btn '+(state.tab===t[0]?'active':'')+'" data-act="tab" data-tab="'+t[0]+'">'+t[1]+'</button>').join('')+'</div>'+(state.tab==='campaigns'?campaignTree(x):entityTable(x))+'</div>'; }
+    return lh;
   }
   let h='<button class="detail-back" data-act="nav" data-client="">'+ICONS.back+'Command Center</button>';
   h+='<div class="page-head"><div><h1 class="disp">'+esc(c.name)+'</h1><p class="subtitle">'+typeLabel(c)+' · '+esc(pfLabel(c))+(c.budget?' · '+fmtMoney(c.budget,c)+' per month':'')+(kpiTarget(c)?' · target '+kpiFmt(c,kpiTarget(c))+' '+kpiLabel(c):' · <span class="faint">no target set</span>')+(c.am?' · AM '+esc(c.am):'')+(acct&&acct.statusCode&&acct.statusCode!==1?' <span class="chip bad">Meta account: '+esc(acct.status)+'</span>':'')+'</p></div><div class="meta">'+niceDate(D.today)+'<br>'+syncChips(x)+'</div></div>';
