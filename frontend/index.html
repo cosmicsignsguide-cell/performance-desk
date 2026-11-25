@@ -3061,7 +3061,7 @@ function paceBar(x){ const c=x.c; if(!c.budget) return '<span class="faint small
 function spark(vals,delta){ const v=vals.map(x=>isFinite(x)?x:null).filter(x=>x!==null); if(v.length<2) return '<svg class="spark"></svg>'; const min=Math.min(...v),max=Math.max(...v),W=84,H=26; const pts=v.map((y,i)=>(i/(v.length-1)*W).toFixed(1)+','+(H-3-((y-min)/((max-min)||1))*(H-6)).toFixed(1)).join(' '); const cls=Math.abs(delta)<1?'':(delta>0?'up':'down'); return '<svg class="spark" viewBox="0 0 84 26" aria-hidden="true"><polyline class="'+cls+'" points="'+pts+'"/></svg>'; }
 
 // Brand logos shown next to the client name (files sit next to index.html).
-const CLIENT_LOGO={'berkowits':'berkowits-logo.webp','berkowits-services':'berkowits-logo.webp'};
+const CLIENT_LOGO={};
 function clientHead(x){ const c=x.c, acct=(x.ent||{}).account;
   let h='<button class="detail-back" data-act="nav" data-client="">'+ICONS.back+'Command Center</button>';
   h+='<div class="page-head"><div>'+(CLIENT_LOGO[c.id]?'<img class="client-logo" src="'+CLIENT_LOGO[c.id]+'" alt="'+esc(c.name)+' logo">':'')+'<h1 class="disp">'+esc(c.name)+'</h1><p class="subtitle">'+typeLabel(c)+' · '+esc(pfLabel(c))+(c.budget?' · '+fmtMoney(c.budget,c)+' per month':'')+(kpiTarget(c)?' · target '+kpiFmt(c,kpiTarget(c))+' '+kpiLabel(c):' · <span class="faint">no target set</span>')+(c.am?' · AM '+esc(c.am):'')+(acct&&acct.statusCode&&acct.statusCode!==1?' <span class="chip bad">Meta account: '+esc(acct.status)+'</span>':'')+'</p></div><div class="meta">'+niceDate(D.today)+'<br>'+syncChips(x)+'</div></div>';
