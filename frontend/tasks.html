@@ -102,7 +102,8 @@ function evaluate(D){
   var tasks=[], pauseQ={};
   function T(o){if(o.id&&o._set===undefined){var aid=o.id.split(':')[1];var ad=null;for(var i=0;i<ads.length;i++)if(ads[i].id===aid){ad=ads[i];break}if(ad)o._set=ad.adsetId;}tasks.push(o);return o}
   function setOf(a){return sets[a.adsetId]||{}}
-  function catalogAd(a){var s=setOf(a);return isCatalog(s.name)||isCatalog(a.campaignName)||isCatalog(camps[s.campaignId]&&camps[s.campaignId].name)}
+  var catSet={}; Object.keys(bySet).forEach(function(k){var L=bySet[k];catSet[k]=L.length>0&&L.every(function(a){return isCatalog(a.name)})});
+  function catalogAd(a){var s=setOf(a);return catSet[a.adsetId]||isCatalog(s.name)||isCatalog(a.campaignName)||isCatalog(camps[s.campaignId]&&camps[s.campaignId].name)}
   function stats3(a){return [['Lifetime',inr(a._life.s),a._life.p+' purch · '+x2(a._life.r)],['3D',inr(a._3.s),a._3.p+' purch · '+x2(a._3.r)],['7D',inr(a._7.s),a._7.p+' purch · '+x2(a._7.r)]]}
   // Ad-level pause with the 3-ads floor. Pauses queued in the same ad set count against the floor.
   function pauseAd(a,rule,why){
@@ -139,7 +140,7 @@ function evaluate(D){
   // ---- Rules 2, 3, 4: ad sets ----
   Object.keys(sets).forEach(function(id){
     var st=sets[id]; if(st.status!=='ACTIVE') return;
-    var mine=bySet[id]||[], n=mine.length, cat=isCatalog(st.name)||isCatalog(st.campaignName);
+    var mine=bySet[id]||[], n=mine.length, cat=catSet[id]||isCatalog(st.name)||isCatalog(st.campaignName);
     var A=sumDays(st.days,W3[0],W3[1]), B=sumDays(st.days,W7[0],W7[1]);
     var camp=camps[st.campaignId]||{}, cbo=!(st.dailyBudget||st.lifetimeBudget)&&(camp.dailyBudget||camp.lifetimeBudget);
     var budget=st.dailyBudget||st.lifetimeBudget||camp.dailyBudget||camp.lifetimeBudget||0, bWho=cbo?'campaign budget (CBO)':'ad set budget';
@@ -149,7 +150,7 @@ function evaluate(D){
     var S=[['3D',inr(A.s),A.p+' purch · '+x2(A.r)],['7D',inr(B.s),B.p+' purch · '+x2(B.r)],['Active ads',String(n),budget?inr(budget)+' '+(cbo?'CBO':'/ day'):'']];
     var base={path:st.campaignName||'',imgs:imgs,stats:S};
     function A_(o){var t={};for(var k in base)t[k]=base[k];for(k in o)t[k]=o[k];return T(t)}
-    var live7=st.createdDate&&st.createdDate<=addDays(today,-7);
+    var live7=st.createdDate&&st.createdDate<=addDays(today,-7), floorNote=[];
     var budgetDone=false;
     // Rule 3, worst first: pause ad set, then budget cut, then weak creative.
     if(B.r<2.0&&B.s>=3500&&live7){ for(var i=tasks.length-1;i>=0;i--){ var tk=tasks[i]; if(tk._set===id&&tk.type!=='protect') tasks.splice(i,1); } A_({id:'setpause:'+id,type:'pause',tone:'bad',kind:'Pause ad set',rule:'Rule 3',title:st.name,why:'<b>7D ROAS '+x2(B.r)+'</b> on '+inr(B.s)+' after 7+ days live.',todo:'Pause ad set'}); return; }
@@ -157,20 +158,22 @@ function evaluate(D){
       budgetDone=true;
       A_({id:'cut:'+id,type:cool?'wait':'budget',tone:cool?'warn':'bad',kind:cool?'Budget cut, wait':'Budget −20%',rule:'Rule 3',title:st.name,why:'<b>3D ROAS '+x2(A.r)+' and 7D ROAS '+x2(B.r)+'</b>, both below 2.2. '+(budget?'Cut the '+bWho+' from '+inr(budget)+' to <b>'+inr(budget*0.8)+'</b>. ':'')+coolTxt+(cool?' Wait until 48 hours have passed.':''),todo:cool?'Wait':(budget?inr(budget*0.8):'−20%')});
     } else if(A.r<2.5&&A.s>=1500){
+      budgetDone=true;   // Rule 3 wins over Rule 2: no scale while 3D ROAS is below 2.5
+      if(!cat&&n<3) floorNote.push('Ad set 3D ROAS '+x2(A.r)+', below 2.5 (Rule 3): keep the budget, the fix is new creatives.');
       var pool=mine.filter(function(a){return a._7.s>=1500}).sort(function(p,q){return p._7.r-q._7.r});
       if(pool.length&&!cat){ var w=pool[0]; var had=tasks.filter(function(t){return t.id.split(':')[1]===w.id})[0]; if(!had||(had.type!=='pause'&&had.type!=='blocked'&&had.type!=='protect')){ if(had) tasks.splice(tasks.indexOf(had),1); pauseAd(w,'Rule 3 · weakest creative','Ad set 3D ROAS '+x2(A.r)+', below 2.5. Keep the budget; pause this ad (lowest 7D ROAS '+x2(w._7.r)+' in the ad set) and add a new one.'); } }
-      if(!cat) A_({id:'add3:'+id,type:'creative',tone:'warn',kind:'Add new creative',rule:'Rule 3 + 4',title:st.name,why:'Ad set 3D ROAS '+x2(A.r)+', below 2.5. Do not cut the budget. Add a fresh creative.',todo:'Add creative'});
+      if(!cat&&n>=3) A_({id:'add3:'+id,type:'creative',tone:'warn',kind:'Add new creative',rule:'Rule 3 + 4',title:st.name,why:'Ad set 3D ROAS '+x2(A.r)+', below 2.5. Do not cut the budget. Add a fresh creative.',todo:'Add creative'});
     }
     // Rule 2: scale.
     if(!budgetDone&&((A.r>=3&&A.p>=5)||(B.r>=3&&B.p>=5))){
-      if(n<3&&!cat) A_({id:'scaleblk:'+id,type:'creative',tone:'warn',kind:'Scale waits on creatives',rule:'Rule 2',title:st.name,why:'ROAS qualifies for +30% but only '+n+' active ads. Get it to 3 first.',todo:'Add creatives'});
+      if(n<3&&!cat) floorNote.push('ROAS qualifies for +30% (Rule 2), but scaling waits until it has 3 ads.');
       else if(cool) A_({id:'scalewait:'+id,type:'wait',tone:'warn',kind:'Scale, wait',rule:'Rule 2',title:st.name,why:'ROAS qualifies for +30%. '+coolTxt+' Wait until 48 hours have passed.',todo:'Wait'});
       else { A_({id:'scale:'+id,type:'scale',tone:'good',kind:'Budget +30%',rule:'Rule 2',title:st.name,why:'<b>'+(A.r>=3&&A.p>=5?'3D ROAS '+x2(A.r)+' with '+A.p+' purchases':'7D ROAS '+x2(B.r)+' with '+B.p+' purchases')+'.</b> '+(budget?'Raise the '+bWho+' from '+inr(budget)+' to <b>'+inr(budget*1.3)+'</b>. ':'')+coolTxt,todo:budget?inr(budget*1.3):'+30%'});
         if(!cat) A_({id:'prep:'+id,type:'creative',tone:'info',kind:'Prepare next creative',rule:'Rule 4',title:st.name,why:'This ad set is scaling. Have one new creative ready before the next scale step.',todo:'Brief creative'}); }
     }
     // Rule 4: floor and fatigue.
     if(!cat){
-      if(n<3) A_({id:'floor:'+id,type:'creative',tone:'bad',kind:'Below 3 ads',rule:'Rule 4',title:st.name,why:'<b>Only '+n+' active ad'+(n===1?'':'s')+'.</b> Every ad set needs at least 3.'+(st.createdDate&&st.createdDate>=addDays(today,-3)?' New ad set: it should not have gone live with fewer than 3.':''),todo:'Add '+(3-n)});
+      if(n<3) A_({id:'floor:'+id,type:'creative',tone:'bad',kind:'Below 3 ads',rule:'Rule 4',title:st.name,why:'<b>Only '+n+' active ad'+(n===1?'':'s')+'.</b> Every ad set needs at least 3.'+(floorNote.length?' '+floorNote.join(' '):'')+(st.createdDate&&st.createdDate>=addDays(today,-3)?' New ad set: it should not have gone live with fewer than 3.':''),todo:'Add '+(3-n)});
       else if(n===3) A_({id:'onfloor:'+id,type:'flag',tone:'info',kind:'On the floor',rule:'Rule 4',title:st.name,why:'Exactly 3 active ads: the next pause in this ad set will be blocked until a new creative is live.',todo:'Plan a spare'});
       if(!isWarm(st.name)&&!isWarm(st.campaignName)){
         var top=mine.slice().sort(function(p,q){return q._7.s-p._7.s})[0];
