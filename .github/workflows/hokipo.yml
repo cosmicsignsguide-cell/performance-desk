@@ -1,0 +1,43 @@
+# Hokipo: fresh data for the Task Dashboard before the team reviews it, twice a day.
+#   Morning: starts 09:22 IST so it is done by about 09:30 (the team checks at 10:30).
+#   Evening: starts 16:22 IST so it is done by about 16:30 (optimisation by 17:00).
+# GitHub starts scheduled jobs a few minutes late at busy times, which is why the start sits a
+# little before the half hour. A run that fails waits 30 minutes and tries again, twice at most,
+# instead of hammering a throttled Meta account every few minutes.
+name: hokipo-sync
+on:
+  schedule:
+    - cron: "52 3 * * *"    # 09:22 IST
+    - cron: "52 10 * * *"   # 16:22 IST
+  workflow_dispatch: {}
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - name: Sync Hokipo (ads tree, then daily data), retry after 30 min on failure
+        env:
+          DESK_SYNC_KEY: ${{ secrets.DESK_SYNC_KEY }}
+          API: https://desk-api-si2w.onrender.com
+        run: |
+          if [ -z "$DESK_SYNC_KEY" ]; then echo "DESK_SYNC_KEY secret is not set"; exit 1; fi
+          call() {  # $1 = mode; prints the body, returns non-zero on any failure
+            code=$(curl -sS -o out.txt -w "%{http_code}" --max-time 1500 -X POST -H "Authorization: Bearer $DESK_SYNC_KEY" "$API/sync?mode=$1&client=hokipo") || code=000
+            echo "$1: HTTP $code"; cat out.txt; echo
+            [ "$code" = "200" ] && ! grep -q '"failures"' out.txt
+          }
+          attempt() {
+            curl -sS --max-time 90 "$API/health" >/dev/null || true; sleep 20
+            # Keep the free instance awake while a long Meta wait runs.
+            ( for i in $(seq 1 30); do sleep 240; curl -sS -o /dev/null --max-time 60 "$API/health" || true; done ) & pinger=$!
+            ok=0; call creatives && call hourly && ok=1
+            kill $pinger 2>/dev/null || true
+            [ "$ok" = "1" ]
+          }
+          for n in 1 2 3; do
+            echo "== attempt $n at $(TZ=Asia/Kolkata date '+%H:%M IST')"
+            if attempt; then echo "Hokipo sync OK"; exit 0; fi
+            [ "$n" = "3" ] && break
+            echo "Failed. Waiting 30 minutes before trying again."; sleep 1800
+          done
+          echo "Hokipo sync failed three times"; exit 1

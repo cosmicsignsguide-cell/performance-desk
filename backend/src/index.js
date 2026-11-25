@@ -50,6 +50,9 @@ function sourceState(client, source) {
 // window is written, empty days included, so a stale figure is always overwritten. Arrays rather
 // than maps on purpose: a merge replaces an array whole, where it would deep-merge a map and keep
 // a campaign that has since dropped to zero.
+// A creatives pull that failed inside a sync (kept the old tree) is reported in /sync's failures,
+// so a scheduled run can tell it apart from a clean one and try again.
+const CREATIVES_ERR = new Map();
 async function taskClientFor(key) {
   if (!key || !/^[A-Za-z0-9_-]{24,80}$/.test(key)) return null;
   const h = crypto.createHash('sha256').update(key).digest('hex');
@@ -227,7 +230,7 @@ async function syncClient(store, client, { mode, days, sources: onlySources = nu
             ent.issues = e.issues; ent.account = e.account;
             // A partial pull is not marked fresh, so the missing account is tried again in an hourly run.
             if (!failed.size) ent.entitiesAt = { ...(ent.entitiesAt || {}), meta: nowIso() };
-          } catch (e) { log(`${client.id}/meta: creatives skipped this run, kept the previous ones (${String(e.message || e).slice(0, 120)})`); }
+          } catch (e) { CREATIVES_ERR.set(client.id, String(e.message || e).slice(0, 160)); log(`${client.id}/meta: creatives skipped this run, kept the previous ones (${String(e.message || e).slice(0, 120)})`); }
         } else if (mode === 'hourly' && (ent.ads || []).length) {
           // Keep today's per-day tuples fresh between daily runs. Failure here must not fail the sync.
           try {
@@ -645,6 +648,7 @@ async function main() {
         // that should not spend any of the Meta rate limit.
         const onlySrc = String(url.searchParams.get('sources') || '').split(',').map((x) => x.trim()).filter(Boolean);
         if (mode === 'creatives') { if (creativesBusy.has(c.id)) continue; creativesBusy.add(c.id); }
+        CREATIVES_ERR.delete(c.id);
         try { ({ entities } = await syncClient(store, c, { mode, days, sources: mode === 'creatives' ? ['meta'] : onlySrc.length ? onlySrc : null })); }
         catch (e) {
           const msg = String(e.message || e).slice(0, 300);
@@ -652,6 +656,7 @@ async function main() {
           failures.push(`${c.id}: ${msg}`);
           continue;
         } finally { if (mode === 'creatives') creativesBusy.delete(c.id); }
+        if (CREATIVES_ERR.has(c.id)) failures.push(`${c.id}/creatives: ${CREATIVES_ERR.get(c.id)}`);
         await computeSignals(c, entities, { mode });
         // The per source errors are already stored for the dashboard; surfacing them in the
         // response too means a one client run answers "why is this broken" without a log dive.
