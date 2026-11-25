@@ -3576,19 +3576,19 @@ function metaByCategory(x,S){
   const SH={}; names.forEach(n=>SH[n]={o:0,g:0,v:0});
   shRows.forEach(r=>{ for(const k in r.cats||{}){ const n=SH[k]?k:UNT, t=r.cats[k]||[]; SH[n].o+=t[0]||0; SH[n].g+=t[1]||0; SH[n].v+=t[2]||0; } });
   const money=v=>(c.currency==='INR'||!c.currency?'₹':'')+Math.round(v||0).toLocaleString('en-IN');
-  const rows=names.filter(n=>M[n].s||G[n].s||SH[n].o||M[n].o||G[n].o).sort((a,b)=>(a===UNT)-(b===UNT)||((M[b].s+G[b].s)-(M[a].s+G[a].s)));
+  const rows=names.filter(n=>M[n].s||G[n].s||SH[n].o).sort((a,b)=>(a===UNT)-(b===UNT)||((M[b].s+G[b].s)-(M[a].s+G[a].s)));
   if(!rows.length) return '';
   const na='<span class="faint">n/a</span>';
   const line=(n,t)=>{ const sp=t.ms+t.gs; return '<tr'+(n===UNT?' class="cat-unt"':'')+(n==='Total'?' class="cat-tot"':'')+'><td class="row-title">'+esc(n)+'</td>'
     +'<td class="num">'+(t.ms?money(t.ms):'--')+'</td><td class="num g">'+(t.gs?money(t.gs):'--')+'</td><td class="num tt"><b>'+money(sp)+'</b></td>'
     +'<td class="num sh">'+(shHas?fmtNum(t.so):na)+'</td><td class="num sh">'+(shHas?money(t.sg):na)+'</td><td class="num sh">'+(shHas?money(t.sv):na)+'</td><td class="num sh"><b>'+(shHas&&sp?fmtX(t.sv/sp):'--')+'</b></td>'
-    +'<td class="num">'+fmtNum(t.mo)+'</td><td class="num g">'+fmtNum(t.go)+'</td></tr>'; };
+    +'</tr>'; };
   const T=n=>({ms:M[n].s,gs:G[n].s,so:SH[n].o,sg:SH[n].g,sv:SH[n].v,mo:M[n].o,go:G[n].o});
   const tot=rows.reduce((a,n)=>{ const t=T(n); for(const k in t) a[k]+=t[k]; return a; },{ms:0,gs:0,so:0,sg:0,sv:0,mo:0,go:0});
   const shTot=shRows.reduce((a,r)=>a+(r.orders||0),0);
   return '<section class="srcpanel catpanel"><div class="srcph"><div><h3>Spend and sales by category</h3><p>'+esc(spec.label)+'. Spend from Meta and Google, store sales from Shopify, by product category. Change the period with the date bar at the top.</p></div></div>'
-    +'<div class="data-table-wrap" style="overflow:auto"><table class="dtable cat-t cat-simple"><thead><tr><th rowspan="2">Category</th><th class="grp" colspan="3">Ad spend</th><th class="grp gs" colspan="4">Shopify store</th><th class="grp" colspan="2">Orders from ads (UTM)</th></tr><tr>'
-    +'<th class="num">Meta</th><th class="num">Google</th><th class="num">Total</th><th class="num">Orders</th><th class="num">Gross sales</th><th class="num">Net sales</th><th class="num">Net ÷ spend</th><th class="num">Meta</th><th class="num">Google</th></tr></thead><tbody>'
+    +'<div class="data-table-wrap" style="overflow:auto"><table class="dtable cat-t cat-simple"><thead><tr><th rowspan="2">Category</th><th class="grp" colspan="3">Ad spend</th><th class="grp gs" colspan="4">Shopify store</th></tr><tr>'
+    +'<th class="num">Meta</th><th class="num">Google</th><th class="num">Total</th><th class="num">Orders</th><th class="num">Gross sales</th><th class="num">Net sales</th><th class="num">Net ÷ spend</th></tr></thead><tbody>'
     +rows.map(n=>line(n,T(n))).join('')+line('Total',tot)+'</tbody></table></div>'
     +'<div class="note" style="margin-top:8px">Store orders are product-wise: an order with two products in one category counts twice there, so category orders add up to more than the '+(shHas?fmtNum(shTot)+' ':'')+'store orders. Net sales are after discounts and returns, before tax and shipping. Untagged / mixed is spend and products whose names carry no category (catalog, sale and brand campaigns).'+(shHas?'':' Store sales by category fill in from the next sync.')+'</div></section>';
 }
