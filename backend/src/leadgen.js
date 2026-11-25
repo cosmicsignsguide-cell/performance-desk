@@ -49,7 +49,10 @@ async function metaRows(accountId, params) {
 function metaMetrics(r) {
   const a = r.actions || [];
   const stages = {};
-  for (const x of [...a, ...(r.conversions || [])]) if (String(x.action_type).startsWith(STAGE_PREFIX)) { const k = String(x.action_type).slice(STAGE_PREFIX.length); if (k && !/^\d+$/.test(k)) stages[k] = (stages[k] || 0) + num(x.value); }
+  // A stage can show up under actions, conversions or both; take the larger per stage so it is never counted twice.
+  const grab = (list) => { const o = {}; for (const x of list) if (String(x.action_type).startsWith(STAGE_PREFIX)) { const k = String(x.action_type).slice(STAGE_PREFIX.length); if (k && !/^\d+$/.test(k)) o[k] = (o[k] || 0) + num(x.value); } return o; };
+  const sa = grab(a), sc = grab(r.conversions || []);
+  for (const k of new Set([...Object.keys(sa), ...Object.keys(sc)])) stages[k] = Math.max(sa[k] || 0, sc[k] || 0);
   return {
     spend: r2(num(r.spend)), impressions: num(r.impressions), reach: num(r.reach), link_clicks: num(r.inline_link_clicks),
     leads: pick(a, ['lead']) || pick(a, ['onsite_conversion.lead_grouped', 'offsite_conversion.fb_pixel_lead']),

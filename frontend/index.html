@@ -760,6 +760,9 @@ td.call{min-width:300px;white-space:normal} td.call .sub{max-width:none}
 .crmedia{position:relative;aspect-ratio:1/1;background:var(--panel-hover);overflow:hidden}
 .crmedia img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1}
 .crph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;opacity:.35;text-transform:uppercase;letter-spacing:.08em}
+.crtags{position:absolute;left:8px;top:8px;z-index:2;display:flex;gap:5px;flex-wrap:wrap}
+.crnew{display:inline-flex;align-items:center;padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:700;background:var(--accent);color:#fff;box-shadow:0 4px 12px -4px rgba(0,0,0,.5)}.crnew.inl{box-shadow:none;font-size:10.5px;padding:1px 6px;vertical-align:1px;margin-right:2px}
+.crwa{display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 6px;border-radius:99px;font-size:11.5px;font-weight:700;background:#25D366;color:#fff;box-shadow:0 4px 12px -4px rgba(0,0,0,.5)}.crwa svg{width:14px;height:14px}.crwa.inl{position:static;box-shadow:none;font-size:10.5px;padding:1px 6px 1px 4px;vertical-align:1px;margin-right:4px}.crwa.inl svg{width:11px;height:11px}
 .crfmt{position:absolute;left:8px;bottom:8px;z-index:2;padding:3px 8px;border-radius:99px;font-size:12px;font-weight:700;background:rgba(9,16,21,.72);color:#E7EDEF;backdrop-filter:blur(4px);text-transform:capitalize}
 .crfmt:empty{display:none}
 .crmodal{position:fixed;inset:0;z-index:9999;background:rgba(5,9,12,.82);display:flex;align-items:center;justify-content:center;padding:16px}
@@ -1904,7 +1907,7 @@ function rangeSpec(range,today){ const dom=parseInt(today.slice(8),10);
   } }
 function window_(today,spec){ const end=addDays(today,-spec.offset); return {start:addDays(end,-(spec.days-1)),end}; }
 function rowsIn(rows,today,spec){ const w=window_(today,spec); return rows.filter(r=>r.date>=w.start&&r.date<=w.end); }
-function daysIn(days,today,spec){ const w=window_(today,spec); const o={spend:0,impressions:0,clicks:0,purchases:0,revenue:0,leads:0,installs:0}; for(const d in days){ if(d>=w.start&&d<=w.end){ const t=days[d]; o.spend+=t[0]||0; o.impressions+=t[1]||0; o.clicks+=t[2]||0; o.purchases+=t[3]||0; o.revenue+=t[4]||0; o.leads+=t[5]||0; o.installs+=t[6]||0; } } return o; }
+function daysIn(days,today,spec){ const w=window_(today,spec); const o={spend:0,impressions:0,clicks:0,purchases:0,revenue:0,leads:0,installs:0,qualified:0,convos:0}; for(const d in days){ if(d>=w.start&&d<=w.end){ const t=days[d]; o.spend+=t[0]||0; o.impressions+=t[1]||0; o.clicks+=t[2]||0; o.purchases+=t[3]||0; o.revenue+=t[4]||0; o.leads+=t[5]||0; o.installs+=t[6]||0; o.qualified+=t[7]||0; o.convos+=t[8]||0; } } return o; }
 const ADS=['meta','google'];
 const SUMS=['spend','impressions','clicks','purchases','revenue','leads','lpv','atc','ic','orders','grossSales','netSales','totalSales','taxes','shSessions','shAtc','shReached','refunds','newCustomerOrders','units','checkoutsStarted','installs','sessions','srcMeta','srcGoogle','srcDirect','srcOther','srcUnknown','srcNone','ga4Atc','ga4Checkouts','ga4Purchases','gLpv','gAtc','gIc','gConvT','gValT'];
 function agg(rows){ const o={}; SUMS.forEach(k=>o[k]=0); let hasShop=false,hasGa=false; rows.forEach(r=>{ SUMS.forEach(k=>{o[k]+=r[k]||0}); if(r.platform==='shopify') hasShop=true; if(r.platform==='ga4') hasGa=true; }); o.hasShop=hasShop; o.hasGa=hasGa; return derive(o); }
@@ -3039,6 +3042,8 @@ function clientView(x){
   // A lead gen client (Berkowits Services + Grow) gets only the lead gen view: Overview, Service by
   // region and Google Ads. The range bar at the top picks the dates (the store keeps day-by-day rows).
   if(D.leadgen&&D.leadgen[c.id]){
+    // Default the campaign list to active Meta campaigns, once per visit to this page.
+    if(state._lgDef!==c.id){ state._lgDef=c.id; state.cmpp='meta'; state.cmpf='active'; }
     let lh=SHARE?'':'<button class="detail-back" data-act="nav" data-client="">'+ICONS.back+'Command Center</button>';
     lh+='<div class="toolbar">'+pairBtn(c)+'<div class="grow"></div>'+(SHARE?'':'<button class="btn btn-ghost btn-small" data-act="clientlink">'+ICONS.copy+' Copy client dashboard link</button>')+'</div>';
     lh+='<div id="lg-mount" data-client="'+esc(c.id)+'"></div>';
@@ -3048,6 +3053,7 @@ function clientView(x){
       lh+='<div class="section"><div class="tab-row" style="margin-bottom:12px">'+lt.map(t=>'<button class="tab-btn '+(state.tab===t[0]?'active':'')+'" data-act="tab" data-tab="'+t[0]+'">'+t[1]+'</button>').join('')+'</div>'+(state.tab==='campaigns'?campaignTree(x):entityTable(x))+'</div>'; }
     return lh;
   }
+  if(state._lgDef){ state._lgDef=null; state.cmpp='all'; state.cmpf='all'; }   // other brands keep All / All
   let h='<button class="detail-back" data-act="nav" data-client="">'+ICONS.back+'Command Center</button>';
   h+='<div class="page-head"><div><h1 class="disp">'+esc(c.name)+'</h1><p class="subtitle">'+typeLabel(c)+' · '+esc(pfLabel(c))+(c.budget?' · '+fmtMoney(c.budget,c)+' per month':'')+(kpiTarget(c)?' · target '+kpiFmt(c,kpiTarget(c))+' '+kpiLabel(c):' · <span class="faint">no target set</span>')+(c.am?' · AM '+esc(c.am):'')+(acct&&acct.statusCode&&acct.statusCode!==1?' <span class="chip bad">Meta account: '+esc(acct.status)+'</span>':'')+'</p></div><div class="meta">'+niceDate(D.today)+'<br>'+syncChips(x)+'</div></div>';
   h+='<div class="toolbar">'+rangeBar()+'<select class="mobile-pick" id="mobilePick"><option value="">All clients</option>'+D.clients.map(k=>'<option value="'+k.id+'">'+esc(k.name)+'</option>').join('')+'</select>'+pairBtn(c)+'<div class="grow"></div>'+(LIVE&&CFG.syncUrl?'<button class="btn btn-ghost btn-small" data-act="syncnow">'+ICONS.refresh+' Sync now</button>':'')+'<button class="btn btn-ghost btn-small" data-act="clientlink">'+ICONS.copy+' Copy client dashboard link</button><button class="btn btn-primary btn-small" data-act="update">'+ICONS.copy+' Copy client update</button></div>';
@@ -3698,7 +3704,7 @@ function trendChart(x){
 // back than that, say so instead of showing a silently short number.
 function entShort(spec){ const w=window_(D.today,spec); const from=addDays(D.today,-34); return w.start<from?'Ad set and creative numbers cover only '+fmtDay(from)+' onward (35 days are kept for them); campaign totals cover the full range.':''; }
 function fmtDay(d){ return parseInt(d.slice(8),10)+' '+MON[+d.slice(5,7)-1]; }
-function entRange(e,spec){ let m; if(e.days&&Object.keys(e.days).length) m=daysIn(e.days,D.today,spec); else m={spend:e.spend||0,impressions:e.impressions||0,clicks:e.clicks||0,purchases:e.purchases||0,revenue:e.revenue||0,leads:e.leads||0,installs:e.installs||0}; return derive(m); }
+function entRange(e,spec){ let m; if(e.days&&Object.keys(e.days).length) m=daysIn(e.days,D.today,spec); else m={spend:e.spend||0,impressions:e.impressions||0,clicks:e.clicks||0,purchases:e.purchases||0,revenue:e.revenue||0,leads:e.leads||0,installs:e.installs||0,qualified:e.qualified||0,convos:e.convos||0}; m=derive(m); m.qualified=m.qualified||0; m.convos=m.convos||0; m.cql=m.qualified?m.spend/m.qualified:Infinity; m.cpconv=m.convos?m.spend/m.convos:Infinity; return m; }
 function chipK(c,v){ return '<span class="chip '+kpiStatus(c,v)+'">'+(c.type==='ecom'?fmtX(v):fmtMoney(v,c))+'</span>' }
 function thead(cols,table){ const so=state.sort[table]; return '<thead><tr>'+cols.map(cl=>'<th data-act="sort" data-table="'+table+'" data-key="'+cl.key+'" class="'+(cl.num?'num ':'')+(so.key===cl.key?'sorted':'')+'">'+cl.label+(so.key===cl.key?(so.dir==='asc'?' ↑':' ↓'):'')+'</th>').join('')+'</tr></thead>'; }
 function campaignTree(x){
@@ -3749,6 +3755,9 @@ function entityTable(x){
     empty='No Shopify product data yet. Connect the store token to see best sellers and stock.'; note='Top 25 products by revenue in the last 30 days. Revenue is line-item value before discounts. Stock in red means out of stock or under about 14 days left at the last 7 days sales pace.';
   } else { rows=(x.ads||[]).map(e=>({e,m:entRange(e,spec)})).filter(r=>crMatch(r,state.crf)); x._callBar=crCallBar(rows); if(state.crcall) rows=rows.filter(r=>crCallOf(r)===state.crcall); const adTotal=rows.reduce((s,r)=>s+r.m.spend,0); title='Creatives <span class="sub">spend, CTR and results for '+spec.label+' · hook, hold, frequency and the call use the last 30 days</span>';
     cols=[{key:'name',label:'Creative',f:r=>'<td class="row-title"><span class="adname">'+crThumb(r.e,c)+'<span>'+esc(r.e.name)+'<span class="sub">'+esc(r.e.adsetName||'')+'</span></span></span></td>',v:r=>r.e.name},{key:'format',label:'Format',f:r=>'<td>'+esc(r.e.format||'')+'</td>',v:r=>r.e.format||''},{key:'spend',label:'Spend',num:1,f:r=>fmtMoney(r.m.spend,c)+' <span class="faint">'+pct(adTotal?r.m.spend/adTotal:0)+'</span>',v:r=>r.m.spend},{key:'hookRate',label:'Hook',num:1,f:r=>r.e.hookRate==null?'<span class="faint">static</span>':fmtPct(r.e.hookRate),v:r=>r.e.hookRate==null?-1:r.e.hookRate},{key:'holdRate',label:'Hold',num:1,f:r=>r.e.holdRate==null?'<span class="faint">static</span>':fmtPct(r.e.holdRate),v:r=>r.e.holdRate==null?-1:r.e.holdRate},{key:'ctr',label:'CTR',num:1,f:r=>fmtPct(r.m.ctr)+(r.e.ctrTrend?' <span class="delta '+(r.e.ctrTrend<0.9?'down':(r.e.ctrTrend>1.05?'up':'flat'))+'" title="last 7 days vs the 7 before">'+(r.e.ctrTrend>=1?'+':'')+Math.round((r.e.ctrTrend-1)*100)+'%</span>':''),v:r=>r.m.ctr},{key:res,label:cap(res),num:1,f:r=>fmtNum(r.m[res]),v:r=>r.m[res]},kpiCol,{key:'freq',label:'Freq',num:1,f:r=>((r.e.last7&&r.e.last7.freq)||r.e.freq||0).toFixed(1),v:r=>(r.e.last7&&r.e.last7.freq)||r.e.freq||0},{key:'daysLive',label:'Days',num:1,f:r=>r.e.daysLive==null?'<span class="faint">n/a</span>':r.e.daysLive,v:r=>r.e.daysLive||0},{key:'status',label:'Call',f:r=>'<td class="call"><span class="chip '+r.e.tone+'">'+r.e.status+'</span><span class="sub">'+esc(r.e.why)+'</span></td>',v:r=>({Pause:0,Fatiguing:1,Watch:2,Testing:3,Steady:4,Scale:5}[r.e.status]??-1)}];
+    if(D.leadgen&&D.leadgen[c.id]){ const na='<span class="faint">n/a</span>', at=Math.max(1,cols.findIndex(cl=>cl.key==='spend')+1);
+      cols.splice(at,0,{key:'qualified',label:'QL',num:1,f:r=>isWAad(r.e)?na:fmtNum(r.m.qualified),v:r=>r.m.qualified},{key:'cql',label:'CQL',num:1,f:r=>isWAad(r.e)?na:(r.m.qualified?fmtMoney(r.m.cql,c):na),v:r=>r.m.cql},{key:'convos',label:'Convos',num:1,f:r=>isWAad(r.e)?fmtNum(r.m.convos):na,v:r=>r.m.convos});
+      cols[0]={...cols[0],f:r=>'<td class="row-title"><span class="adname">'+crThumb(r.e,c)+'<span>'+(isNewAd(r.e)?'<span class="crnew inl">New</span> ':'')+(isWAad(r.e)?'<span class="crwa inl">'+WA_ICON+'CTWA</span> ':'')+esc(r.e.name)+'<span class="sub">'+esc(r.e.adsetName||'')+'</span></span></span></td>'}; }
     empty=state.crf==='all'?'No Meta creatives yet.':'No creatives in this group. Try another filter above.'; note=(entShort(spec)?entShort(spec)+' ':'')+'Hook = 3 second plays / impressions. Hold = ThruPlays / 3 second plays. Fatiguing = frequency past 3.2 with CTR falling 15%+ and CPM rising 12%+ in the same week.';
   }
   const so=state.sort[tab]; const sorted=rows.slice().sort((a,b)=>{ const col=cols.find(cl=>cl.key===so.key)||cols[0]; let va=col.v(a),vb=col.v(b); if(typeof va==='number'&&!isFinite(va)) va=so.dir==='asc'?Infinity:-Infinity; if(typeof vb==='number'&&!isFinite(vb)) vb=so.dir==='asc'?Infinity:-Infinity; if(typeof va==='string') return so.dir==='asc'?va.localeCompare(vb):vb.localeCompare(va); return so.dir==='asc'?va-vb:vb-va; });
@@ -3784,7 +3793,12 @@ function crChips(x){
 /* Creative gallery: the same rows and the same sort as the table, laid out as cards so a creative can be
    judged by looking at it. Everything on a card is already on the page, so it costs no extra reads.
    Cards are view only. The table stays one click away for anyone who wants every column. */
-function creativeGrid(x,rows,kpiCol,title,note,empty){
+// Click to WhatsApp ads: the campaign or ad set name says CTWA (Berkowits naming).
+// New = the ad was created in the last 7 days.
+function isNewAd(e){ return !!e.createdDate&&e.createdDate>=addDays(D.today,-6); }
+function isWAad(e){ return /ctwa|whatsapp/i.test((e.campaignName||'')+' '+(e.adsetName||'')); }
+const WA_ICON='<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.2 2.2 2.2 0 0 0 .1-1.2c0-.1-.2-.2-.4-.3z"/></svg>';
+function creativeGrid(x,rows,kpiCol,title,note,empty){ const lgC=!!(D.leadgen&&D.leadgen[x.c.id]);
   const c=x.c, isE=c.type==='ecom', res=isE?'purchases':isApp(c)?'installs':'leads', resLab=isE?'Orders':isApp(c)?'Installs':LW(c), so=state.sort.ads;
   const sorts=[['spend','Spend'],[kpiCol.key,kpiCol.label],['ctr','CTR'],['hookRate','Hook'],['status','Call']];
   let h='<div class="glass-panel"><h2>'+title+crChips(x)+'</h2>';
@@ -3792,11 +3806,13 @@ function creativeGrid(x,rows,kpiCol,title,note,empty){
   if(!rows.length) return h+'<div class="note">'+empty+'</div></div>';
   h+='<div class="crgrid">'+rows.map(r=>{ const e=r.e, m=r.m, hook=e.hookRate==null?'':fmtPct(e.hookRate), idle=!(m.spend>0), tone=idle?'neutral':(e.tone||'neutral'), callTxt=idle?'No spend':(e.status||''), why=idle?'No spend in '+x.spec.label+'. Pick 7d or 14d above to judge this creative.':(e.why||''), na='<span class="faint">n/a</span>';
     const img=e.thumb?'<img src="'+esc(e.thumb)+'" alt="" loading="lazy" onerror="this.style.display=\'none\'">':'';
-    return '<article class="crcard '+esc(tone)+'"><div class="crmedia">'+img+'<span class="crph">'+esc(e.format||'Ad')+'</span>'
+    return '<article class="crcard '+esc(tone)+'"><div class="crmedia">'+img+'<span class="crph">'+esc(e.format||'Ad')+'</span>'+((isWAad(e)||isNewAd(e))?'<span class="crtags">'+(isNewAd(e)?'<span class="crnew" title="Launched '+esc(niceDate(e.createdDate))+'">New</span>':'')+(isWAad(e)?'<span class="crwa" title="Click to WhatsApp ad">'+WA_ICON+'CTWA</span>':'')+'</span>':'')
       +'<span class="crfmt">'+esc(e.format||'')+(e.isVideo&&!/video/i.test(e.format||'')?' video':'')+'</span><span class="chip crcall '+esc(tone)+'">'+esc(callTxt)+'</span>'+((e.igUrl||e.fbPost)&&e.isVideo?'<button type="button" class="crwatch" data-act="crembed" data-ad="'+esc(e.id)+'" aria-label="Play here">\u25B6 Play</button>':'')+(!(e.igUrl||e.fbPost)&&e.previewUrl&&/^https:\/\//.test(e.previewUrl)?'<a class="crwatch" href="'+esc(e.previewUrl)+'" target="_blank" rel="noopener noreferrer" aria-label="'+(e.isVideo?'Play on Meta':'View on Meta')+'">'+(e.isVideo?'\u25B6 Play':'View')+'</a>':'')+'</div>'
       +'<div class="crbody"><div class="crname" title="'+esc(e.name)+'">'+esc(e.name)+'</div><div class="sub crset">'+esc(e.adsetName||'')+'</div>'
       +'<dl class="crstats"><div><dt>Spend</dt><dd>'+fmtMoney(m.spend,c)+'</dd></div><div><dt>'+kpiCol.label+'</dt><dd>'+(idle?na:kpiCol.f({e:e,m:m}))+'</dd></div>'
-      +'<div><dt>CTR</dt><dd>'+(idle?na:fmtPct(m.ctr))+'</dd></div><div><dt>'+(hook?'Hook':resLab)+'</dt><dd>'+(hook||fmtNum(m[res]))+'</dd></div></dl>'
+      +'<div><dt>CTR</dt><dd>'+(idle?na:fmtPct(m.ctr))+'</dd></div><div><dt>'+(hook?'Hook':resLab)+'</dt><dd>'+(hook||fmtNum(m[res]))+'</dd></div>'
+      +(lgC?(isWAad(e)?'<div><dt>Conversations</dt><dd>'+fmtNum(m.convos)+'</dd></div><div><dt>Cost / convo</dt><dd>'+(m.convos?fmtMoney(m.cpconv,c):na)+'</dd></div>'
+        :'<div><dt>QL</dt><dd>'+fmtNum(m.qualified)+'</dd></div><div><dt>CQL</dt><dd>'+(m.qualified?fmtMoney(m.cql,c):na)+'</dd></div>'):'')+'</dl>'
       +'<p class="crwhy" title="'+esc(why)+'">'+esc(why)+'</p>'
       +'<div class="crfoot">'+(crShareUrl(e)?'<button type="button" class="crshare" data-act="crshare" data-ad="'+esc(e.id)+'" aria-label="Share this creative">'+SHARE_ICON+'Share</button>':'<button type="button" class="crshare" disabled title="Meta gave no public link for this ad">'+SHARE_ICON+'No link to share</button>')+'</div></div></article>'; }).join('')+'</div>';
   return h+(note?'<div class="note">'+note+'</div>':'')+'</div>';
