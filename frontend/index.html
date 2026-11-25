@@ -3069,12 +3069,12 @@ function clientHead(x){ const c=x.c, acct=(x.ent||{}).account;
   return h;
 }
 function clientView(x){
+  // Campaign list opens on active Meta campaigns, once per visit to each client.
+  if(state._cmpFor!==x.c.id){ state._cmpFor=x.c.id; state.cmpp='meta'; state.cmpf='active'; }
   const c=x.c, a=x.cur, p=x.prev, isE=c.type==='ecom', spec=x.spec, acct=x.ent.account;
   // A lead gen client (Berkowits Services + Grow) gets only the lead gen view: Overview, Service by
   // region and Google Ads. The range bar at the top picks the dates (the store keeps day-by-day rows).
   if(D.leadgen&&D.leadgen[c.id]){
-    // Default the campaign list to active Meta campaigns, once per visit to this page.
-    if(state._lgDef!==c.id){ state._lgDef=c.id; state.cmpp='meta'; state.cmpf='active'; }
     let lh=clientHead(x);
     lh+='<div id="lg-mount" data-client="'+esc(c.id)+'"></div>';
     // Under the lead gen view: the same Campaigns and Creatives tabs every other brand has.
@@ -3088,7 +3088,6 @@ function clientView(x){
       lh+='<div class="section"><div class="tab-row" style="margin-bottom:12px">'+lt.map(t=>'<button class="tab-btn '+(state.tab===t[0]?'active':'')+'" data-act="tab" data-tab="'+t[0]+'">'+t[1]+'</button>').join('')+'</div>'+(state.tab==='campaigns'?campaignTree(x):entityTable(x))+'</div>'; }
     return lh;
   }
-  if(state._lgDef){ state._lgDef=null; state.cmpp='all'; state.cmpf='all'; }   // other brands keep All / All
   let h=clientHead(x);
   h+=segBar(c);
   if(!x.hasData) return h+noDataPanel(x);
