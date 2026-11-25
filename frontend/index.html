@@ -1541,7 +1541,7 @@ var RAMP=['rgba(255,90,31,.07)','rgba(255,90,31,.16)','rgba(255,90,31,.28)','rgb
 function mount(root,D,keep){
 D=prep(D);
 root.innerHTML='';root.className='lg-root';
-var S=keep||{tab:'overview',service:'ALL',region:'ALL',stage:'PROSPECT',sort:{},mx:{obj:'LG',metric:'cpql'},ob:'ALL',tview:{}};S.crm=null;
+var S=keep||{tab:'overview',service:'ALL',region:'ALL',stage:'PROSPECT',sort:{},mx:{obj:'LG',metric:'leads'},ob:'ALL',tview:{}};S.crm=null;
 var OBJ=D.defs.objectives,SVC=D.defs.services,REG=D.defs.regions;
 var OBJ_ORDER=['CAPI','VOLUME','CTWA'];
 var stages=[];(function(){var seen={};D.meta_campaigns.forEach(function(c){for(var k in (c.stages||{}))seen[k]=1});STAGE_ORDER.forEach(function(s){if(seen[s]){stages.push(s);delete seen[s]}});Object.keys(seen).forEach(function(s){stages.push(s)})})();
@@ -1686,14 +1686,14 @@ function mi(l,v){return el('div',{},[el('div',{class:'l'},l),el('div',{class:'v'
 function notesBox(){var d=el('details',{});d.appendChild(el('summary',{},'Data notes and assumptions'));var u=el('ul',{class:'t'});D.notes.forEach(function(n){u.appendChild(el('li',{},n))});d.appendChild(u);return d}
 
 /* ---------- SERVICE x REGION ---------- */
-var MX_LG=[['cpql','Cost per qualified lead'],['cpl','Cost per lead'],['leads','Total leads'],['q','Qualified leads'],['qrate','Qualified rate'],['spend','Spend']];
-var MX_WA=[['cpc','Cost per conversation'],['convos','Conversations'],['d2','2+ message rate'],['spend','Spend']];
+var MX_LG=[['leads','Total leads'],['cpql','Cost per qualified lead'],['cpl','Cost per lead'],['q','Qualified leads'],['qrate','Qualified rate'],['spend','Spend']];
+var MX_WA=[['convos','Conversations'],['cpc','Cost per conversation'],['d2','2+ message rate'],['spend','Spend']];
 function mxVal(t,m,k){switch(k){case'cpql':return m.cpql;case'cpl':return m.cpl;case'leads':return t.leads;case'q':return t.hasQ?t.q:null;case'qrate':return m.qrate;case'spend':return t.spend;case'cpc':return m.cpc;case'convos':return t.convos;case'd2':return m.d2}}
 function mxFmt(k,v){if(!ok(v))return NA;if(k==='cpql'||k==='cpl'||k==='cpc'||k==='spend')return fInr(v);if(k==='qrate'||k==='d2')return fPct(v);return fNum(v)}
 function renderMatrix(){
   var w=el('div');w.appendChild(note('Each row is one service, each column one region, built from ad sets. '+qLabel()+'.'));
   var isWA=S.mx.obj==='CTWA';var metrics=isWA?MX_WA:MX_LG;if(!metrics.some(function(m){return m[0]===S.mx.metric}))S.mx.metric=metrics[0][0];
-  var tools=el('div',{class:'tools'},[seg([['LG','All lead gen'],['CAPI','Conversion API'],['VOLUME','Volume lead'],['CTWA','WhatsApp']],S.mx.obj,function(v){S.mx.obj=v;render()}),
+  var tools=el('div',{class:'tools'},[seg([['LG','All lead gen'],['CAPI','Conversion API'],['VOLUME','Volume lead'],['CTWA','WhatsApp']],S.mx.obj,function(v){S.mx.obj=v;S.mx.metric=(v==='CTWA'?'convos':'leads');render()}),
    (function(){var s=el('select',{'aria-label':'Metric',onchange:function(e){S.mx.metric=e.target.value;render()}});metrics.forEach(function(m){s.appendChild(el('option',{value:m[0],selected:m[0]===S.mx.metric?'selected':false},m[1]))});return s})()]);
   w.appendChild(tools);
   var pool=adsets(function(a){return S.mx.obj==='LG'?a.objective!=='CTWA':a.objective===S.mx.obj});
@@ -1703,20 +1703,23 @@ function renderMatrix(){
   var lower=(k==='cpql'||k==='cpl'||k==='cpc');
   var all=vals.map(function(x){return x.v}),lo=Math.min.apply(null,all.concat([Infinity])),hi=Math.max.apply(null,all.concat([-Infinity]));
   var best=null;vals.forEach(function(x){if(best==null||(lower?x.v<cells[best].v:x.v>cells[best].v))best=x.key});
-  var hm=el('div',{class:'hm',style:'grid-template-columns:130px repeat(6,minmax('+(!isWA&&k==='leads'?'150px':'96px')+',1fr))'+(!isWA&&k==='leads'?';min-width:1040px':'')});
+  var hm=el('div',{class:'hm',style:'grid-template-columns:130px repeat(6,minmax('+((!isWA&&k==='leads')||(isWA&&k==='convos')?'150px':'96px')+',1fr))'+((!isWA&&k==='leads')||(isWA&&k==='convos')?';min-width:1040px':'')});
   hm.appendChild(el('div'));regs.forEach(function(r){hm.appendChild(el('div',{class:'h'},REG[r].label))});hm.appendChild(el('div',{class:'h'},'All regions'));
   svcs.concat(['ALL']).forEach(function(s){hm.appendChild(el('div',{class:'h rl'},s==='ALL'?'All services':SVC[s].label));
     regs.concat(['ALL']).forEach(function(r){var c=cells[s+'|'+r];var tot=(s==='ALL'||r==='ALL');var cls='c'+(c.n?'':' na')+(tot&&c.n?' tt':'');var style='';
       if(!tot&&c.n&&ok(c.v)){var p=hi>lo?(c.v-lo)/(hi-lo):0.5;p=Math.max(0,Math.min(1,p));var idx=Math.round(p*(RAMP.length-1));style='background:'+RAMP[idx]+';color:'+(idx>=4?'#fff':'var(--text)');if(key===best)cls+=' best'}
       var key=s+'|'+r;if(key===best&&!tot)cls+=' best';
-      var detail=!isWA&&k==='leads';
-      var kids=c.n?(detail?[el('div',{class:'n'},fNum(c.t.leads)+' leads'),!tot&&c.t.leads<20?el('div',{class:'t'},'low n'):null,el('div',{class:'st'},[
+      var detail=(!isWA&&k==='leads')||(isWA&&k==='convos');
+      var kids=c.n?(detail&&!isWA?[el('div',{class:'n'},fNum(c.t.leads)+' leads'),!tot&&c.t.leads<20?el('div',{class:'t'},'low n'):null,el('div',{class:'st'},[
           el('span',{},'Cost per lead'),el('b',{},fInr(c.m.cpl)),
           el('span',{},'Qualified leads'),el('b',{},c.t.hasQ?fNum(c.t.q):NA),
           el('span',{},'Cost per qualified lead'),el('b',{},c.t.hasQ?fInr(c.m.cpql):NA),
           el('span',{},'Qualified %'),el('b',{},c.t.hasQ?fPct(c.m.qrate):NA),
           el('span',{},'Total spend'),el('b',{},fInr(c.t.spend))])]
-        :[el('div',{class:'n'},mxFmt(k,c.v)),el('div',{class:'t'},(isWA?fNum(c.t.convos)+' convos':fNum(c.t.leads)+' leads')+(!tot&&(isWA?c.t.convos<100:c.t.leads<20)?' · low n':''))]):'no ad set';
+        :(detail?[el('div',{class:'n'},fNum(c.t.convos)),el('div',{class:'t'},'conversations'+(!tot&&c.t.convos<100?' · low n':'')),el('div',{class:'st'},[
+          el('span',{},'Cost per conversation'),el('b',{},fInr(c.m.cpc)),
+          el('span',{},'Total spend'),el('b',{},fInr(c.t.spend))])]
+        :[el('div',{class:'n'},mxFmt(k,c.v)),el('div',{class:'t'},(isWA?fNum(c.t.convos)+' convos':fNum(c.t.leads)+' leads')+(!tot&&(isWA?c.t.convos<100:c.t.leads<20)?' · low n':''))])):'no ad set';
       var cell=el('div',{class:cls+(detail?' dt':''),style:style},kids);
       if(c.n){cell.addEventListener('mousemove',function(e){var lines=[{k:'Ad sets',v:String(c.n)},{k:'Spend',v:fInr(c.t.spend)}];if(isWA)lines.push({k:'Conversations',v:fNum(c.t.convos)},{k:'Cost / convo',v:fInr(c.m.cpc)},{k:'2+ msg rate',v:fPct(c.m.d2)});else lines.push({k:'Leads',v:fNum(c.t.leads)},{k:'CPL',v:fInr(c.m.cpl)},{k:'Qualified',v:c.t.hasQ?fNum(c.t.q):NA},{k:'CPQL',v:fInr(c.m.cpql)});showTip(e,(s==='ALL'?'All services':SVC[s].label)+' · '+(r==='ALL'?'All regions':REG[r].label),lines)});cell.addEventListener('mouseleave',hideTip)}
       hm.appendChild(cell)})});
