@@ -762,6 +762,9 @@ td.call{min-width:300px;white-space:normal} td.call .sub{max-width:none}
 .crph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;opacity:.35;text-transform:uppercase;letter-spacing:.08em}
 tr.ob-ctwa>td{background:rgba(14,159,120,.10)} tr.ob-vol>td{background:rgba(242,162,12,.12)} tr.ob-capi>td{background:rgba(61,111,224,.09)}
 tr.ob-kid.ob-ctwa>td{background:rgba(14,159,120,.05)} tr.ob-kid.ob-vol>td{background:rgba(242,162,12,.06)} tr.ob-kid.ob-capi>td{background:rgba(61,111,224,.045)}
+.client-logo{display:block;height:34px;width:auto;margin:0 0 10px}
+:root[data-theme="dark"] .client-logo{filter:invert(1) brightness(1.05)}
+@media (max-width:560px){.client-logo{height:26px;margin-bottom:8px}}
 .crtags{position:absolute;left:8px;top:8px;z-index:2;display:flex;gap:5px;flex-wrap:wrap}
 .crnew{display:inline-flex;align-items:center;padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:700;background:var(--accent);color:#fff;box-shadow:0 4px 12px -4px rgba(0,0,0,.5)}.crnew.inl{box-shadow:none;font-size:10.5px;padding:1px 6px;vertical-align:1px;margin-right:2px}
 .crwa{display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 6px;border-radius:99px;font-size:11.5px;font-weight:700;background:#25D366;color:#fff;box-shadow:0 4px 12px -4px rgba(0,0,0,.5)}.crwa svg{width:14px;height:14px}.crwa.inl{position:static;box-shadow:none;font-size:10.5px;padding:1px 6px 1px 4px;vertical-align:1px;margin-right:4px}.crwa.inl svg{width:11px;height:11px}
@@ -1476,9 +1479,9 @@ window.addEventListener('unhandledrejection',function(e){ send('promise '+String
 .lg-root details summary{cursor:pointer;font-weight:600}
 @media (max-width:640px){.lg-root .g2{grid-template-columns:1fr}.lg-root .barrow{grid-template-columns:110px 1fr 76px}}
 .lg-root{min-height:0;border-radius:16px;margin:6px 0 22px}
-.lg-root .lg-wrap{padding:18px 20px 22px}
+.lg-root .lg-wrap{padding:4px 0 22px}
 .lg-root .card{overflow-x:auto;min-width:0}.lg-root .lg-grid>*{min-width:0}
-@media (max-width:640px){.lg-root .lg-wrap{padding:14px 12px 18px}.lg-root .g3,.lg-root .g6{grid-template-columns:1fr 1fr}.lg-root .hm{min-width:640px}}
+@media (max-width:640px){.lg-root .lg-wrap{padding:4px 0 18px}.lg-root .g3,.lg-root .g6{grid-template-columns:1fr 1fr}.lg-root .hm{min-width:640px}}
 
 /* Garuda look */
 .lg-root h1,.lg-root .sec h2,.lg-root .card h3{font-family:"Bricolage Grotesque","Inter",sans-serif;letter-spacing:-.02em}
@@ -1794,8 +1797,10 @@ function lgLogo(){var d=el('div',{class:'lg-logo'});d.innerHTML='<svg viewBox="0
 function shell(){
   wrap.textContent='';
   var head=el('header',{class:'lg-head'});
+  if(!D.meta.noHead){
   head.appendChild(el('div',{class:'lg-brand'},[lgLogo(),el('div',{},[el('div',{class:'lg-mark'},'GARUDA'),el('h1',{},'Berkowits | Lead Gen'),el('div',{class:'lg-sub'},'Meta and Google Ads, '+D.meta.period.label+(D.meta.generatedLabel?' · updated '+D.meta.generatedLabel:''))])]));
   wrap.appendChild(head);
+  }
   if(D.meta.notice) wrap.appendChild(el('div',{class:'callout',style:'margin:4px 0 12px'},D.meta.notice));
   var nav=el('nav',{class:'lg-tabs',role:'tablist'});TABS.forEach(function(t){nav.appendChild(el('button',{type:'button',role:'tab','aria-selected':String(S.tab===t[0]),onclick:function(){S.tab=t[0];render()}},t[1]))});
   wrap.appendChild(nav);wrap.appendChild(content);
@@ -2175,7 +2180,7 @@ function render(){
     const sh=lgEl.attachShadow({mode:'open'}); const css=(document.getElementById('lg-style')||{}).textContent||'';
     sh.innerHTML='<style>'+css+':host{display:block}</style><div></div>';
     const sp=rangeSpec(state.range,D.today), lto=addDays(D.today,-sp.offset), lfrom=addDays(lto,-(sp.days-1));
-    const r=window.GarudaLeadGen.mount(sh.lastElementChild,lgSlice(D.leadgen[cid],lfrom,lto),LGSTATE[cid]||null); LGSTATE[cid]=r.state; }catch(e){ console.warn('lead gen view failed',e); } }
+    const lgd=lgSlice(D.leadgen[cid],lfrom,lto); lgd.meta.noHead=true; const r=window.GarudaLeadGen.mount(sh.lastElementChild,lgd,LGSTATE[cid]||null); LGSTATE[cid]=r.state; }catch(e){ console.warn('lead gen view failed',e); } }
   const sel=root.querySelector('#mobilePick'); if(sel) sel.value=state.clientId||'';
   const q=root.querySelector('#q'); if(q) q.value=state.q;
   if(anim){ countUp(); drawSparks(); }
@@ -3055,6 +3060,14 @@ function paceCell(x){ const c=x.c, dp=dayPace(x);
 function paceBar(x){ const c=x.c; if(!c.budget) return '<span class="faint small">no budget set</span>'; const fill=Math.min(100,x.mtd.spend/c.budget*100); const dom=parseInt(D.today.slice(8),10), dim=new Date(parseInt(D.today.slice(0,4)),parseInt(D.today.slice(5,7)),0).getDate(); const mark=Math.min(100,dom/dim*100); const tone=x.paceRatio>1.15?'bad':(x.paceRatio<0.85?'warn':''); return '<div class="pace"><div class="pace-track"><div class="pace-fill '+tone+'" style="width:'+fill.toFixed(1)+'%"></div><div class="pace-mark" style="left:'+mark.toFixed(1)+'%"></div></div><span class="pace-num">'+Math.round(x.paceRatio*100)+'%</span></div>'; }
 function spark(vals,delta){ const v=vals.map(x=>isFinite(x)?x:null).filter(x=>x!==null); if(v.length<2) return '<svg class="spark"></svg>'; const min=Math.min(...v),max=Math.max(...v),W=84,H=26; const pts=v.map((y,i)=>(i/(v.length-1)*W).toFixed(1)+','+(H-3-((y-min)/((max-min)||1))*(H-6)).toFixed(1)).join(' '); const cls=Math.abs(delta)<1?'':(delta>0?'up':'down'); return '<svg class="spark" viewBox="0 0 84 26" aria-hidden="true"><polyline class="'+cls+'" points="'+pts+'"/></svg>'; }
 
+// Brand logos shown next to the client name (files sit next to index.html).
+const CLIENT_LOGO={'berkowits':'berkowits-logo.webp','berkowits-services':'berkowits-logo.webp'};
+function clientHead(x){ const c=x.c, acct=(x.ent||{}).account;
+  let h='<button class="detail-back" data-act="nav" data-client="">'+ICONS.back+'Command Center</button>';
+  h+='<div class="page-head"><div>'+(CLIENT_LOGO[c.id]?'<img class="client-logo" src="'+CLIENT_LOGO[c.id]+'" alt="'+esc(c.name)+' logo">':'')+'<h1 class="disp">'+esc(c.name)+'</h1><p class="subtitle">'+typeLabel(c)+' · '+esc(pfLabel(c))+(c.budget?' · '+fmtMoney(c.budget,c)+' per month':'')+(kpiTarget(c)?' · target '+kpiFmt(c,kpiTarget(c))+' '+kpiLabel(c):' · <span class="faint">no target set</span>')+(c.am?' · AM '+esc(c.am):'')+(acct&&acct.statusCode&&acct.statusCode!==1?' <span class="chip bad">Meta account: '+esc(acct.status)+'</span>':'')+'</p></div><div class="meta">'+niceDate(D.today)+'<br>'+syncChips(x)+'</div></div>';
+  h+='<div class="toolbar">'+rangeBar()+'<select class="mobile-pick" id="mobilePick"><option value="">All clients</option>'+D.clients.map(k=>'<option value="'+k.id+'">'+esc(k.name)+'</option>').join('')+'</select>'+pairBtn(c)+'<div class="grow"></div>'+(LIVE&&CFG.syncUrl?'<button class="btn btn-ghost btn-small" data-act="syncnow">'+ICONS.refresh+' Sync now</button>':'')+'<button class="btn btn-ghost btn-small" data-act="clientlink">'+ICONS.copy+' Copy client dashboard link</button><button class="btn btn-primary btn-small" data-act="update">'+ICONS.copy+' Copy client update</button></div>';
+  return h;
+}
 function clientView(x){
   const c=x.c, a=x.cur, p=x.prev, isE=c.type==='ecom', spec=x.spec, acct=x.ent.account;
   // A lead gen client (Berkowits Services + Grow) gets only the lead gen view: Overview, Service by
@@ -3062,8 +3075,7 @@ function clientView(x){
   if(D.leadgen&&D.leadgen[c.id]){
     // Default the campaign list to active Meta campaigns, once per visit to this page.
     if(state._lgDef!==c.id){ state._lgDef=c.id; state.cmpp='meta'; state.cmpf='active'; }
-    let lh=SHARE?'':'<button class="detail-back" data-act="nav" data-client="">'+ICONS.back+'Command Center</button>';
-    lh+='<div class="toolbar">'+pairBtn(c)+'<div class="grow"></div>'+(SHARE?'':'<button class="btn btn-ghost btn-small" data-act="clientlink">'+ICONS.copy+' Copy client dashboard link</button>')+'</div>';
+    let lh=clientHead(x);
     lh+='<div id="lg-mount" data-client="'+esc(c.id)+'"></div>';
     // Under the lead gen view: the same Campaigns and Creatives tabs every other brand has.
     if(x.hasData){ const lt=[['campaigns','Campaigns'],['ads','Creatives']];
@@ -3077,9 +3089,7 @@ function clientView(x){
     return lh;
   }
   if(state._lgDef){ state._lgDef=null; state.cmpp='all'; state.cmpf='all'; }   // other brands keep All / All
-  let h='<button class="detail-back" data-act="nav" data-client="">'+ICONS.back+'Command Center</button>';
-  h+='<div class="page-head"><div><h1 class="disp">'+esc(c.name)+'</h1><p class="subtitle">'+typeLabel(c)+' · '+esc(pfLabel(c))+(c.budget?' · '+fmtMoney(c.budget,c)+' per month':'')+(kpiTarget(c)?' · target '+kpiFmt(c,kpiTarget(c))+' '+kpiLabel(c):' · <span class="faint">no target set</span>')+(c.am?' · AM '+esc(c.am):'')+(acct&&acct.statusCode&&acct.statusCode!==1?' <span class="chip bad">Meta account: '+esc(acct.status)+'</span>':'')+'</p></div><div class="meta">'+niceDate(D.today)+'<br>'+syncChips(x)+'</div></div>';
-  h+='<div class="toolbar">'+rangeBar()+'<select class="mobile-pick" id="mobilePick"><option value="">All clients</option>'+D.clients.map(k=>'<option value="'+k.id+'">'+esc(k.name)+'</option>').join('')+'</select>'+pairBtn(c)+'<div class="grow"></div>'+(LIVE&&CFG.syncUrl?'<button class="btn btn-ghost btn-small" data-act="syncnow">'+ICONS.refresh+' Sync now</button>':'')+'<button class="btn btn-ghost btn-small" data-act="clientlink">'+ICONS.copy+' Copy client dashboard link</button><button class="btn btn-primary btn-small" data-act="update">'+ICONS.copy+' Copy client update</button></div>';
+  let h=clientHead(x);
   h+=segBar(c);
   if(!x.hasData) return h+noDataPanel(x);
   const V=(cur,prev,inv)=>vs(cur,prev,inv)+' vs '+spec.prevLabel;
