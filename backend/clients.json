@@ -244,7 +244,11 @@
           "kitchen"
         ]
       ]
-    ]
+    ],
+    "rules": {
+      "preset": "hokipo-meta-v1"
+    },
+    "taskKeyHash": "ce72d8575b8983f20e7808553dc1bb4fb48a642e536fa1706941f97bbf920aff"
   },
   {
     "id": "frankly",

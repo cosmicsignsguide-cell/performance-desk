@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Task Dashboard · Garuda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<style>
+:root{--bg:#F2F3EF;--panel:#FFFFFF;--border:#DFE1DA;--line:#E9EBE4;--text:#101418;--dim:#454B50;--faint:#6A7076;
+  --accent:#FF5A1F;--accent-soft:rgba(255,90,31,.10);--accent-line:rgba(255,90,31,.34);
+  --bad:#D93A3A;--bad-bg:rgba(217,58,58,.08);--good:#0E9F78;--good-bg:rgba(14,159,120,.09);--warn:#C98500;--warn-bg:rgba(242,162,12,.11);--info:#3D6FE0;--info-bg:rgba(61,111,224,.08);--r:14px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#091015;--panel:#0E171D;--border:#1B2A33;--line:#15222A;--text:#E7EDEF;--dim:#A9B7BD;--faint:#76878F;--accent:#FF6F3C;--accent-soft:rgba(255,111,60,.12)}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 "Inter",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1280px;margin:0 auto;padding:22px 20px 60px}
+header.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.mark{width:40px;height:40px;border-radius:11px;background:var(--accent);display:grid;place-items:center;flex:none}
+.mark svg{width:25px;height:25px}
+h1{font:800 24px/1.1 "Bricolage Grotesque",sans-serif;letter-spacing:-.02em;margin:0}
+.sub{color:var(--faint);font:500 12.5px "Hanken Grotesk",sans-serif;margin-top:3px}
+.grow{flex:1}
+.pill{border:1px solid var(--border);background:var(--panel);border-radius:99px;padding:6px 12px;font:600 12.5px "Hanken Grotesk",sans-serif;color:var(--dim)}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.sum{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;cursor:pointer;text-align:left;font:inherit;color:inherit}
+.sum.on{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.sum .n{font:700 26px/1.1 "Inter";letter-spacing:-.03em}
+.sum .l{font:600 12px "Hanken Grotesk";color:var(--faint);margin-top:2px}
+.sum.bad .n{color:var(--bad)}.sum.good .n{color:var(--good)}.sum.warn .n{color:var(--warn)}.sum.info .n{color:var(--info)}
+.sec{margin:22px 0 10px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.sec h2{font:700 17px "Bricolage Grotesque";margin:0}.sec span{color:var(--faint);font:500 12.5px "Hanken Grotesk"}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:12px}
+.task{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;border-left:4px solid var(--c,var(--border))}
+.task.bad{--c:var(--bad)}.task.good{--c:var(--good)}.task.warn{--c:var(--warn)}.task.info{--c:var(--info)}
+.task.done{opacity:.5}
+.task.aged{box-shadow:0 0 0 2px var(--bad)}
+.th{display:flex;gap:12px;padding:12px 14px 8px}
+.thumbs{display:flex;gap:4px;flex:none}
+.thumbs img,.thumbs .ph{width:64px;height:64px;border-radius:9px;object-fit:cover;background:var(--line);display:block}
+.thumbs .ph{display:grid;place-items:center;font:700 10px "Hanken Grotesk";color:var(--faint)}
+.tt{min-width:0;flex:1}
+.tag{display:inline-block;font:700 11px "Hanken Grotesk";padding:2px 8px;border-radius:99px;background:var(--c-bg,var(--line));color:var(--c,var(--dim));margin-right:4px;letter-spacing:.01em}
+.task.bad .tag.k{--c-bg:var(--bad-bg)}.task.good .tag.k{--c-bg:var(--good-bg)}.task.warn .tag.k{--c-bg:var(--warn-bg)}.task.info .tag.k{--c-bg:var(--info-bg)}
+.tag.r{background:var(--line);color:var(--dim)}
+.tag.blk{background:var(--bad);color:#fff}
+.name{font:650 14px/1.3 "Inter";margin:6px 0 2px;word-break:break-word}
+.path{font:500 11.5px "Hanken Grotesk";color:var(--faint);word-break:break-word}
+.why{padding:0 14px 8px;color:var(--dim);font-size:13px}
+.why b{color:var(--text)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);margin-top:auto}
+.stats>div{padding:8px 12px;border-right:1px solid var(--line)}.stats>div:last-child{border-right:0}
+.stats dt{font:600 10.5px "Hanken Grotesk";color:var(--faint);text-transform:uppercase;letter-spacing:.04em}
+.stats dd{margin:2px 0 0;font:600 12.5px "Inter";font-variant-numeric:tabular-nums}
+.stats dd small{color:var(--faint);font-weight:500}
+.act{display:flex;align-items:center;gap:8px;padding:8px 14px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--panel) 92%,var(--bg))}
+.act label{display:flex;align-items:center;gap:6px;font:600 12.5px "Hanken Grotesk";cursor:pointer}
+.act .todo{margin-left:auto;font:700 12.5px "Inter";color:var(--c,var(--text))}
+.empty{background:var(--panel);border:1px dashed var(--border);border-radius:var(--r);padding:18px;color:var(--faint)}
+.note{color:var(--faint);font:500 12px "Hanken Grotesk";margin-top:26px;line-height:1.6}
+.msg{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:28px;text-align:center;color:var(--dim);margin-top:40px}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 4px}
+.filters button{border:1px solid var(--border);background:var(--panel);border-radius:99px;padding:5px 11px;font:600 12px "Hanken Grotesk";color:var(--dim);cursor:pointer}
+.filters button.on{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
+@media (max-width:640px){.grid{grid-template-columns:1fr}.wrap{padding:16px 12px 40px}.thumbs img,.thumbs .ph{width:54px;height:54px}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="msg">Loading tasks…</div></div>
+<script>
+(function(){
+'use strict';
+var app=document.getElementById('app');
+var CFG=window.DESK_CONFIG||{};
+var API=((CFG.syncUrl||'').replace(/\/sync$/,'')||'https://desk-api-si2w.onrender.com');
+var key=(location.hash.match(/k=([A-Za-z0-9_-]+)/)||[])[1]||'';
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function inr(v){return '₹'+Math.round(v||0).toLocaleString('en-IN')}
+function x2(v){return isFinite(v)&&v>0?v.toFixed(2)+'x':'0.00x'}
+function addDays(d,n){var t=new Date(d+'T12:00:00Z');t.setUTCDate(t.getUTCDate()+n);return t.toISOString().slice(0,10)}
+function niceTime(iso){if(!iso)return '';var d=new Date(iso);return d.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}
+
+// ---------------- rules (Hokipo Meta, v1) ----------------
+// Windows are complete days only: 3D = the last 3 full days, 7D = the last 7 full days. Today and
+// its late-attributed purchases are left out, so a half day never triggers a pause.
+function sumDays(days,from,to){var o={s:0,p:0,v:0};for(var d in days||{}){if(d>=from&&d<=to){var t=days[d]||[];o.s+=t[0]||0;o.p+=t[3]||0;o.v+=t[4]||0}}o.p=Math.round(o.p);o.r=o.s?o.v/o.s:0;return o}
+var isCatalog=function(n){return /catalog|catlog|dpa/i.test(n||'')};
+var isWarm=function(n){return /retarget|rtg|rmk|remarket|warm|engager|visitor|atc|mof|bof/i.test(n||'')};
+
+function evaluate(D){
+  var E=D.entities||{}, today=D.today, y=addDays(today,-1);
+  var W3=[addDays(today,-3),y], W7=[addDays(today,-7),y], P7=[addDays(today,-14),addDays(today,-8)];
+  var camps={}; (E.campaigns||[]).forEach(function(c){if(c.platform!=='google')camps[c.id]=c});
+  var sets={}; (E.adsets||[]).forEach(function(s){sets[s.id]=s});
+  var ads=(E.ads||[]).filter(function(a){return a.status==='ACTIVE'&&sets[a.adsetId]&&sets[a.adsetId].status==='ACTIVE'});
+  var bySet={}; ads.forEach(function(a){(bySet[a.adsetId]=bySet[a.adsetId]||[]).push(a)});
+  ads.forEach(function(a){a._3=sumDays(a.days,W3[0],W3[1]);a._7=sumDays(a.days,W7[0],W7[1]);a._p7=sumDays(a.days,P7[0],P7[1]);
+    var all=sumDays(a.days,'0000','9999'); a._life=a.life?{s:a.life.spend||0,p:a.life.purchases||0,v:a.life.revenue||0}:{s:all.s,p:all.p,v:all.v}; a._life.r=a._life.s?a._life.v/a._life.s:0;});
+  var tasks=[], pauseQ={};
+  function T(o){if(o.id&&o._set===undefined){var aid=o.id.split(':')[1];var ad=null;for(var i=0;i<ads.length;i++)if(ads[i].id===aid){ad=ads[i];break}if(ad)o._set=ad.adsetId;}tasks.push(o);return o}
+  function setOf(a){return sets[a.adsetId]||{}}
+  function catalogAd(a){var s=setOf(a);return isCatalog(s.name)||isCatalog(a.campaignName)||isCatalog(camps[s.campaignId]&&camps[s.campaignId].name)}
+  function stats3(a){return [['Lifetime',inr(a._life.s),a._life.p+' purch · '+x2(a._life.r)],['3D',inr(a._3.s),a._3.p+' purch · '+x2(a._3.r)],['7D',inr(a._7.s),a._7.p+' purch · '+x2(a._7.r)]]}
+  // Ad-level pause with the 3-ads floor. Pauses queued in the same ad set count against the floor.
+  function pauseAd(a,rule,why){
+    var cat=catalogAd(a), live=(bySet[a.adsetId]||[]).length, queued=pauseQ[a.adsetId]||0;
+    var blocked=!cat&&(live-queued-1)<3;
+    if(!blocked) pauseQ[a.adsetId]=queued+1;
+    return T({id:'pause:'+a.id,type:blocked?'blocked':'pause',tone:'bad',kind:blocked?'Pause blocked':'Pause ad',rule:rule,title:a.name,
+      path:(setOf(a).name||'')+' · '+(a.campaignName||''),imgs:[a.thumb],why:why+(blocked?' <b>Add a replacement creative first:</b> pausing now would leave this ad set with '+(live-queued-1)+' active ads (the floor is 3).':''),stats:stats3(a),todo:blocked?'Add replacement, then pause':'Pause'});
+  }
+  // ---- Rule 1 and 1B: creatives ----
+  ads.forEach(function(a){
+    if(catalogAd(a)) return;     // catalog / DPA ad sets are judged at ad set level only
+    var L=a._life, S=L.s, P=L.p, R=L.r;
+    if(S<2500){
+      if(S<1500){ T({id:'test:'+a.id,type:'watch',tone:'info',kind:'Testing',rule:'Rule 1',title:a.name,path:(setOf(a).name||'')+' · '+(a.campaignName||''),imgs:[a.thumb],why:'New creative, '+inr(S)+' of the first '+inr(1500)+' gate spent. No call yet.',stats:stats3(a),todo:'Let it run'}); return; }
+      if(S<2000){
+        if(P===0) return pauseAd(a,'Rule 1 · ₹1,500 gate','<b>'+inr(S)+' spent, 0 purchases.</b>');
+        if(R<2.2) return pauseAd(a,'Rule 1 · ₹1,500 gate','<b>ROAS '+x2(R)+'</b> at '+inr(S)+', below 2.2.');
+        if(P>=3&&R>=3) return T({id:'win:'+a.id,type:'protect',tone:'good',kind:'Early winner',rule:'Rule 1 · ₹1,500 gate',title:a.name,path:(setOf(a).name||'')+' · '+(a.campaignName||''),imgs:[a.thumb],why:'<b>'+P+' purchases at ROAS '+x2(R)+'</b> by '+inr(S)+'. Add to the scale list and keep it running.',stats:stats3(a),todo:'Scale list'});
+        return T({id:'run:'+a.id,type:'watch',tone:'info',kind:'Run to ₹2,000',rule:'Rule 1 · ₹1,500 gate',title:a.name,path:(setOf(a).name||'')+' · '+(a.campaignName||''),imgs:[a.thumb],why:'ROAS '+x2(R)+' with '+P+' purchases. Let it spend to '+inr(2000)+' before deciding.',stats:stats3(a),todo:'Let it run'});
+      }
+      if(P<=2||R<2.3) return pauseAd(a,'Rule 1 · ₹2,000 gate','<b>'+P+' purchases, ROAS '+x2(R)+'</b> at '+inr(S)+'. The gate needs 3+ purchases and ROAS 2.3+.');
+      if(R<2.7) return T({id:'run:'+a.id,type:'watch',tone:'info',kind:'Keep, no scale',rule:'Rule 1 · ₹2,000 gate',title:a.name,path:(setOf(a).name||'')+' · '+(a.campaignName||''),imgs:[a.thumb],why:'ROAS '+x2(R)+' with '+P+' purchases. Keep running, do not scale, check the next 3D/7D.',stats:stats3(a),todo:'Let it run'});
+      return T({id:'run:'+a.id,type:'watch',tone:'info',kind:'Run to ₹2,500',rule:'Rule 1 · ₹2,000 gate',title:a.name,path:(setOf(a).name||'')+' · '+(a.campaignName||''),imgs:[a.thumb],why:'ROAS '+x2(R)+' with '+P+' purchases. Let it spend to '+inr(2500)+'.',stats:stats3(a),todo:'Let it run'});
+    }
+    // Old creative (lifetime ₹2,500+), judged on 3D and 7D.
+    var A=a._3, B=a._7, g3=A.s>=1500, g7=B.s>=2500;
+    var grad=L.r>=3?' Lifetime ROAS '+x2(L.r)+', on the Winners list.':'';
+    if((g3&&A.p>=3&&A.r>=3)||(g7&&B.p>=5&&B.r>=3)) return T({id:'protect:'+a.id,type:'protect',tone:'good',kind:'Winner, protect',rule:'Rule 1B',title:a.name,path:(setOf(a).name||'')+' · '+(a.campaignName||''),imgs:[a.thumb],why:'<b>'+(g3&&A.p>=3&&A.r>=3?'3D ROAS '+x2(A.r)+' with '+A.p+' purchases':'7D ROAS '+x2(B.r)+' with '+B.p+' purchases')+'.</b> Do not pause or edit.'+grad,stats:stats3(a),todo:'Protect'});
+    if(g7&&B.r<2.0) return pauseAd(a,'Rule 1B · 7D','<b>7D ROAS '+x2(B.r)+'</b> on '+inr(B.s)+', below 2.0. Pause even if 3D looks better.');
+    if(g3&&g7&&A.r<2.3&&B.r<2.3) return pauseAd(a,'Rule 1B · 3D + 7D','<b>3D ROAS '+x2(A.r)+' and 7D ROAS '+x2(B.r)+'</b>, both below 2.3.');
+    if(!g3&&!g7) return T({id:'low:'+a.id,type:'flag',tone:'warn',kind:'Low delivery',rule:'Rule 1B',title:a.name,path:(setOf(a).name||'')+' · '+(a.campaignName||''),imgs:[a.thumb],why:'Spend gates not met (3D '+inr(A.s)+' of ₹1,500, 7D '+inr(B.s)+' of ₹2,500). No action, just flagged.',stats:stats3(a),todo:'No action'});
+  });
+  // ---- Rules 2, 3, 4: ad sets ----
+  Object.keys(sets).forEach(function(id){
+    var st=sets[id]; if(st.status!=='ACTIVE') return;
+    var mine=bySet[id]||[], n=mine.length, cat=isCatalog(st.name)||isCatalog(st.campaignName);
+    var A=sumDays(st.days,W3[0],W3[1]), B=sumDays(st.days,W7[0],W7[1]);
+    var camp=camps[st.campaignId]||{}, cbo=!(st.dailyBudget||st.lifetimeBudget)&&(camp.dailyBudget||camp.lifetimeBudget);
+    var budget=st.dailyBudget||st.lifetimeBudget||camp.dailyBudget||camp.lifetimeBudget||0, bWho=cbo?'campaign budget (CBO)':'ad set budget';
+    var bAt=(cbo?camp.budgetChangedAt:st.budgetChangedAt)||'', hrs=bAt?(Date.now()-Date.parse(bAt))/3600000:null;
+    var cool=hrs!=null&&hrs<48, coolTxt=hrs==null?'Last budget change not seen yet, confirm it was 48 to 72 hours ago.':'Last budget change '+Math.round(hrs)+' h ago.';
+    var imgs=mine.slice().sort(function(p,q){return q._7.s-p._7.s}).slice(0,3).map(function(a){return a.thumb});
+    var S=[['3D',inr(A.s),A.p+' purch · '+x2(A.r)],['7D',inr(B.s),B.p+' purch · '+x2(B.r)],['Active ads',String(n),budget?inr(budget)+' '+(cbo?'CBO':'/ day'):'']];
+    var base={path:st.campaignName||'',imgs:imgs,stats:S};
+    function A_(o){var t={};for(var k in base)t[k]=base[k];for(k in o)t[k]=o[k];return T(t)}
+    var live7=st.createdDate&&st.createdDate<=addDays(today,-7);
+    var budgetDone=false;
+    // Rule 3, worst first: pause ad set, then budget cut, then weak creative.
+    if(B.r<2.0&&B.s>=3500&&live7){ for(var i=tasks.length-1;i>=0;i--){ var tk=tasks[i]; if(tk._set===id&&tk.type!=='protect') tasks.splice(i,1); } A_({id:'setpause:'+id,type:'pause',tone:'bad',kind:'Pause ad set',rule:'Rule 3',title:st.name,why:'<b>7D ROAS '+x2(B.r)+'</b> on '+inr(B.s)+' after 7+ days live.',todo:'Pause ad set'}); return; }
+    if(A.r<2.2&&B.r<2.2&&A.s>=3000){
+      budgetDone=true;
+      A_({id:'cut:'+id,type:cool?'wait':'budget',tone:cool?'warn':'bad',kind:cool?'Budget cut, wait':'Budget −20%',rule:'Rule 3',title:st.name,why:'<b>3D ROAS '+x2(A.r)+' and 7D ROAS '+x2(B.r)+'</b>, both below 2.2. '+(budget?'Cut the '+bWho+' from '+inr(budget)+' to <b>'+inr(budget*0.8)+'</b>. ':'')+coolTxt+(cool?' Wait until 48 hours have passed.':''),todo:cool?'Wait':(budget?inr(budget*0.8):'−20%')});
+    } else if(A.r<2.5&&A.s>=1500){
+      var pool=mine.filter(function(a){return a._7.s>=1500}).sort(function(p,q){return p._7.r-q._7.r});
+      if(pool.length&&!cat){ var w=pool[0]; var had=tasks.filter(function(t){return t.id.split(':')[1]===w.id})[0]; if(!had||(had.type!=='pause'&&had.type!=='blocked'&&had.type!=='protect')){ if(had) tasks.splice(tasks.indexOf(had),1); pauseAd(w,'Rule 3 · weakest creative','Ad set 3D ROAS '+x2(A.r)+', below 2.5. Keep the budget; pause this ad (lowest 7D ROAS '+x2(w._7.r)+' in the ad set) and add a new one.'); } }
+      if(!cat) A_({id:'add3:'+id,type:'creative',tone:'warn',kind:'Add new creative',rule:'Rule 3 + 4',title:st.name,why:'Ad set 3D ROAS '+x2(A.r)+', below 2.5. Do not cut the budget. Add a fresh creative.',todo:'Add creative'});
+    }
+    // Rule 2: scale.
+    if(!budgetDone&&((A.r>=3&&A.p>=5)||(B.r>=3&&B.p>=5))){
+      if(n<3&&!cat) A_({id:'scaleblk:'+id,type:'creative',tone:'warn',kind:'Scale waits on creatives',rule:'Rule 2',title:st.name,why:'ROAS qualifies for +30% but only '+n+' active ads. Get it to 3 first.',todo:'Add creatives'});
+      else if(cool) A_({id:'scalewait:'+id,type:'wait',tone:'warn',kind:'Scale, wait',rule:'Rule 2',title:st.name,why:'ROAS qualifies for +30%. '+coolTxt+' Wait until 48 hours have passed.',todo:'Wait'});
+      else { A_({id:'scale:'+id,type:'scale',tone:'good',kind:'Budget +30%',rule:'Rule 2',title:st.name,why:'<b>'+(A.r>=3&&A.p>=5?'3D ROAS '+x2(A.r)+' with '+A.p+' purchases':'7D ROAS '+x2(B.r)+' with '+B.p+' purchases')+'.</b> '+(budget?'Raise the '+bWho+' from '+inr(budget)+' to <b>'+inr(budget*1.3)+'</b>. ':'')+coolTxt,todo:budget?inr(budget*1.3):'+30%'});
+        if(!cat) A_({id:'prep:'+id,type:'creative',tone:'info',kind:'Prepare next creative',rule:'Rule 4',title:st.name,why:'This ad set is scaling. Have one new creative ready before the next scale step.',todo:'Brief creative'}); }
+    }
+    // Rule 4: floor and fatigue.
+    if(!cat){
+      if(n<3) A_({id:'floor:'+id,type:'creative',tone:'bad',kind:'Below 3 ads',rule:'Rule 4',title:st.name,why:'<b>Only '+n+' active ad'+(n===1?'':'s')+'.</b> Every ad set needs at least 3.'+(st.createdDate&&st.createdDate>=addDays(today,-3)?' New ad set: it should not have gone live with fewer than 3.':''),todo:'Add '+(3-n)});
+      else if(n===3) A_({id:'onfloor:'+id,type:'flag',tone:'info',kind:'On the floor',rule:'Rule 4',title:st.name,why:'Exactly 3 active ads: the next pause in this ad set will be blocked until a new creative is live.',todo:'Plan a spare'});
+      if(!isWarm(st.name)&&!isWarm(st.campaignName)){
+        var top=mine.slice().sort(function(p,q){return q._7.s-p._7.s})[0];
+        if(top&&top._p7.r>0&&top._7.r<=top._p7.r*0.75&&(top.last7&&top.last7.freq>=2.5)) A_({id:'fatigue:'+top.id,type:'creative',tone:'warn',kind:'Creative fatigue',rule:'Rule 4',title:st.name,imgs:[top.thumb],why:'Top creative <b>'+esc(top.name)+'</b>: 7D ROAS '+x2(top._7.r)+' vs '+x2(top._p7.r)+' the week before ('+Math.round((1-top._7.r/top._p7.r)*100)+'% down), frequency '+top.last7.freq+'. Add a new creative.',todo:'Add creative'});
+      }
+    }
+  });
+  // Blocked pauses also ask for the replacement creative.
+  return {tasks:tasks,windows:{W3:W3,W7:W7},counts:{ads:ads.length,sets:Object.keys(sets).filter(function(k){return sets[k].status==='ACTIVE'}).length}};
+}
+
+// ---------------- page ----------------
+var TYPES=[['all','All tasks'],['pause','Pause'],['blocked','Blocked'],['budget','Budget cut'],['scale','Scale'],['creative','Creatives'],['wait','Wait'],['protect','Protect'],['flag','Flags'],['watch','Testing']];
+var state={f:'all'};
+var store=function(k,v){try{if(v===undefined)return JSON.parse(localStorage.getItem(k)||'null');localStorage.setItem(k,JSON.stringify(v))}catch(e){return null}};
+function render(D){
+  var res=evaluate(D), done=store('hk-done:'+D.today)||{}, seen=store('hk-seen')||{}, syncAt=(D.syncs&&(D.syncs.meta&&D.syncs.meta.at||D.syncs.at))||(D.entities&&D.entities.entitiesAt&&D.entities.entitiesAt.meta)||'';
+  // A blocked pause that is still blocked two syncs later turns red.
+  res.tasks.forEach(function(t){if(t.type!=='blocked')return;var s=seen[t.id]||{syncs:[]};if(syncAt&&s.syncs.indexOf(syncAt)<0)s.syncs.push(syncAt);seen[t.id]=s;t.aged=s.syncs.length>=3});
+  store('hk-seen',seen);
+  var order={pause:0,blocked:1,budget:2,scale:3,creative:4,wait:5,flag:6,protect:7,watch:8};
+  res.tasks.sort(function(a,b){return order[a.type]-order[b.type]});
+  var n=function(t){return res.tasks.filter(function(x){return t==='all'||x.type===t}).length};
+  var doNow=['pause','blocked','budget','scale','creative'];
+  var h='<header class="top"><div class="mark"><svg viewBox="0 0 24 24"><path fill="#fff" d="M2.6 21.4l2.2-8.2.4-4.6C7 4.6 12 3.2 15.2 5.4c.8.6 1.1 1.4 1.2 2.2 2.2.2 4.6 1.4 5.6 3.6.2 1.4-.6 2.6-1.6 3-.4-1-1.4-1.6-2.8-1.8l-1.4 1.8c-.4 1.2-.4 2.4 0 3.6l1.3 3.7-5.5-2.5-4 3-.8-3.5z"/></svg></div>'
+    +'<div><h1>'+esc((D.client&&D.client.name)||'Client')+' Task Dashboard</h1><div class="sub">Meta optimisation tasks from the agreed rules · 3D '+res.windows.W3[0].slice(5)+' to '+res.windows.W3[1].slice(5)+' · 7D '+res.windows.W7[0].slice(5)+' to '+res.windows.W7[1].slice(5)+' (full days only)</div></div><div class="grow"></div>'
+    +'<span class="pill">Data synced '+esc(niceTime(syncAt)||'n/a')+'</span><span class="pill">'+res.counts.sets+' live ad sets · '+res.counts.ads+' live ads</span></header>';
+  h+='<div class="summary">'+[['pause','Pause','bad'],['blocked','Blocked pauses','bad'],['budget','Budget cuts','bad'],['scale','Scale +30%','good'],['creative','Creative tasks','warn'],['protect','Protect','good']].map(function(s){return '<button class="sum '+s[2]+(state.f===s[0]?' on':'')+'" data-f="'+s[0]+'"><div class="n">'+n(s[0])+'</div><div class="l">'+s[1]+'</div></button>'}).join('')+'</div>';
+  h+='<div class="filters">'+TYPES.map(function(t){return '<button data-f="'+t[0]+'" class="'+(state.f===t[0]?'on':'')+'">'+t[1]+' '+n(t[0])+'</button>'}).join('')+'</div>';
+  var list=res.tasks.filter(function(t){return state.f==='all'||t.type===state.f});
+  var card=function(t){var isDone=!!done[t.id];
+    return '<article class="task '+t.tone+(isDone?' done':'')+(t.aged?' aged':'')+'"><div class="th"><div class="thumbs">'+(t.imgs||[]).filter(function(x){return x!==undefined}).slice(0,3).map(function(u){return u?'<img src="'+esc(u)+'" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML=\'<div class=ph>AD</div>\'">':'<div class="ph">AD</div>'}).join('')+'</div>'
+      +'<div class="tt"><span class="tag k">'+esc(t.kind)+'</span>'+(t.type==='blocked'?'<span class="tag blk">'+(t.aged?'Stuck 2+ syncs':'Blocked')+'</span>':'')+'<span class="tag r">'+esc(t.rule)+'</span><div class="name">'+esc(t.title)+'</div><div class="path">'+esc(t.path)+'</div></div></div>'
+      +'<div class="why">'+t.why+'</div><dl class="stats">'+(t.stats||[]).map(function(s){return '<div><dt>'+esc(s[0])+'</dt><dd>'+esc(s[1])+'<br><small>'+esc(s[2])+'</small></dd></div>'}).join('')+'</dl>'
+      +'<div class="act"><label><input type="checkbox" data-done="'+esc(t.id)+'"'+(isDone?' checked':'')+'> Done</label><span class="todo">'+esc(t.todo)+'</span></div></article>'};
+  if(state.f==='all'){
+    var now=list.filter(function(t){return doNow.indexOf(t.type)>=0}), later=list.filter(function(t){return doNow.indexOf(t.type)<0});
+    h+='<div class="sec"><h2>Do now</h2><span>'+now.length+' tasks, in the order the rules run: ad pauses, ad set pauses, budget cuts, scale, creatives</span></div>'+(now.length?'<div class="grid">'+now.map(card).join('')+'</div>':'<div class="empty">Nothing to action right now.</div>');
+    h+='<div class="sec"><h2>Watch</h2><span>Protect, wait, flags and creatives still in testing</span></div>'+(later.length?'<div class="grid">'+later.map(card).join('')+'</div>':'<div class="empty">Nothing to watch.</div>');
+  } else h+='<div class="sec"><h2>'+esc((TYPES.filter(function(t){return t[0]===state.f})[0]||[])[1])+'</h2></div>'+(list.length?'<div class="grid">'+list.map(card).join('')+'</div>':'<div class="empty">No tasks of this type.</div>');
+  h+='<div class="note">Rules v1. New creatives (lifetime under ₹2,500) are judged at the ₹1,500, ₹2,000 and ₹2,500 gates; older creatives on 3D and 7D. Ad sets: +30% when 3D or 7D ROAS is 3+ with 5+ purchases, 3+ active ads and 48 hours since the last budget change; −20% when 3D and 7D are both below 2.2; paused when 7D is below 2.0 on ₹3,500+ after 7 days. No ad set goes below 3 active ads: a pause that would break the floor is blocked until a replacement is live. Catalog ad sets skip the creative rules and the floor. "Done" ticks are saved in this browser only. Nothing here changes the ad account.</div>';
+  app.innerHTML=h;
+  app.querySelectorAll('[data-f]').forEach(function(b){b.onclick=function(){state.f=b.dataset.f;render(D)}});
+  app.querySelectorAll('[data-done]').forEach(function(c){c.onchange=function(){var d=store('hk-done:'+D.today)||{};if(c.checked)d[c.dataset.done]=1;else delete d[c.dataset.done];store('hk-done:'+D.today,d);render(D)}});
+}
+function load(){
+  if(window.__TASKDATA){render(window.__TASKDATA);return}
+  if(!key){app.innerHTML='<div class="msg">This link is missing its key.</div>';return}
+  fetch(API+'/k/'+encodeURIComponent(key)+'/d',{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status===404?'This link is not valid.':'Could not load ('+r.status+').');return r.json()})
+  .then(function(D){window.__D=D;render(D);document.title=((D.client&&D.client.name)||'')+' Task Dashboard'})
+  .catch(function(e){app.innerHTML='<div class="msg">'+esc(e.message)+' The server may be waking up; try again in a minute.</div>'});
+}
+load();
+setInterval(function(){if(window.__D&&document.visibilityState==='visible')load()},15*60*1000);
+})();
+</script>
+</body>
+</html>

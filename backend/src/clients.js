@@ -64,6 +64,7 @@ export function normalizeClient(c) {
     metaLead: c.metaLead === 'conversations' ? 'conversations' : '',
     // Product categories read from ad set, ad and campaign names (and from order UTMs), for the
     // "Meta by category" view: [name, [keywords...]], first match wins, so put specific ones first.
+    rules: c.rules || null, taskKeyHash: c.taskKeyHash || '',
     categories: Array.isArray(c.categories) ? c.categories.filter((x) => Array.isArray(x) && x[0] && Array.isArray(x[1])) : [],
     // No advice on this client's page: explanatory notes, "What to fix" and the Scale / Watch calls on
     // creatives are hidden, for clients who want the numbers only (Berkowits).

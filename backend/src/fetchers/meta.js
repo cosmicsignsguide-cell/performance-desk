@@ -347,7 +347,7 @@ async function fetchEntitiesOne(client, until) {
   let resumed = 0;
   const resumable = (tasks) => tasks.map((fn, i) => async () => { const k = partKey(i); usedKeys.push(k); const hit = await partGet(k); if (hit) { resumed++; return hit; } const v = await fn(); await partSet(k, v); return v; });
   const heavy = !!(client.campaignDays || client.entityDays);
-  const [camps, sets, adsIns, ads7, ads14, campDays, setDays, adDays, adsetObjs, adObjsList, campObjs, account] = await pool(resumable([
+  const [camps, sets, adsIns, ads7, ads14, campDays, setDays, adDays, adsetObjs, adObjsList, campObjs, account, lifeRows] = await pool(resumable([
     () => pagedRange(ins('campaign', INSIGHT_FIELDS + ',campaign_id,campaign_name'), since, until),
     () => pagedRange(ins('adset', INSIGHT_FIELDS + ',adset_id,adset_name,campaign_id,campaign_name'), since, until),
     () => pagedRange(ins('ad', INSIGHT_FIELDS + ',ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name'), since, until),
@@ -356,13 +356,17 @@ async function fetchEntitiesOne(client, until) {
     () => pagedRange(ins('campaign', DAILY_FIELDS + ',campaign_id', { time_increment: '1' }), addDays(until, -(campN - 1)), dUntil),
     () => pagedRange(ins('adset', DAILY_FIELDS + ',adset_id', { time_increment: '1' }), dSince, dUntil),
     () => pagedRange(ins('ad', DAILY_FIELDS + ',ad_id', { time_increment: '1' }), dSince, dUntil),
-    () => paged(`${BASE()}/act_${accountId}/adsets?${q('id,name,campaign_id,effective_status,learning_stage_info,daily_budget,lifetime_budget,optimization_goal')}`),
+    () => paged(`${BASE()}/act_${accountId}/adsets?${q('id,name,campaign_id,effective_status,learning_stage_info,daily_budget,lifetime_budget,optimization_goal,created_time')}`),
     // A very large account (Berkowits) has thousands of old ads: listing them all took over an hour
     // of Meta waits. There, only the ads that delivered are looked up, by id, after the insights.
     () => (heavy ? [] : paged(`${BASE()}/act_${accountId}/ads?${q(AD_FIELDS)}`)),
     () => paged(`${BASE()}/act_${accountId}/campaigns?${q('id,name,effective_status,objective,daily_budget,lifetime_budget,bid_strategy')}`),
     () => metaGet(`${BASE()}/act_${accountId}?${q('name,account_status,disable_reason,currency,amount_spent,spend_cap,timezone_name')}`),
+    // Clients with optimisation rules (Hokipo): lifetime spend, purchases and revenue of every
+    // active ad, since a new creative is judged on its whole life until it has spent ₹2,500.
+    () => (client.rules ? paged(insightsUrl(accountId, { level: 'ad', date_preset: 'maximum', fields: 'spend,actions,action_values,ad_id', filtering: JSON.stringify([{ field: 'ad.effective_status', operator: 'IN', value: ['ACTIVE'] }]) })) : []),
   ]), 2);
+  const lifeBy = Object.fromEntries((lifeRows || []).map((r) => [r.ad_id, { spend: round(num(r.spend)), purchases: act(r.actions, PURCHASE_()), revenue: round(act(r.action_values, PURCHASE_())) }]));
   let adObjs = adObjsList;
   if (heavy) {
     const k = partKey('ads'); usedKeys.push(k);
@@ -395,7 +399,7 @@ async function fetchEntitiesOne(client, until) {
 
   const adsets = sets.map((r) => {
     const info = setInfo[r.adset_id] || {};
-    return { id: r.adset_id, name: r.adset_name, campaignId: r.campaign_id, campaignName: r.campaign_name, status: info.effective_status || '', learning: info.learning_stage_info?.status || '', optimization: info.optimization_goal || '', ...budgetOf(info), ...metrics(r), days: sDays[r.adset_id] || {} };
+    return { id: r.adset_id, name: r.adset_name, campaignId: r.campaign_id, campaignName: r.campaign_name, status: info.effective_status || '', createdDate: info.created_time ? info.created_time.slice(0, 10) : '', learning: info.learning_stage_info?.status || '', optimization: info.optimization_goal || '', ...budgetOf(info), ...metrics(r), days: sDays[r.adset_id] || {} };
   });
   const ads = adsIns.map((r) => {
     const info = adInfo[r.ad_id] || {}; const cr = info.creative || {};
@@ -425,9 +429,24 @@ async function fetchEntitiesOne(client, until) {
       fbPost: /^\d+_\d+$/.test(cr.effective_object_story_id || '') ? cr.effective_object_story_id : '',
       hookRate: isVideo && m.impressions ? round(m.v3s / m.impressions * 100, 1) : null,
       holdRate: isVideo && m.v3s ? round(m.thruplays / m.v3s * 100, 1) : null,
-      ...m, last7: mk(a7), prev7: mk(a14), days: aDays[r.ad_id] || {},
+      ...m, last7: mk(a7), prev7: mk(a14), days: aDays[r.ad_id] || {}, ...(lifeBy[r.ad_id] ? { life: lifeBy[r.ad_id] } : {}),
     };
   });
+  // Rules clients: active ads and ad sets that have not spent in the window still count (a fresh
+  // creative, an ad set that just went live), so they are added with zero numbers.
+  if (client.rules) {
+    const seenAd = new Set(ads.map((a) => a.id)), seenSet = new Set(adsets.map((a) => a.id)), campName = Object.fromEntries(campObjs.map((c) => [c.id, c.name]));
+    for (const a of adObjs) {
+      if (a.effective_status !== 'ACTIVE' || seenAd.has(a.id)) continue;
+      const cr = a.creative || {}, st = setInfo[a.adset_id] || {};
+      ads.push({ id: a.id, name: a.name, adsetId: a.adset_id, adsetName: st.name || '', campaignId: st.campaign_id || '', campaignName: campName[st.campaign_id] || '', status: a.effective_status, issues: [], format: cr.video_id ? 'Video' : 'Static', isVideo: !!cr.video_id,
+        createdDate: a.created_time ? a.created_time.slice(0, 10) : '', daysLive: null, thumb: cr.image_url || cr.thumbnail_url || '', previewUrl: '', videoId: cr.video_id || '', spend: 0, impressions: 0, clicks: 0, purchases: 0, revenue: 0, leads: 0, days: {}, ...(lifeBy[a.id] ? { life: lifeBy[a.id] } : {}) });
+    }
+    for (const st of adsetObjs) {
+      if (st.effective_status !== 'ACTIVE' || seenSet.has(st.id)) continue;
+      adsets.push({ id: st.id, name: st.name, campaignId: st.campaign_id, campaignName: campName[st.campaign_id] || '', status: st.effective_status, createdDate: st.created_time ? st.created_time.slice(0, 10) : '', ...budgetOf(st), spend: 0, purchases: 0, revenue: 0, days: {} });
+    }
+  }
   // Delivery issues: anything Ads Manager would show a red or yellow status for.
   const issues = [];
   const st = num(account.account_status);

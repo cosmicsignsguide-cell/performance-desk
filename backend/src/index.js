@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 // Entry point. Run as:  node src/index.js <command>
 //   daily [N]    full sync: last DESK_RESTATE_DAYS days re-pulled (first run: DESK_HISTORY_DAYS), entities, products, signals
 //                N re-pulls that many days instead, for a one-off backfill (also /run?mode=daily&days=N)
@@ -49,6 +50,13 @@ function sourceState(client, source) {
 // window is written, empty days included, so a stale figure is always overwritten. Arrays rather
 // than maps on purpose: a merge replaces an array whole, where it would deep-merge a map and keep
 // a campaign that has since dropped to zero.
+async function taskClientFor(key) {
+  if (!key || !/^[A-Za-z0-9_-]{24,80}$/.test(key)) return null;
+  const h = crypto.createHash('sha256').update(key).digest('hex');
+  const c = (await loadClients()).find((x) => x.taskKeyHash && x.taskKeyHash === h);
+  return c ? c.id : null;
+}
+
 async function writeOrderDays(store, client, since, until, byDate, pick) {
   const rows = [];
   for (let d = since; d <= until; d = addDays(d, 1)) rows.push({ id: `${client.id}_${d}`, data: { clientId: client.id, date: d, ...pick(byDate[d]), updatedAt: nowIso() } });
@@ -208,6 +216,13 @@ async function syncClient(store, client, { mode, days, sources: onlySources = nu
             const failed = new Set(e.failed || []);
             const keep = (list) => (failed.size ? (list || []).filter((x) => failed.has(x.acct)) : []);
             ent.campaigns = [...(ent.campaigns || []).filter((c) => c.platform !== 'meta'), ...keep((ent.campaigns || []).filter((c) => c.platform === 'meta')), ...e.campaigns];
+            // When a budget last changed, by comparing with the previous pull, for the rules' 48 to 72
+            // hour gap between budget actions. Unknown until a change has been seen once.
+            { const prevB = {}; for (const x of [...(ent.adsets || []), ...(ent.campaigns || [])]) prevB[x.id] = x;
+              const bKey = (x) => `${x.dailyBudget || ''}|${x.lifetimeBudget || ''}`;
+              for (const x of [...e.adsets, ...e.campaigns]) { const p = prevB[x.id]; if (!p) continue;
+                if (bKey(p) !== bKey(x) && (p.dailyBudget || p.lifetimeBudget)) { x.budgetChangedAt = nowIso(); x.budgetPrev = p.dailyBudget || p.lifetimeBudget; }
+                else if (p.budgetChangedAt) { x.budgetChangedAt = p.budgetChangedAt; x.budgetPrev = p.budgetPrev; } } }
             ent.adsets = [...keep(ent.adsets), ...e.adsets]; ent.ads = [...keep(ent.ads), ...e.ads]; ent.since = e.since; ent.until = e.until;
             ent.issues = e.issues; ent.account = e.account;
             // A partial pull is not marked fresh, so the missing account is tried again in an hourly run.
@@ -710,13 +725,17 @@ async function main() {
       // GET /r/<token> — the client report feed. Public by design: the token is the credential.
       // A bad, unknown or revoked token gets the same flat 404 as a missing route, so the
       // endpoint cannot be used to find out which tokens exist.
-      if (url.pathname.startsWith('/r/')) {
+      if (url.pathname.startsWith('/r/') || url.pathname.startsWith('/k/')) {
         res.setHeader('Cache-Control', 'no-store');
         res.setHeader('X-Robots-Tag', 'noindex, nofollow');
         // /r/<token>            the report feed
         // /r/<token>/v/<adId>   a playable URL for one video creative of that client
         const [tok, kind, id] = url.pathname.slice(3).split('/');
-        const clientId = await resolveToken(store, tok);
+        // /k/<key>/d is a task dashboard link: the key itself is never stored, only its SHA-256 in
+        // clients.json (taskKeyHash), so the repo can be public without giving the link away.
+        const isTask = url.pathname.startsWith('/k/');
+        const clientId = isTask ? await taskClientFor(tok) : await resolveToken(store, tok);
+        if (isTask && kind !== 'd' && kind !== 'p' && kind !== 'v') { res.writeHead(404); res.end('not found'); return; }
         if (!clientId) { res.writeHead(404); res.end('not found'); return; }
 
         if (kind === 'v') {
@@ -755,7 +774,7 @@ async function main() {
             store.get('meta', 'lastRun').catch(() => null),
             (c.type !== 'lead' && c.accounts?.shopify?.shop) ? store.list('orderdays', dailyIdRange(clientId, since, until)).catch(() => []) : Promise.resolve([]),
           ]);
-          const { am, accounts, ...rest } = c;
+          const { am, accounts, taskKeyHash, ...rest } = c;
           const client = { ...rest, id: clientId, accounts: { meta: accounts?.meta || '', google: accounts?.google || '', ga4: accounts?.ga4 ? 'yes' : '', shopify: accounts?.shopify?.shop ? { shop: accounts.shopify.shop } : null } };
           const leadgen = await store.get('leadgen', clientId).catch(() => null);
           const odDocs = od.filter((x) => x.clientId === clientId);
