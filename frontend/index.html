@@ -3772,10 +3772,11 @@ function entityTable(x){
    what is eating budget, what is live, and what is switched off. So the vocabulary is collapsed
    to that, and "spending" is the default because a creative with no spend cannot be the answer
    to why a week went the way it did. */
-const CRF=[['spending','Spending'],['active','Running'],['inactive','Not running'],['all','All']];
+const CRF=[['new','New launches'],['spending','Spending'],['active','Running'],['inactive','Not running'],['all','All']];
 function crState(e){ return String(e.pstatus||'').toLowerCase().indexOf('active')===0?'active':'inactive'; }
 function crMatch(r,f){
   if(f==='all'||!f) return true;
+  if(f==='new') return isNewAd(r.e);
   if(f==='spending') return (r.m?r.m.spend:r.e.spend)>0;
   return crState(r.e)===f;
 }
