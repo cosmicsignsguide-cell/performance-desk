@@ -662,7 +662,14 @@ a{color:var(--cyan)}
 .noadvice .note:not(.keep),.noadvice .kpi-rows-note,.noadvice .crcalls,.noadvice .chip.crcall{display:none!important}
 .segbar{margin:-4px 0 14px}
 .catpanel{margin:0 0 14px}
-.tg-wrap{max-width:1180px;margin:0 auto;padding:6px 0 40px}
+.tg-cols{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:18px;align-items:start}
+.tg-side{position:sticky;top:76px;max-height:calc(100vh - 96px);overflow:auto;display:flex;flex-direction:column;gap:10px}
+.tg-side-h{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;padding:2px 2px 0}
+.tg-card{background:var(--panel);border:1px solid var(--line);border-left:3px solid #1f8a4c;border-radius:10px;padding:12px 14px}.tg-card.on{border-color:#ff5a1f}
+.tg-card-h{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.tg-kv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:6px}.tg-kv div{display:flex;flex-direction:column;gap:2px;min-width:0}.tg-kv span{font-size:11px;color:var(--dim)}.tg-kv b{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:1100px){.tg-cols{grid-template-columns:1fr}.tg-side{position:static;max-height:none}}
+.tg-wrap{max-width:1560px;margin:0 auto;padding:6px 0 40px}
 .tg-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:14px}
 .tg-month{display:flex;align-items:center;gap:10px;font-size:15px}
 .tg-progress{display:flex;align-items:center;gap:12px;margin:0 0 14px;font-size:13.5px}.tg-bar{flex:1;max-width:320px;height:8px;border-radius:5px;background:var(--line);overflow:hidden}.tg-bar i{display:block;height:100%;background:#1f8a4c}
@@ -2115,10 +2122,18 @@ function targetsView(){
       +(TKIND(ed)!=='ecom'?'<div class="faint" style="font-size:12px;margin:-4px 0 8px">Fill either one: the other is worked out from total spend.</div>':'')
       +(t.filledBy?tWho(t):'')
       +'<div class="tg-actions"><span class="faint" data-tsum></span><button type="button" class="btn btn-ghost btn-small" data-act="tcancel">Cancel</button><button type="submit" class="btn btn-primary btn-small">Save targets</button></div></form>'; }
-  h+='<div class="glass-panel" style="padding:0;overflow:auto"><table class="dtable tg-table"><thead><tr><th>Client</th><th>Status</th><th class="num">Total spend</th><th class="num">Meta</th><th class="num">Google</th><th class="num">Target ROAS / CPL</th><th class="num">Target sales / leads</th><th></th></tr></thead><tbody>'
-    +list.map(c=>{ const t=by[c.id]; return '<tr'+(state.tEdit===c.id?' class="tg-on"':'')+'><td class="row-title">'+esc(c.name)+'<div class="faint" style="font-size:12px">'+esc(c.type||'ecom')+'</div></td><td>'+(t?'<span class="tg-chip ok">'+(t.updatedAt&&t.updatedAt!==t.filledAt?'Updated':'Filled')+'</span>'+tWho(t):'<span class="tg-chip">Pending</span>')+'</td>'
+  const pend=list.filter(c=>!by[c.id]), done=list.filter(c=>by[c.id]).sort((a,b)=>String(by[b.id].updatedAt||'').localeCompare(String(by[a.id].updatedAt||'')));
+  h+='<div class="tg-cols"><div class="tg-left">'+(pend.length?'':'<div class="glass-panel" style="padding:18px">All clients are filled for '+monthLabel(m)+'.</div>')+(pend.length?'<div class="glass-panel" style="padding:0;overflow:auto"><table class="dtable tg-table"><thead><tr><th>Client</th><th>Status</th><th class="num">Total spend</th><th class="num">Meta</th><th class="num">Google</th><th class="num">Target ROAS / CPL</th><th class="num">Target sales / leads</th><th></th></tr></thead><tbody>'
+    +pend.map(c=>{ const t=by[c.id]; return '<tr'+(state.tEdit===c.id?' class="tg-on"':'')+'><td class="row-title">'+esc(c.name)+'<div class="faint" style="font-size:12px">'+esc(c.type||'ecom')+'</div></td><td>'+(t?'<span class="tg-chip ok">'+(t.updatedAt&&t.updatedAt!==t.filledAt?'Updated':'Filled')+'</span>'+tWho(t):'<span class="tg-chip">Pending</span>')+'</td>'
       +'<td class="num">'+money(t&&t.totalSpend,c)+'</td><td class="num">'+money(t&&t.metaSpend,c)+'</td><td class="num">'+money(t&&t.googleSpend,c)+'</td><td class="num">'+(()=>{ const k=TKIND(c); if(!t) return '<span class="faint">--</span>'; if(k==='ecom') return t.roas?fmtX(t.roas):'<span class="faint">--</span>'; const v=k==='lead'?t.cpl:t.cpi; return v?fmtMoney(v,c)+' <span class="faint">'+(k==='lead'?'CPL':'CPI')+'</span>':'<span class="faint">--</span>'; })()+'</td><td class="num">'+(()=>{ const k=TKIND(c); if(!t) return '<span class="faint">--</span>'; if(k==='ecom') return money(t.sales,c); const v=k==='lead'?t.leads:t.installs; return v?fmtNum(v)+' <span class="faint">'+(k==='lead'?'leads':'installs')+'</span>':'<span class="faint">--</span>'; })()+'</td>'
-      +'<td class="num"><button class="btn btn-'+(t?'ghost':'primary')+' btn-small" data-act="tedit" data-client="'+esc(c.id)+'">'+(t?'Edit':'Fill')+'</button></td></tr>'; }).join('')+'</tbody></table></div>';
+      +'<td class="num"><button class="btn btn-'+(t?'ghost':'primary')+' btn-small" data-act="tedit" data-client="'+esc(c.id)+'">'+(t?'Edit':'Fill')+'</button></td></tr>'; }).join('')+'</tbody></table></div>':'')+'</div>';
+  const tgt=(c,t)=>{ const k=TKIND(c); if(k==='ecom') return [['ROAS',t.roas?fmtX(t.roas):'--'],['Sales',t.sales?fmtMoney(t.sales,c):'--']]; return k==='lead'?[['CPL',t.cpl?fmtMoney(t.cpl,c):'--'],['Leads',t.leads?fmtNum(t.leads):'--']]:[['CPI',t.cpi?fmtMoney(t.cpi,c):'--'],['Installs',t.installs?fmtNum(t.installs):'--']]; };
+  h+='<aside class="tg-side"><div class="tg-side-h">Filled <span class="tg-chip ok">'+done.length+'</span></div>'
+    +(done.length?done.map(c=>{ const t=by[c.id]; const cells=[['Total',fmtMoney(t.totalSpend,c)],['Meta',t.metaSpend?fmtMoney(t.metaSpend,c):'--'],['Google',t.googleSpend?fmtMoney(t.googleSpend,c):'--'],...tgt(c,t)];
+      return '<div class="tg-card'+(state.tEdit===c.id?' on':'')+'"><div class="tg-card-h"><div><b>'+esc(c.name)+'</b> <span class="faint" style="font-size:12px">'+esc(c.type||'ecom')+'</span></div><button class="btn btn-ghost btn-small" data-act="tedit" data-client="'+esc(c.id)+'">Edit</button></div>'
+        +'<div class="tg-kv">'+cells.map(([k,v])=>'<div><span>'+k+'</span><b>'+v+'</b></div>').join('')+'</div>'+tWho(t)+'</div>'; }).join('')
+      :'<div class="faint" style="font-size:13px;padding:6px 2px">Nothing filled yet for '+monthLabel(m)+'. Saved clients show up here.</div>')
+    +'</aside></div>';
   return '<div class="tg-wrap">'+h+'</div>';
 }
 async function saveTargets(form){
