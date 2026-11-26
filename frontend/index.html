@@ -2090,6 +2090,7 @@ function monthLabel(m){ return MONTHS_FULL[+m.slice(5,7)-1]+' '+m.slice(0,4); }
 function defaultTargetMonth(){ const t=(D&&D.today)||new Date().toISOString().slice(0,10); return parseInt(t.slice(8),10)>=20?monthAdd(t.slice(0,7),1):t.slice(0,7); }
 async function loadTargets(m){
   state.tLoading=m;
+  const PFX=(window.DESK_CONFIG&&window.DESK_CONFIG.collectionPrefix)||'';
   try{ const rows=LIVE&&fb&&fb.db?(await fb.db.collection(PFX+'targets').where('month','==',m).get()).docs.map(d=>d.data()):[];
     state.tData={month:m,by:Object.fromEntries(rows.map(r=>[r.clientId,r]))}; }
   catch(e){ state.tData={month:m,by:{},error:String(e.message||e)}; }
