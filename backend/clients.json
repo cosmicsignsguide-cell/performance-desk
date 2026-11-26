@@ -311,7 +311,10 @@
     "accounts": {
       "meta": "2999205000182683,439345888148374",
       "google": "5988201478",
-      "shopify": null,
+      "shopify": {
+        "shop": "mackly-store.myshopify.com",
+        "tokenEnv": "SHOPIFY_TOKEN_MACKLY_IN"
+      },
       "ga4": ""
     },
     "site": {
@@ -387,7 +390,7 @@
         ]
       ]
     ],
-    "note": "Shopify aavwri-g3 moved to mackly-sl on 2026-11-14: it is the Sri Lanka store. India store pending."
+    "note": "Shopify aavwri-g3 moved to mackly-sl on 2026-11-14: it is the Sri Lanka store. India store is mackly-store.myshopify.com (install-link token, SHOPIFY_TOKEN_MACKLY_IN deliberately unset so the SL token is never used here)."
   },
   {
     "id": "mackly-active",
