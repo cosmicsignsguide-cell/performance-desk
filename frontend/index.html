@@ -3563,21 +3563,25 @@ function metaByCategory(x,S){
   const z=()=>{ const o={}; names.forEach(n=>o[n]={o:0,v:0,s:0}); return o; };
   const M=z(), G=z();
   const inW=d=>d>=w.start&&d<=w.end;
-  // Days where the server already split Meta spend by category (ad names plus catalog spend per
-  // product) use that; older days fall back to splitting the ad tree by names here.
-  const mRowsC=D.daily.filter(r=>r.clientId===c.id&&r.platform==='meta'&&inW(r.date)&&r.cats), mDays=new Set(mRowsC.map(r=>r.date));
-  const addSp=(acc,cat,days)=>{ for(const d in days||{}) if(inW(d)&&!(acc===M&&mDays.has(d))) acc[cat].s+=((days[d]||[])[0]||0); };
+  // Meta detail for Untagged and the catch-all: ad sets by name, and catalog products (below).
+  const MDET={}; const OTHER=names[names.length-2];
+  const mdet=(cat,lab,v)=>{ if((cat!==UNT&&cat!==OTHER)||!v) return; const o=(MDET[cat]=MDET[cat]||{}); o[lab]=(o[lab]||0)+v; };
+  const addSp=(acc,cat,days,lab)=>{ for(const d in days||{}) if(inW(d)){ const v=((days[d]||[])[0]||0); acc[cat].s+=v; if(acc===M&&lab) mdet(cat,lab,v); } };
+  // Catalog spend per ad set and category per day, from the server (Meta's spend per catalog product,
+  // matched to the Shopify product). Used for ad sets whose own name says no category.
+  const catx={}, mRowsX=D.daily.filter(r=>r.clientId===c.id&&r.platform==='meta'&&inW(r.date)&&r.catx);
+  mRowsX.forEach(r=>{ catx[r.date]=r.catx; });
   // Meta spend.
   const metaCamps=(ent.campaigns||[]).filter(e=>e.platform==='meta'), campName={}; metaCamps.forEach(e=>campName[e.id]=e.name);
   const sets=(ent.adsets||[]), ads=(ent.ads||[]), setCamp=new Set();
   sets.forEach(st=>{ setCamp.add(st.campaignId);
-    const k=catOf(st.name); if(k){ addSp(M,k,st.days); return; }
+    const k=catOf(st.name); if(k){ addSp(M,k,st.days,st.name); return; }
     const left={}; for(const d in st.days||{}) left[d]=[(st.days[d]||[])[0]||0];
-    ads.filter(a=>a.adsetId===st.id).forEach(a=>{ const ka=catOf(a.name); if(!ka) return; addSp(M,ka,a.days); for(const d in a.days||{}) if(left[d]) left[d][0]-=((a.days[d]||[])[0]||0); });
-    addSp(M,catOf(st.campaignName||campName[st.campaignId])||UNT,left);
+    ads.filter(a=>a.adsetId===st.id).forEach(a=>{ const ka=catOf(a.name); if(!ka) return; addSp(M,ka,a.days,st.name); for(const d in a.days||{}) if(left[d]) left[d][0]-=((a.days[d]||[])[0]||0); });
+    for(const d in left){ const x=(catx[d]||{})[st.id]; if(!x||!inW(d)) continue; for(const kc in x){ if(!M[kc]) continue; const take=Math.min(x[kc]||0,Math.max(0,left[d][0])); if(take<=0) continue; M[kc].s+=take; left[d][0]-=take; } }
+    addSp(M,catOf(st.campaignName||campName[st.campaignId])||UNT,left,st.name);
   });
-  metaCamps.forEach(e=>{ if(!setCamp.has(e.id)) addSp(M,catOf(e.name)||UNT,e.days); });
-  mRowsC.forEach(r=>{ for(const k in r.cats){ const n=M[k]?k:UNT; M[n].s+=r.cats[k]||0; } });
+  metaCamps.forEach(e=>{ if(!setCamp.has(e.id)) addSp(M,catOf(e.name)||UNT,e.days,e.name); });
   // Google spend, by campaign name.
   const gCamps=(ent.campaigns||[]).filter(e=>e.platform==='google');
   gCamps.forEach(e=>addSp(G,catOf(e.name)||UNT,e.days));
@@ -3602,7 +3606,8 @@ function metaByCategory(x,S){
   // What sits inside Untagged and the catch-all category: ad sets and catalog products (Meta),
   // campaigns and feed products (Google), products sold (Shopify). Written by the syncs on each day row.
   const DET={}; const dput=(cat,pl,lab,v,n)=>{ const o=((DET[cat]=DET[cat]||{})[pl]=DET[cat][pl]||{}); const y=o[lab]||(o[lab]={v:0,n:0}); y.v+=v||0; y.n+=n||0; };
-  mRowsC.forEach(r=>{ for(const k in r.catd||{}) for(const l in r.catd[k]) dput(k,'m',l,r.catd[k][l]); });
+  for(const k in MDET) for(const l in MDET[k]) dput(k,'m',l,MDET[k][l]);
+  mRowsX.forEach(r=>{ for(const k in r.catxd||{}) for(const l in r.catxd[k]) dput(k,'m',l,r.catxd[k][l]); });
   gRows.forEach(r=>{ for(const k in r.catd||{}) for(const l in r.catd[k]) dput(k,'g',l,r.catd[k][l]); });
   shRows.forEach(r=>{ for(const k in r.catd||{}) for(const l in r.catd[k]){ const t=r.catd[k][l]||[]; dput(k,'s',l,t[1],t[0]); } });
   const detRow=n=>{ const o=DET[n]; if(!o) return '';

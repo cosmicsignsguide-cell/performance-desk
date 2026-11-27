@@ -246,65 +246,39 @@ async function fetchDailyOne(client, since, until) {
     }
     for (const row of rows) { const d = seg[row.date] || {}; row.seg = { spend: round(d.spend || 0), impressions: d.impressions || 0, clicks: d.clicks || 0, purchases: d.purchases || 0, revenue: round(d.revenue || 0), leads: d.leads || 0 }; }
   }
-  if (client.categories?.length) {
-    const cats = await metaCatsByDay(client, accountId, since, until).catch((e) => { log(`meta ${client.id}: category spend failed: ${String(e.message || e).slice(0, 160)}`); return null; });
-    // Only a complete split is written. When Meta throttles the catalog part, the days keep the
-    // split they already had (or, if they never had one, the dashboard splits by names as before),
-    // instead of being overwritten with a names-only split that would put catalog spend back in Untagged.
-    if (cats?.complete) for (const row of rows) { row.cats = cats.out[row.date] || {}; row.catd = trimDetail(cats.det[row.date] || {}); }
+  if (client.categories?.length && client.accounts?.shopify) {
+    const cx = await metaCatalogByDay(client, accountId, since, until).catch((e) => { log(`meta ${client.id}: catalog product split unavailable (${String(e.message || e).slice(0, 160)})`); return null; });
+    if (cx) for (const row of rows) { row.catx = cx.out[row.date] || {}; row.catxd = trimDetail(cx.det[row.date] || {}); }
   }
   return rows;
 }
 
-// Meta spend by product category per day, on the server, so it is the same on every page.
-//   1. Every ad's spend goes by its ad set name, then its ad name, then its campaign name.
-//   2. What is still untagged (catalog ad sets like "All product catalog", audience and sale ad sets
-//      named without a product) is split by the catalog product Meta actually showed: Meta reports
-//      catalog ads' spend per product (breakdown product_id), and each product is matched to its
-//      Shopify product and so to its category. Only what neither covers stays "Untagged / mixed".
-// The day's categories always add up to the day's ad-level spend.
-async function metaCatsByDay(client, accountId, since, until) {
-  const ads = await pagedRange(
-    (s, u) => insightsUrl(accountId, { level: 'ad', time_increment: '1', fields: 'spend,ad_name,adset_id,adset_name,campaign_name', filtering: JSON.stringify([{ field: 'spend', operator: 'GREATER_THAN', value: 0 }]), time_range: JSON.stringify({ since: s, until: u }) }),
-    since, until);
-  const out = {}, det = {}, untag = {}, setName = {};
-  const add = (d, k, v, label) => { const o = (out[d] = out[d] || {}); o[k] = (o[k] || 0) + v; addDetail((det[d] = det[d] || {}), client, k, label, v); };
-  for (const r of ads) {
-    const d = r.date_start, v = num(r.spend); if (!v) continue;
-    const k = catOf(client, r.adset_name, r.ad_name, r.campaign_name);
-    if (k) { add(d, k, v, r.adset_name); continue; }
-    const u = (untag[d] = untag[d] || {}); u[r.adset_id] = (u[r.adset_id] || 0) + v; setName[r.adset_id] = r.adset_name;
+// Catalog ad spend by product category, per day and ad set. Catalog ad sets ("All product
+// catalog") and audience ad sets show many products, so their names say nothing about what was
+// sold; Meta reports their spend per catalog product (breakdown product_id, "<id>, <name>"), and
+// each product is matched to its Shopify product and so to its category. Written on the Meta day
+// row as catx: { adsetId: { category: spend } }. The dashboard uses it for ad sets whose name has
+// no category, after their ads' names and before the campaign name; everything else is split by
+// names as before. One call for the whole range; a long restate may wait out Meta's hourly limit.
+async function metaCatalogByDay(client, accountId, since, until) {
+  const call = () => pagedRange((s, u) => insightsUrl(accountId, { level: 'adset', time_increment: '1', breakdowns: 'product_id', fields: 'spend,adset_id', time_range: JSON.stringify({ since: s, until: u }) }), since, until);
+  const [pmap, rows] = await Promise.all([productCategories(client), daysBetween(since, until) > 3 ? runPatiently(call) : call()]);
+  const out = {}, det = {}; let seen = 0, matched = 0; const fmt = [];
+  for (const r of rows) {
+    const d = r.date_start, v = num(r.spend), pid = String(r.product_id || ''); if (!v || !pid || /unknown/i.test(pid)) continue;
+    seen += v; if (fmt.length < 2) fmt.push(pid);
+    const name = pid.includes(',') ? pid.slice(pid.indexOf(',') + 1).trim() : '';
+    const shopId = (pid.match(/\d{10,}/g) || []).find((x) => pmap.has(x));
+    const p = shopId ? pmap.get(shopId) : null;
+    const k = (p && p.cat !== UNTAGGED ? p.cat : null) || catOf(client, name) || null;
+    if (!k) continue;
+    matched += v;
+    const a = ((out[d] = out[d] || {})[r.adset_id] = out[d][r.adset_id] || {}); a[k] = (a[k] || 0) + v;
+    addDetail((det[d] = det[d] || {}), client, k, 'Catalog: ' + (p?.title || name || pid), v);
   }
-  const ids = [...new Set(Object.values(untag).flatMap((u) => Object.keys(u)))];
-  let complete = true;
-  if (ids.length && client.accounts?.shopify) {
-    try {
-      const [pmap, rows] = await Promise.all([
-        productCategories(client),
-        // A restate of many days may wait out Meta's hourly limit (up to 90 minutes) rather than skip:
-        // it runs rarely, and skipping it is what leaves catalog spend in Untagged.
-        ((f) => (daysBetween(since, until) > 3 ? runPatiently(f) : f()))(() => pagedRange((s, u) => insightsUrl(accountId, { level: 'adset', time_increment: '1', breakdowns: 'product_id', fields: 'spend,adset_id', filtering: JSON.stringify([{ field: 'adset.id', operator: 'IN', value: ids }]), time_range: JSON.stringify({ since: s, until: u }) }), since, until)),
-      ]);
-      let seen = 0, matched = 0; const fmt = [];
-      for (const r of rows) {
-        const d = r.date_start, v = num(r.spend), left = untag[d]?.[r.adset_id] || 0; if (!v || left <= 0) continue;
-        const pid = String(r.product_id || ''); seen += v; if (fmt.length < 3) fmt.push(pid);
-        // The product id Meta gives back is the catalog item: "<retailer id>, <product name>" or the
-        // bare retailer id. For a Shopify catalog the retailer id carries the Shopify product id.
-        const name = pid.includes(',') ? pid.slice(pid.indexOf(',') + 1).trim() : '';
-        const shopId = (pid.match(/\d{10,}/g) || []).find((x) => pmap.has(x));
-        const p = shopId ? pmap.get(shopId) : null;
-        const k = (p && p.cat !== UNTAGGED ? p.cat : null) || catOf(client, name) || null;
-        if (!k) continue;
-        const take = Math.min(v, left); untag[d][r.adset_id] = left - take; matched += take;
-        add(d, k, take, 'Catalog: ' + (p?.title || name || pid));
-      }
-      log(`meta ${client.id}: catalog spend by product ${since}..${until}: ${Math.round(matched)} of ${Math.round(seen)} matched to a category (ids like ${fmt.join(' | ').slice(0, 200)})`);
-    } catch (e) { complete = false; log(`meta ${client.id}: catalog product split unavailable (${String(e.message || e).slice(0, 160)})`); }
-  }
-  for (const d in untag) for (const [id, v] of Object.entries(untag[d])) if (v > 0.5) add(d, UNTAGGED, v, setName[id]);
-  for (const d in out) for (const k in out[d]) out[d][k] = round(out[d][k]);
-  return { out, det, complete };
+  for (const d in out) for (const a in out[d]) for (const k in out[d][a]) out[d][a][k] = round(out[d][a][k]);
+  log(`meta ${client.id}: catalog spend by product ${since}..${until}: ${Math.round(matched)} of ${Math.round(seen)} matched to a category (ids like ${fmt.join(' | ').slice(0, 160)})`);
+  return { out, det };
 }
 const segRule = (client) => { const m = client.segment?.match?.meta; return m && m !== '*' ? String(m).toLowerCase() : ''; };
 
@@ -649,6 +623,8 @@ export async function fetchDaily(client, since, until) {
     if (!cur) { by.set(k, { ...row }); continue; }
     for (const [f, v] of Object.entries(row)) if (typeof v === 'number') cur[f] = (cur[f] || 0) + v;
     if (row.cats) { cur.cats = { ...(cur.cats || {}) }; for (const [k, v] of Object.entries(row.cats)) cur.cats[k] = round((cur.cats[k] || 0) + v); }
+    if (row.catx) cur.catx = { ...(cur.catx || {}), ...row.catx };
+    if (row.catxd) { cur.catxd = { ...(cur.catxd || {}) }; for (const [k, m] of Object.entries(row.catxd)) cur.catxd[k] = { ...(cur.catxd[k] || {}), ...m }; }
     if (row.catd) { cur.catd = { ...(cur.catd || {}) }; for (const [k, m] of Object.entries(row.catd)) cur.catd[k] = { ...(cur.catd[k] || {}), ...m }; }
   }
   return [...by.values()].map((r) => ({ ...r, spend: round(r.spend), revenue: round(r.revenue) }));
