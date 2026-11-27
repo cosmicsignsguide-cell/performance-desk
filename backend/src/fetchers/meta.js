@@ -248,7 +248,10 @@ async function fetchDailyOne(client, since, until) {
   }
   if (client.categories?.length) {
     const cats = await metaCatsByDay(client, accountId, since, until).catch((e) => { log(`meta ${client.id}: category spend failed: ${String(e.message || e).slice(0, 160)}`); return null; });
-    if (cats) for (const row of rows) { row.cats = cats.out[row.date] || {}; row.catd = trimDetail(cats.det[row.date] || {}); }
+    // Only a complete split is written. When Meta throttles the catalog part, the days keep the
+    // split they already had (or, if they never had one, the dashboard splits by names as before),
+    // instead of being overwritten with a names-only split that would put catalog spend back in Untagged.
+    if (cats?.complete) for (const row of rows) { row.cats = cats.out[row.date] || {}; row.catd = trimDetail(cats.det[row.date] || {}); }
   }
   return rows;
 }
@@ -273,11 +276,14 @@ async function metaCatsByDay(client, accountId, since, until) {
     const u = (untag[d] = untag[d] || {}); u[r.adset_id] = (u[r.adset_id] || 0) + v; setName[r.adset_id] = r.adset_name;
   }
   const ids = [...new Set(Object.values(untag).flatMap((u) => Object.keys(u)))];
+  let complete = true;
   if (ids.length && client.accounts?.shopify) {
     try {
       const [pmap, rows] = await Promise.all([
         productCategories(client),
-        pagedRange((s, u) => insightsUrl(accountId, { level: 'adset', time_increment: '1', breakdowns: 'product_id', fields: 'spend,adset_id', filtering: JSON.stringify([{ field: 'adset.id', operator: 'IN', value: ids }]), time_range: JSON.stringify({ since: s, until: u }) }), since, until),
+        // A restate of many days may wait out Meta's hourly limit (up to 90 minutes) rather than skip:
+        // it runs rarely, and skipping it is what leaves catalog spend in Untagged.
+        ((f) => (daysBetween(since, until) > 3 ? runPatiently(f) : f()))(() => pagedRange((s, u) => insightsUrl(accountId, { level: 'adset', time_increment: '1', breakdowns: 'product_id', fields: 'spend,adset_id', filtering: JSON.stringify([{ field: 'adset.id', operator: 'IN', value: ids }]), time_range: JSON.stringify({ since: s, until: u }) }), since, until)),
       ]);
       let seen = 0, matched = 0; const fmt = [];
       for (const r of rows) {
@@ -294,11 +300,11 @@ async function metaCatsByDay(client, accountId, since, until) {
         add(d, k, take, 'Catalog: ' + (p?.title || name || pid));
       }
       log(`meta ${client.id}: catalog spend by product ${since}..${until}: ${Math.round(matched)} of ${Math.round(seen)} matched to a category (ids like ${fmt.join(' | ').slice(0, 200)})`);
-    } catch (e) { log(`meta ${client.id}: catalog product split unavailable (${String(e.message || e).slice(0, 160)})`); }
+    } catch (e) { complete = false; log(`meta ${client.id}: catalog product split unavailable (${String(e.message || e).slice(0, 160)})`); }
   }
   for (const d in untag) for (const [id, v] of Object.entries(untag[d])) if (v > 0.5) add(d, UNTAGGED, v, setName[id]);
   for (const d in out) for (const k in out[d]) out[d][k] = round(out[d][k]);
-  return { out, det };
+  return { out, det, complete };
 }
 const segRule = (client) => { const m = client.segment?.match?.meta; return m && m !== '*' ? String(m).toLowerCase() : ''; };
 
