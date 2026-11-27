@@ -261,7 +261,13 @@ async function fetchDailyOne(client, since, until) {
 // no category, after their ads' names and before the campaign name; everything else is split by
 // names as before. One call for the whole range; a long restate may wait out Meta's hourly limit.
 async function metaCatalogByDay(client, accountId, since, until) {
-  const call = () => pagedRange((s, u) => insightsUrl(accountId, { level: 'adset', time_increment: '1', breakdowns: 'product_id', fields: 'spend,adset_id', time_range: JSON.stringify({ since: s, until: u }) }), since, until);
+  // Only ad sets whose own names say no category need it, so first one small call lists the ad sets
+  // that spent in the range (one row each), and the product breakdown is asked for those alone, in
+  // big pages. Asking it for every ad set and every product, 100 rows a page, took hours on Hokipo.
+  const sets = await paged(insightsUrl(accountId, { level: 'adset', fields: 'spend,adset_id,adset_name,campaign_name', filtering: JSON.stringify([{ field: 'spend', operator: 'GREATER_THAN', value: 0 }]), time_range: JSON.stringify({ since, until }) }));
+  const ids = sets.filter((r) => !catOf(client, r.adset_name)).map((r) => String(r.adset_id));
+  if (!ids.length) return { out: {}, det: {} };
+  const call = () => pagedRange((s, u) => insightsUrl(accountId, { level: 'adset', time_increment: '1', breakdowns: 'product_id', fields: 'spend,adset_id', limit: '1000', filtering: JSON.stringify([{ field: 'adset.id', operator: 'IN', value: ids }, { field: 'spend', operator: 'GREATER_THAN', value: 0 }]), time_range: JSON.stringify({ since: s, until: u }) }), since, until);
   const [pmap, rows] = await Promise.all([productCategories(client), daysBetween(since, until) > 3 ? runPatiently(call) : call()]);
   const out = {}, det = {}; let seen = 0, matched = 0; const fmt = [];
   for (const r of rows) {
