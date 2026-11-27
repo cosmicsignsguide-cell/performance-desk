@@ -662,6 +662,10 @@ a{color:var(--cyan)}
 .noadvice .note:not(.keep),.noadvice .kpi-rows-note,.noadvice .crcalls,.noadvice .chip.crcall{display:none!important}
 .segbar{margin:-4px 0 14px}
 .catpanel{margin:0 0 14px}
+.catdet td{padding:0 12px 10px!important;background:var(--panel)}.catdet summary{cursor:pointer;font-size:12.5px;color:var(--dim);padding:6px 0}
+.catdet-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;padding:4px 0 6px}.catdet-h{font-size:11.5px;font-weight:600;color:var(--dim);margin-bottom:6px}
+.catdet-i{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:3px 0;border-bottom:1px dashed var(--line)}.catdet-i span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.catdet-i b{white-space:nowrap;font-weight:600}
+@media (max-width:900px){.catdet-g{grid-template-columns:1fr}}
 .tg-cols{display:grid;grid-template-columns:minmax(620px,1fr) 380px;gap:18px;align-items:start}
 .tg-side{position:sticky;top:76px;max-height:calc(100vh - 96px);overflow:auto;display:flex;flex-direction:column;gap:10px}
 .tg-side-h{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;padding:2px 2px 0}
@@ -3559,7 +3563,10 @@ function metaByCategory(x,S){
   const z=()=>{ const o={}; names.forEach(n=>o[n]={o:0,v:0,s:0}); return o; };
   const M=z(), G=z();
   const inW=d=>d>=w.start&&d<=w.end;
-  const addSp=(acc,cat,days)=>{ for(const d in days||{}) if(inW(d)) acc[cat].s+=((days[d]||[])[0]||0); };
+  // Days where the server already split Meta spend by category (ad names plus catalog spend per
+  // product) use that; older days fall back to splitting the ad tree by names here.
+  const mRowsC=D.daily.filter(r=>r.clientId===c.id&&r.platform==='meta'&&inW(r.date)&&r.cats), mDays=new Set(mRowsC.map(r=>r.date));
+  const addSp=(acc,cat,days)=>{ for(const d in days||{}) if(inW(d)&&!(acc===M&&mDays.has(d))) acc[cat].s+=((days[d]||[])[0]||0); };
   // Meta spend.
   const metaCamps=(ent.campaigns||[]).filter(e=>e.platform==='meta'), campName={}; metaCamps.forEach(e=>campName[e.id]=e.name);
   const sets=(ent.adsets||[]), ads=(ent.ads||[]), setCamp=new Set();
@@ -3570,6 +3577,7 @@ function metaByCategory(x,S){
     addSp(M,catOf(st.campaignName||campName[st.campaignId])||UNT,left);
   });
   metaCamps.forEach(e=>{ if(!setCamp.has(e.id)) addSp(M,catOf(e.name)||UNT,e.days); });
+  mRowsC.forEach(r=>{ for(const k in r.cats){ const n=M[k]?k:UNT; M[n].s+=r.cats[k]||0; } });
   // Google spend, by campaign name.
   const gCamps=(ent.campaigns||[]).filter(e=>e.platform==='google');
   gCamps.forEach(e=>addSp(G,catOf(e.name)||UNT,e.days));
@@ -3591,6 +3599,15 @@ function metaByCategory(x,S){
   if(gHas){ names.forEach(n=>G[n].s=0); gRows.forEach(r=>{ for(const k in r.cats||{}){ const n=G[k]?k:UNT; G[n].s+=r.cats[k]||0; } }); }
   const SH={}; names.forEach(n=>SH[n]={o:0,g:0,v:0});
   shRows.forEach(r=>{ for(const k in r.cats||{}){ const n=SH[k]?k:UNT, t=r.cats[k]||[]; SH[n].o+=t[0]||0; SH[n].g+=t[1]||0; SH[n].v+=t[2]||0; } });
+  // What sits inside Untagged and the catch-all category: ad sets and catalog products (Meta),
+  // campaigns and feed products (Google), products sold (Shopify). Written by the syncs on each day row.
+  const DET={}; const dput=(cat,pl,lab,v,n)=>{ const o=((DET[cat]=DET[cat]||{})[pl]=DET[cat][pl]||{}); const y=o[lab]||(o[lab]={v:0,n:0}); y.v+=v||0; y.n+=n||0; };
+  mRowsC.forEach(r=>{ for(const k in r.catd||{}) for(const l in r.catd[k]) dput(k,'m',l,r.catd[k][l]); });
+  gRows.forEach(r=>{ for(const k in r.catd||{}) for(const l in r.catd[k]) dput(k,'g',l,r.catd[k][l]); });
+  shRows.forEach(r=>{ for(const k in r.catd||{}) for(const l in r.catd[k]){ const t=r.catd[k][l]||[]; dput(k,'s',l,t[1],t[0]); } });
+  const detRow=n=>{ const o=DET[n]; if(!o) return '';
+    const col=(pl,ttl,isS)=>{ const e=Object.entries(o[pl]||{}).sort((a,b)=>b[1].v-a[1].v).slice(0,10); return '<div class="catdet-col"><div class="catdet-h">'+ttl+'</div>'+(e.length?e.map(([l,y])=>'<div class="catdet-i"><span title="'+esc(l)+'">'+esc(l)+'</span><b>'+(isS?fmtNum(y.n)+' · ':'')+money(y.v)+'</b></div>').join(''):'<div class="faint">Nothing in this period</div>')+'</div>'; };
+    return '<tr class="catdet"><td colspan="8"><details><summary>What is in '+esc(n)+'</summary><div class="catdet-g">'+col('m','Meta: ad sets and catalog products (spend)')+col('g','Google: campaigns and feed products (spend)')+col('s','Shopify: products sold (lines · net sales)',true)+'</div></details></td></tr>'; };
   const money=v=>(c.currency==='INR'||!c.currency?'₹':'')+Math.round(v||0).toLocaleString('en-IN');
   const rows=names.filter(n=>M[n].s||G[n].s||SH[n].o).sort((a,b)=>(a===UNT)-(b===UNT)||((M[b].s+G[b].s)-(M[a].s+G[a].s)));
   if(!rows.length) return '';
@@ -3605,7 +3622,7 @@ function metaByCategory(x,S){
   return '<section class="srcpanel catpanel"><div class="srcph"><div><h3>Spend and sales by category</h3><p>'+esc(spec.label)+'. Spend from Meta and Google, store sales from Shopify, by product category. Change the period with the date bar at the top.</p></div></div>'
     +'<div class="data-table-wrap" style="overflow:auto"><table class="dtable cat-t cat-simple"><thead><tr><th rowspan="2">Category</th><th class="grp" colspan="3">Ad spend</th><th class="grp gs" colspan="4">Shopify store</th></tr><tr>'
     +'<th class="num">Meta</th><th class="num">Google</th><th class="num">Total</th><th class="num">Orders</th><th class="num">Gross sales</th><th class="num">Net sales</th><th class="num">Net ÷ spend</th></tr></thead><tbody>'
-    +rows.map(n=>line(n,T(n))).join('')+line('Total',tot)+'</tbody></table></div>'
+    +rows.map(n=>line(n,T(n))+(n===UNT||n===names[names.length-2]?detRow(n):'')).join('')+line('Total',tot)+'</tbody></table></div>'
     +'<div class="note" style="margin-top:8px">Store orders are product-wise: an order with two products in one category counts twice there, so category orders add up to more than the '+(shHas?fmtNum(shTot)+' ':'')+'store orders. Net sales are after discounts and returns, before tax and shipping. Untagged / mixed is spend and products whose names carry no category (catalog, sale and brand campaigns).'+(shHas?'':' Store sales by category fill in from the next sync.')+'</div></section>';
 }
 function srcScale(S,c,w,spec){

@@ -2,7 +2,7 @@
 // Needs: developer token (Basic access), OAuth client id/secret + refresh token for a Google account
 // that is a user on the MCC, the MCC id as login customer id, and the client's customer id in clients.json.
 
-import { catOf, UNTAGGED } from '../categories.js';
+import { catOf, UNTAGGED, addDetail, trimDetail } from '../categories.js';
 import { config } from '../config.js';
 import { fetchJson, emptyDaily, log, num, nowIso, round, addDays } from '../util.js';
 
@@ -77,7 +77,7 @@ export async function fetchDaily(client, since, until) {
     }
     // Explicit zeros on days without funnel actions, so a merge never leaves a stale count behind.
     if (isE) Object.assign(row, { gLpv: 0, gAtc: 0, gIc: 0 }, funnel[r.segments.date] || {});
-    if (cats) row.cats = cats[r.segments.date] || {};
+    if (cats) { row.cats = cats.out[r.segments.date] || {}; row.catd = trimDetail(cats.det[r.segments.date] || {}); }
     return row;
   });
 }
@@ -91,23 +91,24 @@ async function catsByDay(client, since, until) {
     gaql(client.accounts.google, `SELECT campaign.id, campaign.name, segments.date, metrics.cost_micros FROM campaign WHERE segments.date BETWEEN '${since}' AND '${until}' AND metrics.cost_micros > 0`),
     gaql(client.accounts.google, `SELECT campaign.id, segments.date, segments.product_title, segments.product_type_l1, segments.product_type_l2, metrics.cost_micros FROM shopping_performance_view WHERE segments.date BETWEEN '${since}' AND '${until}' AND metrics.cost_micros > 0`),
   ]);
-  const out = {}, covered = {}, miss = {}, campName = {};
+  const out = {}, det = {}, covered = {}, miss = {}, campName = {};
   for (const r of camps) campName[r.campaign.id] = r.campaign.name;
   const add = (d, k, v) => { const o = (out[d] = out[d] || {}); o[k] = (o[k] || 0) + v; };
   for (const r of prods) {
     const d = r.segments.date, v = micros(r.metrics.costMicros), t = r.segments.productTitle;
     const k = catOf(client, r.segments.productTypeL1, t, r.segments.productTypeL2) || (!t ? catOf(client, campName[r.campaign.id]) : null) || UNTAGGED; add(d, k, v);
+    addDetail((det[d] = det[d] || {}), client, k, t || ('Campaign: ' + (campName[r.campaign.id] || '?')), v);
     if (k === UNTAGGED) miss[t || '(no title)'] = (miss[t || '(no title)'] || 0) + v;
     const ck = d + '|' + r.campaign.id; covered[ck] = (covered[ck] || 0) + v;
   }
   for (const r of camps) {
     const d = r.segments.date, left = micros(r.metrics.costMicros) - (covered[d + '|' + r.campaign.id] || 0);
-    if (left > 0.5) add(d, catOf(client, r.campaign.name) || UNTAGGED, left);
+    if (left > 0.5) { const k = catOf(client, r.campaign.name) || UNTAGGED; add(d, k, left); addDetail((det[d] = det[d] || {}), client, k, 'Campaign: ' + r.campaign.name, left); }
   }
   const top = Object.entries(miss).sort((a, b) => b[1] - a[1]).slice(0, 10);
   if (top.length) log(`google ${client.id}: feed products with no category: ${top.map(([t, v]) => `${t} (${Math.round(v)})`).join('; ')}`);
   for (const d in out) for (const k in out[d]) out[d][k] = round(out[d][k]);
-  return out;
+  return { out, det };
 }
 
 // The Google side of the funnel. Google Ads has no landing page view metric of its own, so these

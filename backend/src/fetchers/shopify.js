@@ -6,7 +6,7 @@
 // New-customer order = customerJourneySummary.customerOrderIndex == 1 (Shopify's own first-order flag).
 // Checkouts started = orders + abandoned checkouts created that day (the Shopify signal for a stuck checkout).
 
-import { catOf, UNTAGGED } from '../categories.js';
+import { catOf, UNTAGGED, otherCat, trimDetail } from '../categories.js';
 import { config, shopifyTokenFor } from '../config.js';
 import { fetchJson, emptyDaily, log, num, round, addDays, tzOffset } from '../util.js';
 import { classifyOrder, isTestOrder, payOf, groupDay } from '../orderSources.js';
@@ -139,7 +139,7 @@ export async function fetchDaily(client, since, until) {
   const byDay = {};
   const row = (d) => (byDay[d] = byDay[d] || emptyDaily(client.id, d, 'shopify'));
   for (let d = since; d <= until; d = addDays(d, 1)) row(d);
-  const products = {}, untagged = {};
+  const products = {}, untagged = {}, sample = {};
   // Where the store itself says each order came from. This is the only honest answer to "how
   // many orders came from Meta": the platforms each report the orders they believe their ads
   // caused, inside their own attribution window, so their counts overlap and add up to more
@@ -178,6 +178,8 @@ export async function fetchDaily(client, since, until) {
       const f = lineGross ? net / lineGross : 0; r.cats = r.cats || {};
       for (const li of lis) { const t = li.product?.title || li.title; const k = catOf(client, li.product?.productType, t) || UNTAGGED; const g = li.quantity * num(li.originalUnitPriceSet?.shopMoney?.amount);
         const c = (r.cats[k] = r.cats[k] || [0, 0, 0]); c[0] += 1; c[1] += g; c[2] += g * f;
+        if (k === UNTAGGED || k === otherCat(client)) { r.catd = r.catd || {}; const dd = (r.catd[k] = r.catd[k] || {}), tk = String(t || '(no name)').slice(0, 90); const it = (dd[tk] = dd[tk] || [0, 0]); it[0] += 1; it[1] += g * f; }
+        const sm = (sample[k] = sample[k] || {}); const sk = `${t} [${li.product?.productType || '-'}]`; sm[sk] = (sm[sk] || 0) + 1;
         if (k === UNTAGGED) untagged[t] = (untagged[t] || 0) + 1; }
     }
     for (const li of o.lineItems?.nodes || []) {
@@ -199,7 +201,9 @@ export async function fetchDaily(client, since, until) {
 
   if (Object.keys(untagged).length) log(`shopify ${client.id}: products with no category: ${Object.entries(untagged).sort((x, y) => y[1] - x[1]).slice(0, 15).map(([t, n]) => `${t} (${n})`).join('; ')}`);
   for (const r of Object.values(byDay)) if (r.cats) for (const k in r.cats) r.cats[k] = [r.cats[k][0], round(r.cats[k][1]), round(r.cats[k][2])];
-  if (client.categories?.length) for (const r of Object.values(byDay)) if (!r.cats) r.cats = {};
+  for (const r of Object.values(byDay)) if (r.catd) r.catd = trimDetail(r.catd);
+  if (client.categories?.length && since < addDays(until, -2)) log(`shopify ${client.id}: category check: ${Object.entries(sample).map(([k, m]) => `${k} = ${Object.entries(m).sort((x, y) => y[1] - x[1]).slice(0, 4).map(([t, n]) => `${t} (${n})`).join(', ')}`).join(' || ')}`.slice(0, 6000));
+  if (client.categories?.length) for (const r of Object.values(byDay)) { if (!r.cats) r.cats = {}; if (!r.catd) r.catd = {}; }
   const rows = Object.values(byDay).map((r) => ({ ...r, grossSales: round(r.grossSales), netSales: round(r.netSales), totalSales: round(r.totalSales || 0), taxes: round(r.taxes || 0), discounts: round(r.discounts || 0), refunds: round(r.refunds) }));
   // Recent orders feed: the last two days, newest first, for the dashboard's Orders tab.
   const cutoff = addDays(until, -1);
@@ -261,4 +265,19 @@ export async function testToken(client) {
   const data = await gql(client, SHOP_Q, {});
   log(`shopify ok: ${data.shop.name} (${data.shop.currencyCode}, ${data.shop.plan?.publicDisplayName}, ${data.shop.primaryDomain?.url})`);
   return data.shop;
+}
+
+// Every product's category, by Shopify product id (number). Used to put Meta catalog ad spend,
+// which Meta reports per catalog product, into the same categories as the store's sales.
+const PCAT = new Map();
+export async function productCategories(client) {
+  const hit = PCAT.get(client.id); if (hit && Date.now() - hit.at < 6 * 3600e3) return hit.map;
+  const map = new Map(); let after = null;
+  do {
+    const data = await gql(client, `query DeskProdCats($after: String) { products(first: 250, after: $after) { pageInfo { hasNextPage endCursor } nodes { id title productType } } }`, { after });
+    for (const n of data.products.nodes) { const id = String(n.id).split('/').pop(); map.set(id, { title: n.title, cat: catOf(client, n.productType, n.title) || UNTAGGED }); }
+    after = data.products.pageInfo.hasNextPage ? data.products.pageInfo.endCursor : null;
+  } while (after);
+  PCAT.set(client.id, { at: Date.now(), map });
+  return map;
 }
