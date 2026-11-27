@@ -253,38 +253,42 @@ async function fetchDailyOne(client, since, until) {
   return rows;
 }
 
-// Catalog ad spend by product category, per day and ad set. Catalog ad sets ("All product
-// catalog") and audience ad sets show many products, so their names say nothing about what was
-// sold; Meta reports their spend per catalog product (breakdown product_id, "<id>, <name>"), and
-// each product is matched to its Shopify product and so to its category. Written on the Meta day
-// row as catx: { adsetId: { category: spend } }. The dashboard uses it for ad sets whose name has
-// no category, after their ads' names and before the campaign name; everything else is split by
-// names as before. One call for the whole range; a long restate may wait out Meta's hourly limit.
+// Catalog ad spend by product category, per ad set. Catalog ad sets ("All product catalog") and
+// audience ad sets show many products, so their names say nothing about what was sold; Meta
+// reports their spend per catalog product (breakdown product_id, "<id>, <name>"), and each product
+// is matched to its Shopify product and so to its category. A per-day, per-product breakdown is
+// too heavy for a big catalog (Hokipo: hours, and Meta shrinking pages to 31 rows), so it is asked
+// once for the whole range: each ad set's category mix over the period. That mix is written on
+// every day row of the range as catx: { adsetId: { category: share } }, and the dashboard applies
+// it to the ad set's own daily spend, for ad sets whose name has no category. catxd carries the
+// products inside Untagged and the catch-all, spread evenly over the days, for the breakdown list.
 async function metaCatalogByDay(client, accountId, since, until) {
-  // Only ad sets whose own names say no category need it, so first one small call lists the ad sets
-  // that spent in the range (one row each), and the product breakdown is asked for those alone, in
-  // big pages. Asking it for every ad set and every product, 100 rows a page, took hours on Hokipo.
-  const sets = await paged(insightsUrl(accountId, { level: 'adset', fields: 'spend,adset_id,adset_name,campaign_name', filtering: JSON.stringify([{ field: 'spend', operator: 'GREATER_THAN', value: 0 }]), time_range: JSON.stringify({ since, until }) }));
+  const sets = await paged(insightsUrl(accountId, { level: 'adset', fields: 'spend,adset_id,adset_name', filtering: JSON.stringify([{ field: 'spend', operator: 'GREATER_THAN', value: 0 }]), time_range: JSON.stringify({ since, until }) }));
   const ids = sets.filter((r) => !catOf(client, r.adset_name)).map((r) => String(r.adset_id));
   if (!ids.length) return { out: {}, det: {} };
-  const call = () => pagedRange((s, u) => insightsUrl(accountId, { level: 'adset', time_increment: '1', breakdowns: 'product_id', fields: 'spend,adset_id', limit: '1000', filtering: JSON.stringify([{ field: 'adset.id', operator: 'IN', value: ids }, { field: 'spend', operator: 'GREATER_THAN', value: 0 }]), time_range: JSON.stringify({ since: s, until: u }) }), since, until);
+  const call = () => paged(insightsUrl(accountId, { level: 'adset', breakdowns: 'product_id', fields: 'spend,adset_id', limit: '500', filtering: JSON.stringify([{ field: 'adset.id', operator: 'IN', value: ids }]), time_range: JSON.stringify({ since, until }) }));
   const [pmap, rows] = await Promise.all([productCategories(client), daysBetween(since, until) > 3 ? runPatiently(call) : call()]);
-  const out = {}, det = {}; let seen = 0, matched = 0; const fmt = [];
+  const by = {}, tot = {}, det = {}; let seen = 0, matched = 0; const fmt = [];
   for (const r of rows) {
-    const d = r.date_start, v = num(r.spend), pid = String(r.product_id || ''); if (!v || !pid || /unknown/i.test(pid)) continue;
-    seen += v; if (fmt.length < 2) fmt.push(pid);
+    const v = num(r.spend), pid = String(r.product_id || ''); if (!v || !pid || /unknown/i.test(pid)) continue;
+    seen += v; tot[r.adset_id] = (tot[r.adset_id] || 0) + v; if (fmt.length < 2) fmt.push(pid);
     const name = pid.includes(',') ? pid.slice(pid.indexOf(',') + 1).trim() : '';
     const shopId = (pid.match(/\d{10,}/g) || []).find((x) => pmap.has(x));
     const p = shopId ? pmap.get(shopId) : null;
     const k = (p && p.cat !== UNTAGGED ? p.cat : null) || catOf(client, name) || null;
     if (!k) continue;
     matched += v;
-    const a = ((out[d] = out[d] || {})[r.adset_id] = out[d][r.adset_id] || {}); a[k] = (a[k] || 0) + v;
-    addDetail((det[d] = det[d] || {}), client, k, 'Catalog: ' + (p?.title || name || pid), v);
+    const a = (by[r.adset_id] = by[r.adset_id] || {}); a[k] = (a[k] || 0) + v;
+    addDetail(det, client, k, 'Catalog: ' + (p?.title || name || pid), v);
   }
-  for (const d in out) for (const a in out[d]) for (const k in out[d][a]) out[d][a][k] = round(out[d][a][k]);
-  log(`meta ${client.id}: catalog spend by product ${since}..${until}: ${Math.round(matched)} of ${Math.round(seen)} matched to a category (ids like ${fmt.join(' | ').slice(0, 160)})`);
-  return { out, det };
+  const mix = {};
+  for (const [a, m] of Object.entries(by)) { mix[a] = {}; for (const [k, v] of Object.entries(m)) mix[a][k] = Math.round((v / tot[a]) * 10000) / 10000; }
+  const out = {}, perDay = {}, n = daysBetween(since, until) + 1;
+  for (const [k, m] of Object.entries(det)) { perDay[k] = {}; for (const [l, v] of Object.entries(m)) perDay[k][l] = v / n; }
+  const dd = {};
+  for (let d = since; d <= until; d = addDays(d, 1)) { out[d] = mix; dd[d] = perDay; }
+  log(`meta ${client.id}: catalog spend by product ${since}..${until}: ${Math.round(matched)} of ${Math.round(seen)} matched to a category across ${Object.keys(by).length} ad sets (ids like ${fmt.join(' | ').slice(0, 160)})`);
+  return { out, det: dd };
 }
 const segRule = (client) => { const m = client.segment?.match?.meta; return m && m !== '*' ? String(m).toLowerCase() : ''; };
 

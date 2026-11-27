@@ -3578,7 +3578,8 @@ function metaByCategory(x,S){
     const k=catOf(st.name); if(k){ addSp(M,k,st.days,st.name); return; }
     const left={}; for(const d in st.days||{}) left[d]=[(st.days[d]||[])[0]||0];
     ads.filter(a=>a.adsetId===st.id).forEach(a=>{ const ka=catOf(a.name); if(!ka) return; addSp(M,ka,a.days,st.name); for(const d in a.days||{}) if(left[d]) left[d][0]-=((a.days[d]||[])[0]||0); });
-    for(const d in left){ const x=(catx[d]||{})[st.id]; if(!x||!inW(d)) continue; for(const kc in x){ if(!M[kc]) continue; const take=Math.min(x[kc]||0,Math.max(0,left[d][0])); if(take<=0) continue; M[kc].s+=take; left[d][0]-=take; } }
+    // catx is each catalog ad set's category mix (shares of its spend) over the synced range.
+    for(const d in left){ const x=(catx[d]||{})[st.id]; if(!x||!inW(d)) continue; const base=Math.max(0,left[d][0]); for(const kc in x){ if(!M[kc]) continue; const take=Math.min(base*(x[kc]||0),Math.max(0,left[d][0])); if(take<=0) continue; M[kc].s+=take; left[d][0]-=take; } }
     addSp(M,catOf(st.campaignName||campName[st.campaignId])||UNT,left,st.name);
   });
   metaCamps.forEach(e=>{ if(!setCamp.has(e.id)) addSp(M,catOf(e.name)||UNT,e.days,e.name); });
