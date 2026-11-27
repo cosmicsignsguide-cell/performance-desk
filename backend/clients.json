@@ -194,7 +194,13 @@
         "Sensor dustbin",
         [
           "dustbin",
+          "dust bin",
           "trash can",
+          "trash bin",
+          "garbage",
+          "waste bin",
+          " bin ",
+          " bins ",
           "sensor"
         ]
       ],
