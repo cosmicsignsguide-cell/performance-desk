@@ -176,7 +176,7 @@ export async function fetchDaily(client, since, until) {
     if (client.categories?.length) {
       const lis = o.lineItems?.nodes || [], lineGross = lis.reduce((t, li) => t + li.quantity * num(li.originalUnitPriceSet?.shopMoney?.amount), 0);
       const f = lineGross ? net / lineGross : 0; r.cats = r.cats || {};
-      for (const li of lis) { const t = li.product?.title || li.title; const k = catOf(client, t, li.product?.productType) || UNTAGGED; const g = li.quantity * num(li.originalUnitPriceSet?.shopMoney?.amount);
+      for (const li of lis) { const t = li.product?.title || li.title; const k = catOf(client, li.product?.productType, t) || UNTAGGED; const g = li.quantity * num(li.originalUnitPriceSet?.shopMoney?.amount);
         const c = (r.cats[k] = r.cats[k] || [0, 0, 0]); c[0] += 1; c[1] += g; c[2] += g * f;
         if (k === UNTAGGED || k === otherCat(client)) { r.catd = r.catd || {}; const dd = (r.catd[k] = r.catd[k] || {}), tk = String(t || '(no name)').slice(0, 90); const it = (dd[tk] = dd[tk] || [0, 0]); it[0] += 1; it[1] += g * f; }
         const sm = (sample[k] = sample[k] || {}); const sk = `${t} [${li.product?.productType || '-'}]`; sm[sk] = (sm[sk] || 0) + 1;
@@ -275,7 +275,7 @@ export async function productCategories(client) {
   const map = new Map(); let after = null;
   do {
     const data = await gql(client, `query DeskProdCats($after: String) { products(first: 250, after: $after) { pageInfo { hasNextPage endCursor } nodes { id title productType } } }`, { after });
-    for (const n of data.products.nodes) { const id = String(n.id).split('/').pop(); map.set(id, { title: n.title, cat: catOf(client, n.title, n.productType) || UNTAGGED }); }
+    for (const n of data.products.nodes) { const id = String(n.id).split('/').pop(); map.set(id, { title: n.title, cat: catOf(client, n.productType, n.title) || UNTAGGED }); }
     after = data.products.pageInfo.hasNextPage ? data.products.pageInfo.endCursor : null;
   } while (after);
   PCAT.set(client.id, { at: Date.now(), map });
