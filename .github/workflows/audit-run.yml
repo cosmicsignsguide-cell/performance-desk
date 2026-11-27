@@ -1,0 +1,17 @@
+name: desk-oneoff
+on:
+  push:
+    branches: [audit-run]
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Hokipo Meta 30 day restate in the background
+        env:
+          DESK_SYNC_KEY: ${{ secrets.DESK_SYNC_KEY }}
+          API: https://desk-api-si2w.onrender.com
+        run: |
+          sleep 180
+          curl -sS --max-time 90 "$API/health" || true; echo
+          curl -sS -w "\nrun %{http_code}\n" --max-time 60 -X POST -H "Authorization: Bearer $DESK_SYNC_KEY" "$API/run?mode=daily&client=hokipo&days=30&sources=meta"
