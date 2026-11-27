@@ -52,10 +52,13 @@ async function firestoreImpl() {
       const s = await q.get();
       return s.docs.map((d) => ({ id: d.id, ...d.data() }));
     },
-    async batchSet(col, rows) {  // rows: [{id, data}]
+    async batchSet(col, rows, opts = {}) {  // rows: [{id, data}]
+      // opts.whole: every field written replaces the stored one outright, maps included. A plain
+      // merge only ever adds keys inside a map, so a category that no longer applies (cats, catd)
+      // would sit on the day row forever. Fields not written are still left as they are.
       for (let i = 0; i < rows.length; i += 400) {
         const b = fs_.batch();
-        rows.slice(i, i + 400).forEach(({ id, data }) => b.set(fs_.collection(C(col)).doc(id), data, { merge: true }));
+        rows.slice(i, i + 400).forEach(({ id, data }) => b.set(fs_.collection(C(col)).doc(id), data, opts.whole ? { mergeFields: Object.keys(data) } : { merge: true }));
         await b.commit();
       }
     },
@@ -89,7 +92,7 @@ function fileImpl() {
       const rows = Object.entries(read(col)).map(([id, d]) => ({ id, ...d })).filter((r) => matches(r, filter)).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
       return opts.limit ? rows.slice(0, opts.limit) : rows;
     },
-    async batchSet(col, rows) { const o = read(col); rows.forEach(({ id, data }) => { o[id] = { ...(o[id] || {}), ...data }; }); write(col, o); },
+    async batchSet(col, rows, _opts) { const o = read(col); rows.forEach(({ id, data }) => { o[id] = { ...(o[id] || {}), ...data }; }); write(col, o); },
     async batchDelete(col, ids) { const o = read(col); ids.forEach((id) => { delete o[id]; }); write(col, o); },
   };
 }

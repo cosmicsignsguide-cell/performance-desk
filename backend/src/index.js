@@ -76,7 +76,7 @@ function withZeroDays(rows, clientId, platform, since, until) {
   return out;
 }
 async function writeDaily(store, rows) {
-  await store.batchSet('daily', rows.map((r) => ({ id: dailyId(r.clientId, r.date, r.platform), data: { ...r, updatedAt: nowIso() } })));
+  await store.batchSet('daily', rows.map((r) => ({ id: dailyId(r.clientId, r.date, r.platform), data: { ...r, updatedAt: nowIso() } })), { whole: true });
 }
 
 // "Has this client ever had a real row for this source?" needs one row, not the whole history. It
